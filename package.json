@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-desktop",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Desktop Inventory Management System",
   "main": "electron/main.js",
   "scripts": {
@@ -42,7 +42,8 @@
     "win": {
       "target": "nsis",
       "publisherName": "Inventory Management System",
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "artifactName": "Inventory-Management-System-Setup-${version}.${ext}"
     },
     "mac": {
       "target": "dmg",

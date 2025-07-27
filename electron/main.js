@@ -95,6 +95,11 @@ function createWindow() {
     }
   });
 
+  // Handle version request
+  ipcMain.handle('get-version', () => {
+    return app.getVersion();
+  });
+
   // Handle update check from renderer
   ipcMain.handle('check-for-updates', async () => {
     if (!isDev) {
@@ -112,8 +117,15 @@ function createWindow() {
 
   // Handle manual update install
   ipcMain.handle('install-update', () => {
-    console.log('Installing update and restarting...');
-    autoUpdater.quitAndInstall(false, true);
+    console.log('Install update requested');
+    try {
+      console.log('Calling autoUpdater.quitAndInstall...');
+      autoUpdater.quitAndInstall(false, true);
+      console.log('quitAndInstall called successfully');
+    } catch (error) {
+      console.error('Error in quitAndInstall:', error);
+      throw error;
+    }
   });
 
   // Auto-updater events
@@ -123,8 +135,14 @@ function createWindow() {
 
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info);
+    console.log('Update is ready to install');
     // Notify renderer that update is ready
     mainWindow.webContents.send('update-downloaded');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log('Download progress:', Math.round(progress.percent) + '%');
+    mainWindow.webContents.send('download-progress', progress);
   });
 
   autoUpdater.on('error', (error) => {
