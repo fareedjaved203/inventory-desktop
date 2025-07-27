@@ -10,6 +10,7 @@ function UpdateButton() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [progressTimeout, setProgressTimeout] = useState(null);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -20,22 +21,50 @@ function UpdateButton() {
 
       // Listen for download progress
       window.electronAPI.onDownloadProgress?.((progress) => {
-        setDownloadProgress(Math.round(progress.percent));
-        setStatus(`Downloading... ${Math.round(progress.percent)}%`);
+        const percent = Math.round(progress.percent);
+        setDownloadProgress(percent);
+        setStatus(`Downloading... ${percent}%`);
+        
+        // Clear existing timeout
+        if (progressTimeout) {
+          clearTimeout(progressTimeout);
+        }
+        
+        // Set new timeout only if not at 100%
+        if (percent < 100) {
+          const timeout = setTimeout(() => {
+            if (!downloaded) { // Only show stuck message if not downloaded
+              setStatus('Download seems stuck. Check your internet connection.');
+            }
+          }, 15000); // 15 seconds timeout
+          setProgressTimeout(timeout);
+        }
       });
 
       // Listen for download complete
       window.electronAPI.onUpdateDownloaded?.(() => {
+        // Clear any existing timeout
+        if (progressTimeout) {
+          clearTimeout(progressTimeout);
+          setProgressTimeout(null);
+        }
         setDownloading(false);
         setDownloaded(true);
+        setDownloadProgress(100);
         setStatus('Update downloaded! Ready to install.');
       });
 
       // Listen for update errors
       window.electronAPI.onUpdateError?.((error) => {
+        // Clear any existing timeout
+        if (progressTimeout) {
+          clearTimeout(progressTimeout);
+          setProgressTimeout(null);
+        }
         setDownloading(false);
         setUpdateAvailable(false);
         setDownloaded(false);
+        setDownloadProgress(0);
         setStatus(`Update failed: ${error}`);
       });
     }
@@ -65,11 +94,21 @@ function UpdateButton() {
 
   const downloadUpdate = async () => {
     setDownloading(true);
+    setDownloaded(false);
+    setDownloadProgress(0);
     setStatus('Starting download...');
+    
+    // Clear any existing timeout
+    if (progressTimeout) {
+      clearTimeout(progressTimeout);
+      setProgressTimeout(null);
+    }
+    
     try {
       await window.electronAPI.downloadUpdate();
     } catch (error) {
       setDownloading(false);
+      setDownloadProgress(0);
       setStatus(`Download failed: ${error.message || error}`);
     }
   };
