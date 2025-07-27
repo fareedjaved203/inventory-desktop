@@ -98,14 +98,37 @@ function createWindow() {
   // Handle update check from renderer
   ipcMain.handle('check-for-updates', async () => {
     if (!isDev) {
-      return await autoUpdater.checkForUpdates();
+      try {
+        const result = await autoUpdater.checkForUpdates();
+        console.log('Update check result:', result);
+        return result;
+      } catch (error) {
+        console.error('Update check failed:', error);
+        throw error;
+      }
     }
-    return null;
+    throw new Error('Updates not available in development mode');
   });
 
   // Handle manual update install
   ipcMain.handle('install-update', () => {
-    autoUpdater.quitAndInstall();
+    console.log('Installing update and restarting...');
+    autoUpdater.quitAndInstall(false, true);
+  });
+
+  // Auto-updater events
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info);
+    // Notify renderer that update is ready
+    mainWindow.webContents.send('update-downloaded');
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('Auto-updater error:', error);
   });
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {

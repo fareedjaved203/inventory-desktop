@@ -9,7 +9,7 @@ function UpdateButton() {
     try {
       if (window.electronAPI) {
         const result = await window.electronAPI.checkForUpdates();
-        if (result) {
+        if (result && result.updateInfo) {
           setUpdateAvailable(true);
         } else {
           alert('No updates available');
@@ -18,14 +18,23 @@ function UpdateButton() {
         alert('Update feature only available in desktop app');
       }
     } catch (error) {
-      alert('Error checking for updates');
+      console.error('Update check error:', error);
+      alert(`Error checking for updates: ${error.message || error}`);
     }
     setChecking(false);
   };
 
   const installUpdate = async () => {
-    if (window.electronAPI) {
-      await window.electronAPI.installUpdate();
+    try {
+      if (window.electronAPI) {
+        console.log('Installing update...');
+        await window.electronAPI.installUpdate();
+      } else {
+        alert('Update feature only available in desktop app');
+      }
+    } catch (error) {
+      console.error('Install error:', error);
+      alert(`Error installing update: ${error.message || error}`);
     }
   };
 
