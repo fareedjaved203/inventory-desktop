@@ -5,10 +5,11 @@ function UpdateButton() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const [status, setStatus] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [appVersion, setAppVersion] = useState('1.0.0');
-  const [downloadTimeout, setDownloadTimeout] = useState(null);
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -21,38 +22,20 @@ function UpdateButton() {
       window.electronAPI.onDownloadProgress?.((progress) => {
         setDownloadProgress(Math.round(progress.percent));
         setStatus(`Downloading... ${Math.round(progress.percent)}%`);
-        
-        // Clear any existing timeout
-        if (downloadTimeout) {
-          clearTimeout(downloadTimeout);
-        }
-        
-        // Set new timeout for download stall detection
-        const timeout = setTimeout(() => {
-          setStatus('Download seems stuck. Check your internet connection.');
-          setDownloading(false);
-        }, 30000); // 30 seconds timeout
-        
-        setDownloadTimeout(timeout);
       });
 
       // Listen for download complete
       window.electronAPI.onUpdateDownloaded?.(() => {
-        if (downloadTimeout) {
-          clearTimeout(downloadTimeout);
-        }
         setDownloading(false);
-        setUpdateAvailable(true); // Ensure button shows
+        setDownloaded(true);
         setStatus('Update downloaded! Ready to install.');
       });
 
       // Listen for update errors
       window.electronAPI.onUpdateError?.((error) => {
-        if (downloadTimeout) {
-          clearTimeout(downloadTimeout);
-        }
         setDownloading(false);
         setUpdateAvailable(false);
+        setDownloaded(false);
         setStatus(`Update failed: ${error}`);
       });
     }
@@ -60,44 +43,35 @@ function UpdateButton() {
 
   const checkForUpdates = async () => {
     setChecking(true);
+    setStatus('');
     try {
       if (typeof window !== 'undefined' && window.electronAPI) {
-        console.log('ElectronAPI found, checking for updates...');
-        console.log('Current app version:', appVersion);
         const result = await window.electronAPI.checkForUpdates();
-        console.log('Update check result:', result);
-        if (result && result.updateInfo) {
-          console.log('Available version:', result.updateInfo.version);
-          console.log('Current version:', appVersion);
-          
-          if (result.updateInfo.version !== appVersion) {
-            setUpdateAvailable(true);
-            setStatus('Update found! Downloading...');
-            setDownloading(true);
-            
-            // Set download timeout
-            const timeout = setTimeout(() => {
-              setStatus('Download failed or timed out. Try again.');
-              setDownloading(false);
-              setUpdateAvailable(false);
-            }, 60000); // 60 seconds total timeout
-            
-            setDownloadTimeout(timeout);
-          } else {
-            setStatus('No updates available - you have the latest version');
-          }
+        if (result && result.updateInfo && result.updateInfo.version !== appVersion) {
+          setUpdateInfo(result.updateInfo);
+          setUpdateAvailable(true);
+          setStatus(`Update available: v${result.updateInfo.version}`);
         } else {
           setStatus('No updates available - you have the latest version');
         }
       } else {
-        alert('Update feature only available in desktop app');
-        console.log('ElectronAPI not found:', !!window.electronAPI);
+        setStatus('Update feature only available in desktop app');
       }
     } catch (error) {
-      console.error('Update check error:', error);
       setStatus(`Error: ${error.message || 'Failed to check for updates'}`);
     }
     setChecking(false);
+  };
+
+  const downloadUpdate = async () => {
+    setDownloading(true);
+    setStatus('Starting download...');
+    try {
+      await window.electronAPI.downloadUpdate();
+    } catch (error) {
+      setDownloading(false);
+      setStatus(`Download failed: ${error.message || error}`);
+    }
   };
 
   const installUpdate = async () => {
@@ -141,17 +115,36 @@ function UpdateButton() {
           </div>
         )}
 
-        {(updateAvailable || status.includes('downloaded')) && (
-          <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
-            <p className="text-primary-800 mb-2">
-              {downloading ? 'Downloading update...' : 'Update ready to install!'}
-            </p>
+        {updateAvailable && !downloaded && !downloading && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 mb-2">Update v{updateInfo?.version} is available!</p>
+            <button
+              onClick={downloadUpdate}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              Download Update
+            </button>
+          </div>
+        )}
+
+        {downloading && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800 mb-2">Downloading update... {downloadProgress}%</p>
+            <div className="w-full bg-blue-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full transition-all" style={{width: `${downloadProgress}%`}}></div>
+            </div>
+          </div>
+        )}
+
+        {downloaded && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 mb-2">Update ready to install!</p>
             <button
               onClick={installUpdate}
-              disabled={installing || downloading}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+              disabled={installing}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              {installing ? 'Installing...' : downloading ? 'Downloading...' : 'Install Update & Restart'}
+              {installing ? 'Installing...' : 'Install Update & Restart'}
             </button>
           </div>
         )}

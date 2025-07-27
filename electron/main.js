@@ -104,7 +104,8 @@ function createWindow() {
   ipcMain.handle('check-for-updates', async () => {
     if (!isDev) {
       try {
-        const result = await autoUpdater.checkForUpdates();
+        autoUpdater.autoDownload = false; // Don't auto-download
+        const result = await autoUpdater.checkForUpdatesAndNotify();
         console.log('Update check result:', result);
         return result;
       } catch (error) {
@@ -115,12 +116,26 @@ function createWindow() {
     throw new Error('Updates not available in development mode');
   });
 
+  // Handle manual download
+  ipcMain.handle('download-update', async () => {
+    if (!isDev) {
+      try {
+        await autoUpdater.downloadUpdate();
+        return true;
+      } catch (error) {
+        console.error('Download failed:', error);
+        throw error;
+      }
+    }
+    return false;
+  });
+
   // Handle manual update install
   ipcMain.handle('install-update', () => {
     console.log('Install update requested');
     try {
       console.log('Calling autoUpdater.quitAndInstall...');
-      autoUpdater.quitAndInstall(false, true);
+      autoUpdater.quitAndInstall(true, true); // Force close and restart
       console.log('quitAndInstall called successfully');
     } catch (error) {
       console.error('Error in quitAndInstall:', error);
