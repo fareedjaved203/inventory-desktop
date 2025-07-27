@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-desktop",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Desktop Inventory Management System",
   "main": "electron/main.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "electron-dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\" \"wait-on http://localhost:3000 && electron .\"",
     "build": "npm run frontend:build && npm run backend:build",
     "frontend:dev": "cd frontend && npm run dev",
-    "frontend:build": "cd frontend && npm run build",
+    "frontend:build": "node update-version.js && cd frontend && npm run build",
     "backend:dev": "cd backend && npm run dev",
     "backend:build": "cd backend && npm install --production",
     "dist": "npm run build && electron-builder",

@@ -7,19 +7,52 @@ function UpdateButton() {
   const [installing, setInstalling] = useState(false);
   const [status, setStatus] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [downloadTimeout, setDownloadTimeout] = useState(null);
 
   useEffect(() => {
     if (window.electronAPI) {
+      // Get app version
+      window.electronAPI.getVersion().then(version => {
+        setAppVersion(version);
+      });
+
       // Listen for download progress
       window.electronAPI.onDownloadProgress?.((progress) => {
         setDownloadProgress(Math.round(progress.percent));
         setStatus(`Downloading... ${Math.round(progress.percent)}%`);
+        
+        // Clear any existing timeout
+        if (downloadTimeout) {
+          clearTimeout(downloadTimeout);
+        }
+        
+        // Set new timeout for download stall detection
+        const timeout = setTimeout(() => {
+          setStatus('Download seems stuck. Check your internet connection.');
+          setDownloading(false);
+        }, 30000); // 30 seconds timeout
+        
+        setDownloadTimeout(timeout);
       });
 
       // Listen for download complete
       window.electronAPI.onUpdateDownloaded?.(() => {
+        if (downloadTimeout) {
+          clearTimeout(downloadTimeout);
+        }
         setDownloading(false);
         setStatus('Update downloaded! Ready to install.');
+      });
+
+      // Listen for update errors
+      window.electronAPI.onUpdateError?.((error) => {
+        if (downloadTimeout) {
+          clearTimeout(downloadTimeout);
+        }
+        setDownloading(false);
+        setUpdateAvailable(false);
+        setStatus(`Update failed: ${error}`);
       });
     }
   }, []);
@@ -29,14 +62,31 @@ function UpdateButton() {
     try {
       if (typeof window !== 'undefined' && window.electronAPI) {
         console.log('ElectronAPI found, checking for updates...');
+        console.log('Current app version:', appVersion);
         const result = await window.electronAPI.checkForUpdates();
+        console.log('Update check result:', result);
         if (result && result.updateInfo) {
-          setUpdateAvailable(true);
-          setStatus('Update found! Downloading...');
-          setDownloading(true);
+          console.log('Available version:', result.updateInfo.version);
+          console.log('Current version:', appVersion);
+          
+          if (result.updateInfo.version !== appVersion) {
+            setUpdateAvailable(true);
+            setStatus('Update found! Downloading...');
+            setDownloading(true);
+            
+            // Set download timeout
+            const timeout = setTimeout(() => {
+              setStatus('Download failed or timed out. Try again.');
+              setDownloading(false);
+              setUpdateAvailable(false);
+            }, 60000); // 60 seconds total timeout
+            
+            setDownloadTimeout(timeout);
+          } else {
+            setStatus('No updates available - you have the latest version');
+          }
         } else {
-          alert('No updates available');
-          setStatus('No updates available');
+          setStatus('No updates available - you have the latest version');
         }
       } else {
         alert('Update feature only available in desktop app');
@@ -44,7 +94,7 @@ function UpdateButton() {
       }
     } catch (error) {
       console.error('Update check error:', error);
-      alert(`Error checking for updates: ${error.message || error}`);
+      setStatus(`Error: ${error.message || 'Failed to check for updates'}`);
     }
     setChecking(false);
   };
@@ -64,8 +114,7 @@ function UpdateButton() {
     } catch (error) {
       console.error('Install error:', error);
       setInstalling(false);
-      setStatus(`Error: ${error.message || error}`);
-      alert(`Error installing update: ${error.message || error}`);
+      setStatus(`Install failed: ${error.message || error}`);
     }
   };
 
@@ -73,7 +122,7 @@ function UpdateButton() {
     <div className="bg-white p-6 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">App Updates</h2>
-        <span className="text-sm text-gray-500">v{window.electronAPI?.version || '1.0.0'}</span>
+        <span className="text-sm text-gray-500">v{appVersion}</span>
       </div>
       
       <div className="space-y-4">

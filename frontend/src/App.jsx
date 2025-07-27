@@ -17,6 +17,7 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const queryClient = useQueryClient();
+  const [appVersion, setAppVersion] = useState('1.0.0');
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // Clear auth on container restart by checking a session timestamp
     const authTime = localStorage.getItem('authTime');
@@ -50,6 +51,14 @@ function AppContent() {
       setShowAuthModal(true);
     }
   }, [authCheck, isAuthenticated]);
+
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.getVersion().then(version => {
+        setAppVersion(version);
+      });
+    }
+  }, []);
 
   const handleAuthSuccess = () => {
     setIsAuthenticated(true);
@@ -106,7 +115,7 @@ function AppContent() {
             </Routes>
           </div>
           <footer className="text-center py-2 text-xs text-gray-400 border-t bg-white">
-            v{window.electronAPI?.version || '1.0.0'}
+            v{appVersion}
           </footer>
         </div>
       </div>

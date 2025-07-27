@@ -147,6 +147,11 @@ function createWindow() {
 
   autoUpdater.on('error', (error) => {
     console.error('Auto-updater error:', error);
+    mainWindow.webContents.send('update-error', error.message);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('No updates available');
   });
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
