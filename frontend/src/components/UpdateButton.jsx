@@ -40,7 +40,10 @@ function UpdateButton() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">App Updates</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">App Updates</h2>
+        <span className="text-sm text-gray-500">v{window.electronAPI?.version || '1.0.0'}</span>
+      </div>
       
       <div className="space-y-4">
         <button

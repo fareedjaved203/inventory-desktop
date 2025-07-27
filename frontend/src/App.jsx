@@ -92,17 +92,22 @@ function AppContent() {
     <Router>
       <div className="flex h-screen bg-gray-50">
         <Sidebar onLogout={handleLogout} />
-        <div className="flex-1 overflow-auto p-8">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/bulk" element={<BulkPurchasing />} />
-            <Route path="/returns" element={<Returns />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+        <div className="flex-1 flex flex-col overflow-auto">
+          <div className="flex-1 p-8">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/contacts" element={<Contacts />} />
+              <Route path="/bulk" element={<BulkPurchasing />} />
+              <Route path="/returns" element={<Returns />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+          <footer className="text-center py-2 text-xs text-gray-400 border-t bg-white">
+            v{window.electronAPI?.version || '1.0.0'}
+          </footer>
         </div>
       </div>
     </Router>
