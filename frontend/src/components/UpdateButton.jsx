@@ -42,6 +42,7 @@ function UpdateButton() {
           clearTimeout(downloadTimeout);
         }
         setDownloading(false);
+        setUpdateAvailable(true); // Ensure button shows
         setStatus('Update downloaded! Ready to install.');
       });
 
@@ -140,7 +141,7 @@ function UpdateButton() {
           </div>
         )}
 
-        {updateAvailable && (
+        {(updateAvailable || status.includes('downloaded')) && (
           <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
             <p className="text-primary-800 mb-2">
               {downloading ? 'Downloading update...' : 'Update ready to install!'}
