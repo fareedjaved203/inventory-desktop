@@ -2,6 +2,7 @@ import React from 'react';
 import DatabaseBackupForm from '../components/DatabaseBackupForm';
 import UpdateEmailForm from '../components/UpdateUsernameForm';
 import ShopSettingsForm from '../components/ShopSettingsForm';
+import UpdateButton from '../components/UpdateButton';
 
 function Settings() {
   return (
@@ -9,6 +10,7 @@ function Settings() {
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-8">Settings</h1>
       
       <div className="space-y-6">
+        <UpdateButton />
         <ShopSettingsForm />
         <DatabaseBackupForm />
         <UpdateEmailForm />
