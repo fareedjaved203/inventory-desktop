@@ -261,19 +261,62 @@ function startServer() {
 function setupDatabase() {
   const userDataPath = app.getPath('userData');
   const dbPath = path.join(userDataPath, 'inventory.db');
+  const logPath = path.join(userDataPath, 'setup.log');
   
-  console.log('Setting up database...');
-  console.log('User data path:', userDataPath);
-  console.log('Database path:', dbPath);
+  function writeLog(message) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message}\n`;
+    console.log(message);
+    try {
+      fs.appendFileSync(logPath, logMessage);
+    } catch (e) {
+      console.error('Failed to write log:', e);
+    }
+  }
+  
+  writeLog('Setting up database...');
+  writeLog(`User data path: ${userDataPath}`);
+  writeLog(`Database path: ${dbPath}`);
+  writeLog(`Log path: ${logPath}`);
   
   // Ensure user data directory exists
   if (!fs.existsSync(userDataPath)) {
     fs.mkdirSync(userDataPath, { recursive: true });
-    console.log('Created user data directory');
+    writeLog('Created user data directory');
   }
 
-  // Initialize database schema only if needed
-  if (!fs.existsSync(dbPath)) {
+  // Always ensure database schema is up to date
+  try {
+    const { execSync } = require('child_process');
+    const isDev = !app.isPackaged;
+    const backendPath = isDev 
+      ? path.join(__dirname, '../backend')
+      : path.join(process.resourcesPath, 'backend');
+    
+    writeLog('Setting up database schema...');
+    writeLog(`Backend path: ${backendPath}`);
+    
+    // Use db push to create/update schema
+    writeLog('Running: npx prisma db push --force-reset');
+    writeLog(`CWD: ${backendPath}`);
+    writeLog(`DATABASE_URL: file:${dbPath}`);
+    
+    const result = execSync('npx prisma db push --force-reset', {
+      cwd: backendPath,
+      env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
+      stdio: 'pipe',
+      encoding: 'utf8'
+    });
+    
+    writeLog(`Prisma output: ${result}`);
+    writeLog('Database schema created/updated successfully');
+  } catch (error) {
+    writeLog(`Database setup error: ${error.message}`);
+    writeLog(`Error details: ${JSON.stringify(error, null, 2)}`);
+    writeLog(`Error stdout: ${error.stdout?.toString() || 'none'}`);
+    writeLog(`Error stderr: ${error.stderr?.toString() || 'none'}`);
+    
+    // Try without force-reset
     try {
       const { execSync } = require('child_process');
       const isDev = !app.isPackaged;
@@ -281,22 +324,25 @@ function setupDatabase() {
         ? path.join(__dirname, '../backend')
         : path.join(process.resourcesPath, 'backend');
       
-      console.log('Creating new database...');
-      console.log('Backend path:', backendPath);
-      
-      execSync('npx prisma db push', {
+      writeLog('Trying fallback: npx prisma db push');
+      const fallbackResult = execSync('npx prisma db push', {
         cwd: backendPath,
         env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
-        stdio: 'pipe'
+        stdio: 'pipe',
+        encoding: 'utf8'
       });
-      console.log('Database created successfully');
-    } catch (error) {
-      console.error('Database creation error:', error.message);
-      // Create empty database file as fallback
-      fs.writeFileSync(dbPath, '');
+      
+      writeLog(`Fallback prisma output: ${fallbackResult}`);
+      writeLog('Database schema created successfully (fallback)');
+    } catch (fallbackError) {
+      writeLog(`Database fallback setup failed: ${fallbackError.message}`);
+      writeLog(`Fallback error details: ${JSON.stringify(fallbackError, null, 2)}`);
+      writeLog(`Fallback stdout: ${fallbackError.stdout?.toString() || 'none'}`);
+      writeLog(`Fallback stderr: ${fallbackError.stderr?.toString() || 'none'}`);
+      // Show detailed error to user
+      const errorMsg = `Failed to initialize database.\n\nError: ${fallbackError.message}\n\nCheck the log file at:\n${logPath}\n\nPlease ensure Node.js is installed and restart the application.`;
+      dialog.showErrorBox('Database Setup Error', errorMsg);
     }
-  } else {
-    console.log('Database already exists, skipping creation');
   }
 }
 
