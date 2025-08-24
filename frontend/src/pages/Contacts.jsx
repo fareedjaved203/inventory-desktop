@@ -455,7 +455,7 @@ function Contacts() {
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
                 <FaDollarSign className="text-green-600" />
-                Loan Tracking - {selectedContact.name}
+                {language === 'ur' ? 'قرض کی نگرانی' : 'Loan Tracking'} - {selectedContact.name}
               </h2>
               
               {/* Tabs */}
@@ -471,7 +471,7 @@ function Contacts() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Loan Given
+                  {language === 'ur' ? 'دیا گیا قرض' : 'Loan Given'}
                 </button>
                 <button
                   onClick={() => {
@@ -484,7 +484,7 @@ function Contacts() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Loan Taken
+                  {language === 'ur' ? 'لیا گیا قرض' : 'Loan Taken'}
                 </button>
               </div>
             </div>

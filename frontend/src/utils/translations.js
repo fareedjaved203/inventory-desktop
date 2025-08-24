@@ -248,7 +248,34 @@ export const translations = {
     // Common status messages
     settingsSaved: 'Settings saved successfully!',
     operationCompleted: 'Operation completed successfully',
-    operationFailed: 'Operation failed'
+    operationFailed: 'Operation failed',
+    
+    // Additional missing translations
+    shopDescription: 'Shop Description',
+    userName: 'User Name',
+    phone: 'Phone',
+    brand: 'Brand',
+    registeredTrademark: 'Registered Trademark',
+    loanTracking: 'Loan Tracking',
+    addTransaction: 'Add Transaction',
+    transactionHistory: 'Transaction History',
+    loanGivenEmoji: 'Loan Given',
+    loanReceivedBack: 'Loan Received Back',
+    loanTakenEmoji: 'Loan Taken',
+    loanReturned: 'Loan Returned',
+    giveLoan: 'Give Loan',
+    takeLoan: 'Take Loan',
+    receivedBack: 'Received Back',
+    returnLoan: 'Return Loan',
+    amount: 'Amount',
+    type: 'Type',
+    optionalNote: 'Optional note',
+    noTransactionsYet: 'No transactions yet',
+    profitToday: 'Profit Today',
+    purchaseDue: 'Purchase Due',
+    salesDue: 'Sales Due',
+    dueCredits: 'Due Credits',
+    clickToView: 'Click to view'
   },
   ur: {
     // Navigation
@@ -499,7 +526,34 @@ export const translations = {
     // Common status messages
     settingsSaved: 'سیٹنگز کامیابی سے محفوظ ہو گئیں!',
     operationCompleted: 'آپریشن کامیابی سے مکمل ہوا',
-    operationFailed: 'آپریشن ناکام'
+    operationFailed: 'آپریشن ناکام',
+    
+    // Additional missing translations
+    shopDescription: 'دکان کی تفصیل',
+    userName: 'صارف کا نام',
+    phone: 'فون',
+    brand: 'برانڈ',
+    registeredTrademark: 'رجسٹرڈ ٹریڈ مارک',
+    loanTracking: 'قرض کی نگرانی',
+    addTransaction: 'لین دین شامل کریں',
+    transactionHistory: 'لین دین کی تاریخ',
+    loanGivenEmoji: 'قرض دیا',
+    loanReceivedBack: 'قرض واپس ملا',
+    loanTakenEmoji: 'قرض لیا',
+    loanReturned: 'قرض واپس کیا',
+    giveLoan: 'قرض دیں',
+    takeLoan: 'قرض لیں',
+    receivedBack: 'واپس ملا',
+    returnLoan: 'قرض واپس کریں',
+    amount: 'رقم',
+    type: 'قسم',
+    optionalNote: 'اختیاری نوٹ',
+    noTransactionsYet: 'ابھی تک کوئی لین دین نہیں',
+    profitToday: 'آج کا منافع',
+    purchaseDue: 'خریداری کا بقایا',
+    salesDue: 'سیلز کا بقایا',
+    dueCredits: 'بقایا کریڈٹس',
+    clickToView: 'دیکھنے کے لیے کلک کریں'
   }
 };
 

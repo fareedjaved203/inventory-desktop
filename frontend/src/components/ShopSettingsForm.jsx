@@ -119,7 +119,7 @@ function ShopSettingsForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Shop Description</label>
+          <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'دکان کی تفصیل' : 'Shop Description'}</label>
           <textarea
             name="shopDescription"
             value={formData.shopDescription}
@@ -130,7 +130,7 @@ function ShopSettingsForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Shop Description 2</label>
+          <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'دکان کی تفصیل 2' : 'Shop Description 2'}</label>
           <textarea
             name="shopDescription2"
             value={formData.shopDescription2}
@@ -142,7 +142,7 @@ function ShopSettingsForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">User Name 1 *</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'صارف کا نام 1 *' : 'User Name 1 *'}</label>
             <input
               type="text"
               name="userName1"
@@ -153,7 +153,7 @@ function ShopSettingsForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Phone 1 *</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'فون 1 *' : 'Phone 1 *'}</label>
             <input
               type="text"
               name="userPhone1"
@@ -167,7 +167,7 @@ function ShopSettingsForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">User Name 2</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'صارف کا نام 2' : 'User Name 2'}</label>
             <input
               type="text"
               name="userName2"
@@ -177,7 +177,7 @@ function ShopSettingsForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Phone 2</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'فون 2' : 'Phone 2'}</label>
             <input
               type="text"
               name="userPhone2"
@@ -190,7 +190,7 @@ function ShopSettingsForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">User Name 3</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'صارف کا نام 3' : 'User Name 3'}</label>
             <input
               type="text"
               name="userName3"
@@ -200,7 +200,7 @@ function ShopSettingsForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Phone 3</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'فون 3' : 'Phone 3'}</label>
             <input
               type="text"
               name="userPhone3"
@@ -213,7 +213,7 @@ function ShopSettingsForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Brand 1</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'برانڈ 1' : 'Brand 1'}</label>
             <div className="space-y-2">
               <input
                 type="text"
@@ -231,12 +231,12 @@ function ShopSettingsForm() {
                   onChange={handleChange}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="brand1Registered" className="ml-2 text-sm text-gray-700">Registered Trademark (®)</label>
+                <label htmlFor="brand1Registered" className="ml-2 text-sm text-gray-700">{language === 'ur' ? 'رجسٹرڈ ٹریڈ مارک (®)' : 'Registered Trademark (®)'}</label>
               </div>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Brand 2</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'برانڈ 2' : 'Brand 2'}</label>
             <div className="space-y-2">
               <input
                 type="text"
@@ -254,12 +254,12 @@ function ShopSettingsForm() {
                   onChange={handleChange}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="brand2Registered" className="ml-2 text-sm text-gray-700">Registered Trademark (®)</label>
+                <label htmlFor="brand2Registered" className="ml-2 text-sm text-gray-700">{language === 'ur' ? 'رجسٹرڈ ٹریڈ مارک (®)' : 'Registered Trademark (®)'}</label>
               </div>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Brand 3</label>
+            <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'برانڈ 3' : 'Brand 3'}</label>
             <div className="space-y-2">
               <input
                 type="text"
@@ -277,7 +277,7 @@ function ShopSettingsForm() {
                   onChange={handleChange}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="brand3Registered" className="ml-2 text-sm text-gray-700">Registered Trademark (®)</label>
+                <label htmlFor="brand3Registered" className="ml-2 text-sm text-gray-700">{language === 'ur' ? 'رجسٹرڈ ٹریڈ مارک (®)' : 'Registered Trademark (®)'}</label>
               </div>
             </div>
           </div>
