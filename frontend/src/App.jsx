@@ -13,12 +13,16 @@ import Returns from './pages/Returns';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
+import LicenseModal from './components/LicenseModal';
+import { useLicense } from './hooks/useLicense';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const queryClient = useQueryClient();
   const [appVersion, setAppVersion] = useState('1.0.0');
+  const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // Clear auth on container restart by checking a session timestamp
     const authTime = localStorage.getItem('authTime');
@@ -54,6 +58,12 @@ function AppContent() {
   }, [authCheck, isAuthenticated]);
 
   useEffect(() => {
+    if (!licenseLoading && !licenseValid) {
+      setShowLicenseModal(true);
+    }
+  }, [licenseValid, licenseLoading]);
+
+  useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.getVersion().then(version => {
         setAppVersion(version);
@@ -77,7 +87,12 @@ function AppContent() {
     localStorage.removeItem('authTime');
   };
 
-  if (isLoading) {
+  const handleLicenseValidated = () => {
+    setShowLicenseModal(false);
+    refreshLicense();
+  };
+
+  if (isLoading || licenseLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -85,6 +100,15 @@ function AppContent() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  if (showLicenseModal) {
+    return (
+      <LicenseModal 
+        isOpen={showLicenseModal}
+        onLicenseValidated={handleLicenseValidated}
+      />
     );
   }
 
