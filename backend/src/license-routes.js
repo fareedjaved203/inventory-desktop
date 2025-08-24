@@ -1,5 +1,5 @@
-const express = require('express');
-const licenseManager = require('../utils/licenseManager');
+import express from 'express';
+import licenseManager from '../utils/licenseManager.js';
 const router = express.Router();
 
 router.post('/validate', (req, res) => {
@@ -30,4 +30,4 @@ router.get('/status', (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;

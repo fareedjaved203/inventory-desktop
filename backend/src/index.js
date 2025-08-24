@@ -15,7 +15,7 @@ import { setupReturnRoutes } from './return-routes.js';
 import { setupLoanRoutes } from './loan-routes.js';
 import { setupAuthRoutes } from './auth-routes.js';
 import { validateRequest } from './middleware.js';
-const licenseRoutes = require('./license-routes.js');
+import licenseRoutes from './license-routes.js';
 
 dotenv.config();
 

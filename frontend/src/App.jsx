@@ -58,10 +58,11 @@ function AppContent() {
   }, [authCheck, isAuthenticated]);
 
   useEffect(() => {
-    if (!licenseLoading && !licenseValid) {
+    // Only show license modal after authentication is complete
+    if (!licenseLoading && !licenseValid && isAuthenticated) {
       setShowLicenseModal(true);
     }
-  }, [licenseValid, licenseLoading]);
+  }, [licenseValid, licenseLoading, isAuthenticated]);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -103,14 +104,8 @@ function AppContent() {
     );
   }
 
-  if (showLicenseModal) {
-    return (
-      <LicenseModal 
-        isOpen={showLicenseModal}
-        onLicenseValidated={handleLicenseValidated}
-      />
-    );
-  }
+  // Don't block app startup with license modal
+  // License modal will be shown as overlay instead
 
   if (!isAuthenticated && showAuthModal) {
     return (
@@ -144,6 +139,12 @@ function AppContent() {
           </footer>
         </div>
       </div>
+      
+      {/* License modal as overlay */}
+      <LicenseModal 
+        isOpen={showLicenseModal && isAuthenticated}
+        onLicenseValidated={handleLicenseValidated}
+      />
     </Router>
   );
 }

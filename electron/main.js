@@ -364,9 +364,15 @@ app.whenReady().then(async () => {
     
     // Wait a bit for server to fully start
     setTimeout(() => {
-      const url = `http://localhost:${serverPort}`;
+      const url = isDev ? 'http://localhost:5173' : `http://localhost:${serverPort}`;
       console.log('Loading URL:', url);
-      mainWindow.loadURL(url);
+      mainWindow.loadURL(url).catch(err => {
+        console.error('Failed to load URL:', err);
+        // Fallback to backend URL if frontend fails
+        if (isDev) {
+          mainWindow.loadURL(`http://localhost:${serverPort}`);
+        }
+      });
     }, 2000);
   } catch (error) {
     console.error('Failed to start application:', error);

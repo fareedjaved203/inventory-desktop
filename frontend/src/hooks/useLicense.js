@@ -17,6 +17,7 @@ export function useLicense() {
         loading: false
       });
     } catch (error) {
+      console.warn('License check failed:', error);
       setLicenseStatus({
         valid: false,
         expiry: null,
@@ -29,11 +30,28 @@ export function useLicense() {
   useEffect(() => {
     checkLicenseStatus();
     
-    // Check license status every minute
-    const interval = setInterval(checkLicenseStatus, 60000);
+    // Check license status every 5 minutes (good balance)
+    const interval = setInterval(checkLicenseStatus, 300000);
     
     return () => clearInterval(interval);
   }, []);
+
+  // Also check on user activity (focus/click)
+  useEffect(() => {
+    const handleActivity = () => {
+      if (!licenseStatus.loading) {
+        checkLicenseStatus();
+      }
+    };
+
+    window.addEventListener('focus', handleActivity);
+    window.addEventListener('click', handleActivity);
+    
+    return () => {
+      window.removeEventListener('focus', handleActivity);
+      window.removeEventListener('click', handleActivity);
+    };
+  }, [licenseStatus.loading]);
 
   return {
     ...licenseStatus,

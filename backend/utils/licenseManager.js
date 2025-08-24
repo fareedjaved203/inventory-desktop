@@ -1,19 +1,31 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const crypto = require('crypto');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class LicenseManager {
   constructor() {
-    this.licenseDir = path.join(__dirname, '../../licenses');
-    this.deviceConfigFile = path.join(__dirname, '../data/device_config.json');
+    // Store license data in the same location as the database
+    // This matches Electron's app.getPath('userData') behavior
+    let userDataPath;
+    
+    if (process.platform === 'win32') {
+      userDataPath = path.join(process.env.APPDATA, 'inventory-management-desktop');
+    } else if (process.platform === 'darwin') {
+      userDataPath = path.join(os.homedir(), 'Library', 'Application Support', 'inventory-management-desktop');
+    } else {
+      userDataPath = path.join(os.homedir(), '.config', 'inventory-management-desktop');
+    }
+    
+    this.deviceConfigFile = path.join(userDataPath, 'license_config.json');
     this.ensureDirectories();
   }
 
   ensureDirectories() {
-    if (!fs.existsSync(this.licenseDir)) {
-      fs.mkdirSync(this.licenseDir, { recursive: true });
-    }
     if (!fs.existsSync(path.dirname(this.deviceConfigFile))) {
       fs.mkdirSync(path.dirname(this.deviceConfigFile), { recursive: true });
     }
@@ -31,40 +43,81 @@ class LicenseManager {
 
   validateLicense(licenseKey) {
     try {
-      const licenseFile = path.join(this.licenseDir, `license_${licenseKey}.json`);
-      if (!fs.existsSync(licenseFile)) {
-        return { valid: false, error: 'Invalid license key' };
+      // Decode license key to get expiry time
+      const decoded = this.decodeLicenseKey(licenseKey);
+      if (!decoded) {
+        return { valid: false, error: 'Invalid license key format' };
       }
 
-      const license = JSON.parse(fs.readFileSync(licenseFile, 'utf8'));
       const now = Math.floor(Date.now() / 1000);
       
-      if (now > license.expiry) {
+      if (now > decoded.expiry) {
         return { valid: false, error: 'License expired' };
       }
 
       const deviceFingerprint = this.getDeviceFingerprint();
       const deviceConfig = this.getDeviceConfig();
       
-      // Check if license is already bound to a different device
-      if (deviceConfig.licenseKey && deviceConfig.licenseKey !== licenseKey) {
-        return { valid: false, error: 'Device already has a different license' };
+      // Check if trying to use the same license key again
+      if (deviceConfig.licenseKey === licenseKey) {
+        return { valid: false, error: 'License key already activated on this device' };
       }
       
-      if (deviceConfig.deviceFingerprint && deviceConfig.deviceFingerprint !== deviceFingerprint) {
+      // Check device fingerprint for cross-device usage
+      if (deviceConfig.deviceFingerprint && 
+          deviceConfig.deviceFingerprint !== deviceFingerprint) {
         return { valid: false, error: 'License bound to different device' };
       }
 
       // Bind license to this device
-      this.bindLicenseToDevice(licenseKey, deviceFingerprint, license.expiry);
+      this.bindLicenseToDevice(licenseKey, deviceFingerprint, decoded.expiry);
       
       return { 
         valid: true, 
-        expiry: license.expiry,
-        duration: license.duration 
+        expiry: decoded.expiry,
+        duration: decoded.duration 
       };
     } catch (error) {
       return { valid: false, error: 'Invalid license format' };
+    }
+  }
+
+  decodeLicenseKey(licenseKey) {
+    try {
+      const parts = licenseKey.split('-');
+      if (parts.length !== 4) return null;
+      
+      const nums = parts.map(part => parseInt(part, 16));
+      if (nums.some(isNaN)) return null;
+      
+      // Reconstruct expiry timestamp from high and low parts
+      // Using bit shifting: high = expiry >> 16, low = expiry & 0xFFFF
+      const expiry = (nums[2] << 16) | nums[3];
+      
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeRemaining = expiry - currentTime;
+      const expiryDate = new Date(expiry * 1000);
+      const currentDate = new Date(currentTime * 1000);
+      
+      console.log('License Debug:', { 
+        licenseKey, 
+        expiry, 
+        currentTime, 
+        timeRemaining,
+        timeRemainingMinutes: Math.floor(timeRemaining / 60),
+        expiryDate: expiryDate.toLocaleString(),
+        currentDate: currentDate.toLocaleString(),
+        parts: nums,
+        timezoneOffset: new Date().getTimezoneOffset()
+      });
+      
+      return {
+        expiry,
+        duration: 'Encoded'
+      };
+    } catch (error) {
+      console.error('License decode error:', error);
+      return null;
     }
   }
 
@@ -112,4 +165,4 @@ class LicenseManager {
 
 }
 
-module.exports = new LicenseManager();
+export default new LicenseManager();
