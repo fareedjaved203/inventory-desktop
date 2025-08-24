@@ -89,10 +89,8 @@ function createWindow() {
       mainWindow.webContents.openDevTools();
     }
     
-    // Check for updates
-    if (!isDev) {
-      autoUpdater.checkForUpdatesAndNotify();
-    }
+    // Don't check for updates automatically
+    // Updates will only be checked when user requests
   });
 
   // Handle version request
@@ -104,8 +102,9 @@ function createWindow() {
   ipcMain.handle('check-for-updates', async () => {
     if (!isDev) {
       try {
-        autoUpdater.autoDownload = false; // Don't auto-download
-        const result = await autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.autoDownload = false; // Never auto-download
+        autoUpdater.autoInstallOnAppQuit = false; // Never auto-install
+        const result = await autoUpdater.checkForUpdates();
         console.log('Update check result:', result);
         return result;
       } catch (error) {
@@ -143,9 +142,14 @@ function createWindow() {
     }
   });
 
+  // Configure auto-updater to never auto-download or auto-install
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
   // Auto-updater events
   autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info);
+    mainWindow.webContents.send('update-available', info);
   });
 
   autoUpdater.on('update-downloaded', (info) => {

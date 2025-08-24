@@ -54,6 +54,13 @@ function UpdateButton() {
         setStatus('Update downloaded! Ready to install.');
       });
 
+      // Listen for update available
+      window.electronAPI.onUpdateAvailable?.((info) => {
+        setUpdateInfo(info);
+        setUpdateAvailable(true);
+        setStatus(`Update available: v${info.version}`);
+      });
+
       // Listen for update errors
       window.electronAPI.onUpdateError?.((error) => {
         // Clear any existing timeout
