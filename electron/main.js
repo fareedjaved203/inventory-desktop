@@ -133,11 +133,24 @@ function createWindow() {
   ipcMain.handle('install-update', () => {
     console.log('Install update requested');
     try {
-      console.log('Calling autoUpdater.quitAndInstall...');
-      autoUpdater.quitAndInstall(true, true); // Force close and restart
-      console.log('quitAndInstall called successfully');
+      // Show installation dialog
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Installing Update',
+        message: 'Update Installation in Progress',
+        detail: 'The application will close and reopen automatically after installation.\n\nThis may take 2-3 minutes. Please wait...',
+        buttons: ['OK'],
+        defaultId: 0
+      }).then(() => {
+        console.log('Calling autoUpdater.quitAndInstall...');
+        // Small delay to ensure dialog is shown
+        setTimeout(() => {
+          autoUpdater.quitAndInstall(true, true);
+        }, 1000);
+      });
+      console.log('Installation dialog shown');
     } catch (error) {
-      console.error('Error in quitAndInstall:', error);
+      console.error('Error in install process:', error);
       throw error;
     }
   });

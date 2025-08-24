@@ -124,11 +124,11 @@ function UpdateButton() {
     try {
       if (typeof window !== 'undefined' && window.electronAPI) {
         setInstalling(true);
-        setStatus('Installing update and restarting...');
+        setStatus('Preparing to install update...');
         console.log('Installing update...');
         await window.electronAPI.installUpdate();
         // App should restart here, so this won't execute
-        setStatus('Update installed! Restarting...');
+        setStatus('Installation started. App will restart automatically.');
       } else {
         alert('Update feature only available in desktop app');
       }
@@ -185,12 +185,13 @@ function UpdateButton() {
         {downloaded && (
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-800 mb-2">Update ready to install!</p>
+            <p className="text-green-600 text-sm mb-3">Installation will take 2-3 minutes. The app will close and reopen automatically.</p>
             <button
               onClick={installUpdate}
               disabled={installing}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              {installing ? 'Installing...' : 'Install Update & Restart'}
+              {installing ? 'Starting Installation...' : 'Install Update & Restart'}
             </button>
           </div>
         )}
