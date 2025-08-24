@@ -7,10 +7,14 @@ import TableSkeleton from '../components/TableSkeleton';
 import { debounce } from 'lodash';
 import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 function Contacts() {
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
@@ -228,15 +232,15 @@ function Contacts() {
   );
 
   return (
-    <div className="p-6">
+    <div className={`p-6 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">Contacts</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">{t('contacts')}</h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative">
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search contacts..."
+              placeholder={t('searchContacts')}
               value={searchTerm}
               onChange={handleSearchChange}
               className="w-full sm:w-48 md:w-64 pl-10 pr-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -254,7 +258,7 @@ function Contacts() {
             className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2"
           >
             <FaUserPlus />
-            Add Contact
+            {t('addContact')}
           </button>
         </div>
       </div>
@@ -264,16 +268,16 @@ function Contacts() {
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                Name
+                {t('name')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                Address
+                {t('address')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                Phone Number
+                {t('phoneNumber')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                Actions
+                {t('actions')}
               </th>
             </tr>
           </thead>
@@ -292,7 +296,7 @@ function Contacts() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                       </svg>
-                      Edit
+                      {t('edit')}
                     </button>
                     <button
                       onClick={() => {
@@ -304,7 +308,7 @@ function Contacts() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Loans
+                      {t('loans')}
                     </button>
                     <button
                       onClick={() => {
@@ -332,17 +336,17 @@ function Contacts() {
           disabled={page === 1}
           className="bg-primary-100 text-primary-700 px-4 py-2 rounded hover:bg-primary-200 disabled:opacity-50 border border-primary-200"
         >
-          Previous
+          {t('previous')}
         </button>
         <span className="px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-primary-800">
-          Page {page} of {contactsData?.totalPages || 1}
+          {language === 'ur' ? `صفحہ ${page} از ${contactsData?.totalPages || 1}` : `Page ${page} of ${contactsData?.totalPages || 1}`}
         </span>
         <button
           onClick={() => setPage((p) => Math.min(contactsData?.totalPages || 1, p + 1))}
           disabled={page === (contactsData?.totalPages || 1)}
           className="bg-primary-100 text-primary-700 px-4 py-2 rounded hover:bg-primary-200 disabled:opacity-50 border border-primary-200"
         >
-          Next
+          {t('next')}
         </button>
       </div>
 
@@ -351,13 +355,13 @@ function Contacts() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl border border-gray-200">
             <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
               <FaBuilding className="text-primary-600" />
-              {selectedContact ? 'Edit Contact' : 'Add New Contact'}
+              {selectedContact ? t('editContact') : t('addNewContact')}
             </h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaBuilding className="text-primary-500" /> Name
+                    <FaBuilding className="text-primary-500" /> {t('name')}
                   </label>
                   <input
                     {...register('name', { required: 'Name is required' })}
@@ -370,7 +374,7 @@ function Contacts() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaMapMarkerAlt className="text-primary-500" /> Address
+                    <FaMapMarkerAlt className="text-primary-500" /> {t('address')}
                   </label>
                   <textarea
                     {...register('address')}
@@ -384,7 +388,7 @@ function Contacts() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaPhone className="text-primary-500" /> Phone Number
+                    <FaPhone className="text-primary-500" /> {t('phoneNumber')}
                   </label>
                   <input
                     {...register('phoneNumber', { 
@@ -422,7 +426,7 @@ function Contacts() {
                   type="submit"
                   className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm"
                 >
-                  {selectedContact ? 'Update' : 'Save'}
+                  {selectedContact ? t('update') : t('save')}
                 </button>
               </div>
             </form>

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 function UpdateButton() {
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [checking, setChecking] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -51,14 +55,14 @@ function UpdateButton() {
         setDownloading(false);
         setDownloaded(true);
         setDownloadProgress(100);
-        setStatus('Update downloaded! Ready to install.');
+        setStatus(t('updateDownloaded'));
       });
 
       // Listen for update available
       window.electronAPI.onUpdateAvailable?.((info) => {
         setUpdateInfo(info);
         setUpdateAvailable(true);
-        setStatus(`Update available: v${info.version}`);
+        setStatus(`${t('updateAvailable')}: v${info.version}`);
       });
 
       // Listen for update errors
@@ -88,7 +92,7 @@ function UpdateButton() {
           setUpdateAvailable(true);
           setStatus(`Update available: v${result.updateInfo.version}`);
         } else {
-          setStatus('No updates available - you have the latest version');
+          setStatus(t('noUpdatesAvailable'));
         }
       } else {
         setStatus('Update feature only available in desktop app');
@@ -140,9 +144,9 @@ function UpdateButton() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className={`bg-white p-6 rounded-lg shadow ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">App Updates</h2>
+        <h2 className="text-xl font-semibold">{language === 'ur' ? 'ایپ اپڈیٹس' : 'App Updates'}</h2>
         <span className="text-sm text-gray-500">v{appVersion}</span>
       </div>
       
@@ -152,7 +156,7 @@ function UpdateButton() {
           disabled={checking}
           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
         >
-          {checking ? 'Checking...' : 'Check for Updates'}
+          {checking ? (language === 'ur' ? 'چیک کر رہا ہے...' : 'Checking...') : t('checkForUpdates')}
         </button>
 
         {status && (
@@ -163,19 +167,19 @@ function UpdateButton() {
 
         {updateAvailable && !downloaded && !downloading && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 mb-2">Update v{updateInfo?.version} is available!</p>
+            <p className="text-yellow-800 mb-2">{t('updateAvailable')} v{updateInfo?.version}!</p>
             <button
               onClick={downloadUpdate}
               className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
             >
-              Download Update
+              {t('downloadUpdate')}
             </button>
           </div>
         )}
 
         {downloading && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 mb-2">Downloading update... {downloadProgress}%</p>
+            <p className="text-blue-800 mb-2">{language === 'ur' ? 'اپڈیٹ ڈاؤن لوڈ ہو رہا ہے...' : 'Downloading update...'} {downloadProgress}%</p>
             <div className="w-full bg-blue-200 rounded-full h-2">
               <div className="bg-blue-600 h-2 rounded-full transition-all" style={{width: `${downloadProgress}%`}}></div>
             </div>
@@ -184,14 +188,14 @@ function UpdateButton() {
 
         {downloaded && (
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800 mb-2">Update ready to install!</p>
-            <p className="text-green-600 text-sm mb-3">Installation will take 2-3 minutes. The app will close and reopen automatically.</p>
+            <p className="text-green-800 mb-2">{language === 'ur' ? 'اپڈیٹ انسٹال کے لیے تیار ہے!' : 'Update ready to install!'}</p>
+            <p className="text-green-600 text-sm mb-3">{language === 'ur' ? 'انسٹالیشن میں 2-3 منٹ لگیں گے۔ ایپ خودکار طور پر بند ہو کر دوبارہ کھل جائے گی۔' : 'Installation will take 2-3 minutes. The app will close and reopen automatically.'}</p>
             <button
               onClick={installUpdate}
               disabled={installing}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              {installing ? 'Starting Installation...' : 'Install Update & Restart'}
+              {installing ? (language === 'ur' ? 'انسٹالیشن شروع ہو رہی ہے...' : 'Starting Installation...') : t('installUpdate')}
             </button>
           </div>
         )}

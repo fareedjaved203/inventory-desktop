@@ -8,6 +8,8 @@ import TableSkeleton from '../components/TableSkeleton';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse } from 'react-icons/fa';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -23,6 +25,8 @@ function Products() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -288,10 +292,10 @@ function Products() {
   );
 
   return (
-    <div className="p-4">
+    <div className={`p-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">Products</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">{t('products')}</h1>
           {showLowStock && (
             <span className="bg-orange-100 text-orange-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full">
               Low Stock Items
@@ -376,7 +380,7 @@ function Products() {
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap"
             >
-              Add Product
+              {t('addProduct')}
             </button>
           </div>
         </div>
@@ -386,12 +390,12 @@ function Products() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden md:table-cell">SKU</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Sell Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">Purchase Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden sm:table-cell">Quantity</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'نام' : 'Name'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden md:table-cell">{t('sku')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'فروخت کی قیمت' : 'Sell Price'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden sm:table-cell">{t('quantity')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">

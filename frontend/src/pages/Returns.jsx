@@ -5,9 +5,13 @@ import TableSkeleton from '../components/TableSkeleton';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { debounce } from 'lodash';
 import { FaSearch } from 'react-icons/fa';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 function Returns() {
   const searchInputRef = useRef(null);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,9 +56,9 @@ function Returns() {
   );
 
   return (
-    <div className="p-4">
+    <div className={`p-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-primary-800">Returned Items</h1>
+        <h1 className="text-3xl font-bold text-primary-800">{t('returns')}</h1>
         <div className="relative">
           <input
             ref={searchInputRef}
@@ -74,13 +78,13 @@ function Returns() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-red-50 to-red-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Return #</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Original Sale</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Items</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Return Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Refund Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Reason</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('returnNumber')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('originalSale')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('date')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('items')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('returnAmount')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('refundStatus')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">{t('reason')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -111,12 +115,12 @@ function Returns() {
                       ? 'bg-green-100 text-green-800' 
                       : (returnItem.refundAmount > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600')
                   }`}>
-                    {returnItem.refundPaid ? 'Refunded' : (returnItem.refundAmount > 0 ? 'Pending' : 'No Refund')}
+                    {returnItem.refundPaid ? t('refunded') : (returnItem.refundAmount > 0 ? t('pending') : t('noRefund'))}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-gray-700">
                   <span className="text-sm bg-gray-100 px-2 py-1 rounded">
-                    {returnItem.reason || 'No reason provided'}
+                    {returnItem.reason || (language === 'ur' ? 'کوئی وجہ فراہم نہیں کی گئی' : 'No reason provided')}
                   </span>
                 </td>
               </tr>
@@ -133,11 +137,11 @@ function Returns() {
             disabled={currentPage === 1}
             className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Previous
+            {t('previous')}
           </button>
           
           <span className="px-3 py-2 text-sm text-gray-700">
-            Page {currentPage} of {returns.totalPages}
+            {language === 'ur' ? `صفحہ ${currentPage} از ${returns.totalPages}` : `Page ${currentPage} of ${returns.totalPages}`}
           </span>
           
           <button
@@ -145,7 +149,7 @@ function Returns() {
             disabled={currentPage === returns.totalPages}
             className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Next
+            {t('next')}
           </button>
         </div>
       )}

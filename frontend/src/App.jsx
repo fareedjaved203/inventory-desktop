@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
@@ -125,9 +126,11 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </LanguageProvider>
   );
 }
 

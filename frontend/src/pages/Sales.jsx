@@ -11,6 +11,8 @@ import { debounce } from "lodash";
 import GenerateTodayInvoiceButton from "../components/GenerateTodayInvoiceButton";
 import { formatPakistaniCurrency } from "../utils/formatCurrency";
 import { FaSearch, FaCalendarAlt } from "react-icons/fa";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useTranslation } from "../utils/translations";
 
 const saleItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
@@ -29,6 +31,8 @@ function Sales() {
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
   const location = useLocation();
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -541,12 +545,12 @@ function Sales() {
     );
 
   return (
-    <div className="p-4">
+    <div className={`p-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">
-              Sales
+              {t('sales')}
             </h1>
             {showPendingPayments && (
               <span className="bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full border border-yellow-200 shadow-sm">
@@ -594,7 +598,7 @@ function Sales() {
                 }}
                 className="px-3 py-2 text-sm border border-primary-200 rounded-lg text-primary-700 hover:bg-primary-50 transition-colors"
               >
-                All Sales
+                {t('allSales')}
               </button>
             )}
             {!showPendingPayments && !showCreditBalance && (
@@ -606,7 +610,7 @@ function Sales() {
                   }}
                   className="px-3 py-2 text-sm border border-yellow-200 rounded-lg text-yellow-700 hover:bg-yellow-50 transition-colors"
                 >
-                  Pending Payments
+                  {t('pendingPayments')}
                 </button>
                 <button
                   onClick={() => {
@@ -615,7 +619,7 @@ function Sales() {
                   }}
                   className="px-3 py-2 text-sm border border-green-200 rounded-lg text-green-700 hover:bg-green-50 transition-colors"
                 >
-                  Credit Balance
+                  {t('creditBalance')}
                 </button>
               </>
             )}
@@ -639,7 +643,7 @@ function Sales() {
         {(selectedDate || debouncedSearchTerm) && (
           <div className="mt-2">
             <span className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full border border-blue-200 shadow-sm">
-              {sales?.total || 0} results
+              {sales?.total || 0} {t('results')}
             </span>
           </div>
         )}
@@ -654,7 +658,7 @@ function Sales() {
             }}
             className="px-3 py-2 text-sm border border-primary-600 bg-primary-600 rounded-lg hover:bg-primary-700 text-white"
           >
-            Clear
+            {t('clear')}
           </button>
         )}
       </div>
@@ -813,7 +817,7 @@ function Sales() {
                             {formatPakistaniCurrency(sale.paidAmount)}
                           </span>
                           <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
-                            Due: {formatPakistaniCurrency(balance)}
+                            {t('due')}: {formatPakistaniCurrency(balance)}
                           </span>
                         </div>
                       );
@@ -824,7 +828,7 @@ function Sales() {
                             {formatPakistaniCurrency(sale.paidAmount)}
                           </span>
                           <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-red-50 to-red-100 text-red-800 rounded-full border border-red-200 shadow-sm">
-                            Credit: {formatPakistaniCurrency(Math.abs(balance))}
+                            {t('credit')}: {formatPakistaniCurrency(Math.abs(balance))}
                           </span>
                         </div>
                       );
@@ -843,12 +847,12 @@ function Sales() {
                           </span>
                           {hasRefunds && (
                             <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 rounded-full border border-blue-200 shadow-sm">
-                              Refunded
+                              {t('refunded')}
                             </span>
                           )}
                           {!hasRefunds && (
                             <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-green-50 to-green-100 text-green-800 rounded-full border border-green-200 shadow-sm">
-                              Settled
+                              {t('settled')}
                             </span>
                           )}
                         </div>
@@ -884,7 +888,7 @@ function Sales() {
                           d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                       </svg>
-                      View
+                      {t('view')}
                     </button>
                     <button
                       onClick={() => handleEdit(sale)}
@@ -904,7 +908,7 @@ function Sales() {
                           d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
                         />
                       </svg>
-                      Edit
+                      {t('edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(sale)}
@@ -924,7 +928,7 @@ function Sales() {
                           d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m6.5 0a48.667 48.667 0 00-7.5 0"
                         />
                       </svg>
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </td>
@@ -942,11 +946,10 @@ function Sales() {
             disabled={currentPage === 1}
             className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
           >
-            Previous
+            {t('previous')}
           </button>
           <span className="px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-primary-800">
-            Page {currentPage} of{" "}
-            {Math.ceil((sales?.total || 0) / itemsPerPage)}
+            {language === 'ur' ? `صفحہ ${currentPage} از ${Math.ceil((sales?.total || 0) / itemsPerPage)}` : `Page ${currentPage} of ${Math.ceil((sales?.total || 0) / itemsPerPage)}`}
           </span>
           <button
             onClick={() => setCurrentPage((prev) => prev + 1)}
@@ -955,7 +958,7 @@ function Sales() {
             }
             className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
           >
-            Next
+            {t('next')}
           </button>
         </div>
       </div>

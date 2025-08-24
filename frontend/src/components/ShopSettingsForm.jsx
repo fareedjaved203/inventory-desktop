@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 function ShopSettingsForm() {
   const queryClient = useQueryClient();
   const [showToast, setShowToast] = useState(false);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [formData, setFormData] = useState({
     email: '',
     shopName: '',
@@ -81,17 +85,17 @@ function ShopSettingsForm() {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-bold mb-6">Shop Settings</h2>
+    <div className={`bg-white p-6 rounded-lg shadow ${language === 'ur' ? 'font-urdu' : ''}`}>
+      <h2 className="text-xl font-bold mb-6">{t('shopSettings')}</h2>
       {showToast && (
         <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-          Settings saved successfully!
+          {language === 'ur' ? 'سیٹنگز کامیابی سے محفوظ ہو گئیں!' : 'Settings saved successfully!'}
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
+            <label className="block text-sm font-medium mb-1">{t('email')} *</label>
             <input
               type="email"
               name="email"
@@ -102,7 +106,7 @@ function ShopSettingsForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Shop Name *</label>
+            <label className="block text-sm font-medium mb-1">{t('shopName')} *</label>
             <input
               type="text"
               name="shopName"
@@ -284,7 +288,7 @@ function ShopSettingsForm() {
           disabled={saveSettings.isLoading}
           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
         >
-          {saveSettings.isLoading ? 'Saving...' : 'Save Settings'}
+          {saveSettings.isLoading ? (language === 'ur' ? 'محفوظ ہو رہا ہے...' : 'Saving...') : (language === 'ur' ? 'سیٹنگز محفوظ کریں' : 'Save Settings')}
         </button>
       </form>
     </div>

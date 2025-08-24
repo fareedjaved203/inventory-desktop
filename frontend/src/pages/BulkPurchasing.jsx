@@ -8,6 +8,8 @@ import TableSkeleton from '../components/TableSkeleton';
 import PurchaseDetailsModal from '../components/PurchaseDetailsModal';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
 
 const bulkPurchaseItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
@@ -26,6 +28,8 @@ function BulkPurchasing() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -378,10 +382,10 @@ function BulkPurchasing() {
   );
 
   return (
-    <div className="p-4">
+    <div className={`p-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">Bulk Purchasing</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">{t('bulkPurchasing')}</h1>
           {showPendingPayments && (
             <span className="bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full border border-yellow-200 shadow-sm">
               Pending Payments
@@ -393,7 +397,7 @@ function BulkPurchasing() {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search by invoice or contact..."
+              placeholder={language === 'ur' ? 'انوائس یا رابطے سے تلاش کریں...' : 'Search by invoice or contact...'}
               value={searchTerm}
               onChange={handleSearchChange}
               className="w-full sm:w-48 md:w-64 pl-10 pr-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -410,7 +414,7 @@ function BulkPurchasing() {
                 onClick={() => setShowPendingPayments(false)}
                 className="px-3 py-2 text-sm border border-primary-200 rounded-lg text-primary-700 hover:bg-primary-50 transition-colors"
               >
-                All Purchases
+                {t('allPurchases')}
               </button>
             )}
             {!showPendingPayments && (
@@ -418,14 +422,14 @@ function BulkPurchasing() {
                 onClick={() => setShowPendingPayments(true)}
                 className="px-3 py-2 text-sm border border-yellow-200 rounded-lg text-yellow-700 hover:bg-yellow-50 transition-colors"
               >
-                Pending Payments
+                {t('pendingPayments')}
               </button>
             )}
             <button
               onClick={() => setIsModalOpen(true)}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap"
             >
-              New Purchase
+              {t('newPurchase')}
             </button>
           </div>
         </div>
@@ -435,12 +439,12 @@ function BulkPurchasing() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-primary-50 to-secondary-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Invoice Number</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Total Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Paid Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('invoiceNumber')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('date')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('contact')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('totalAmount')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('paidAmount')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -463,7 +467,7 @@ function BulkPurchasing() {
                     <div className="flex items-center">
                       <span className="text-yellow-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
                       <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
-                        Due: {formatPakistaniCurrency(purchase.totalAmount - purchase.paidAmount)}
+                        {t('due')}: {formatPakistaniCurrency(purchase.totalAmount - purchase.paidAmount)}
                       </span>
                     </div>
                   ) : (
@@ -483,7 +487,7 @@ function BulkPurchasing() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      View
+                      {t('view')}
                     </button>
                     <button
                       onClick={() => handleEdit(purchase)}
@@ -492,7 +496,7 @@ function BulkPurchasing() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                       </svg>
-                      Edit
+                      {t('edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(purchase)}
@@ -501,7 +505,7 @@ function BulkPurchasing() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m6.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </td>
@@ -519,17 +523,17 @@ function BulkPurchasing() {
             disabled={currentPage === 1}
             className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
           >
-            Previous
+            {t('previous')}
           </button>
           <span className="px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-primary-800">
-            Page {currentPage} of {Math.ceil((purchases?.total || 0) / itemsPerPage)}
+            {language === 'ur' ? `صفحہ ${currentPage} از ${Math.ceil((purchases?.total || 0) / itemsPerPage)}` : `Page ${currentPage} of ${Math.ceil((purchases?.total || 0) / itemsPerPage)}`}
           </span>
           <button
             onClick={() => setCurrentPage((prev) => prev + 1)}
             disabled={currentPage >= Math.ceil((purchases?.total || 0) / itemsPerPage)}
             className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
           >
-            Next
+            {t('next')}
           </button>
         </div>
       </div>
@@ -539,13 +543,13 @@ function BulkPurchasing() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-xl h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
-              <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">{isEditMode ? "Edit Purchase" : "New Purchase"}</h2>
+              <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">{isEditMode ? t('editPurchase') : t('newPurchase')}</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="purchase-form" onSubmit={handleSubmit} className="space-y-4">
               {/* Contact Selection */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('contact')}</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -555,7 +559,7 @@ function BulkPurchasing() {
                       isContactSelected(false);
                       setSelectedContact(null);
                     }}
-                    placeholder="Search contacts..."
+                    placeholder={t('searchContacts')}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {!contactSelected && contactSearchTerm && contacts?.length > 0 && (
@@ -590,7 +594,7 @@ function BulkPurchasing() {
               <div className="space-y-4 mb-4">
                 <div className="flex flex-col gap-4">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('addProducts')}</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -600,7 +604,7 @@ function BulkPurchasing() {
                           isProductSelected(false);
                           setSelectedProduct(null);
                         }}
-                        placeholder="Search products..."
+                        placeholder={t('searchProducts')}
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       {!productSelected && productSearchTerm && products?.length > 0 && (
@@ -635,12 +639,12 @@ function BulkPurchasing() {
                   </div>
                   <div className="flex gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('quantity')}</label>
                       <input
                         type="number"
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
-                        placeholder="Qty"
+                        placeholder={t('qty')}
                         className="w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       {validationErrors.quantity && (
@@ -648,13 +652,13 @@ function BulkPurchasing() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</label>
                       <input
                         type="number"
                         step="0.01"
                         value={purchasePrice}
                         onChange={(e) => setPurchasePrice(e.target.value)}
-                        placeholder="Price"
+                        placeholder={t('price')}
                         className="w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       {validationErrors.purchasePrice && (
@@ -667,7 +671,7 @@ function BulkPurchasing() {
                         onClick={handleAddItem}
                         className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
                       >
-                        Add
+                        {t('add')}
                       </button>
                     </div>
                   </div>
@@ -676,9 +680,9 @@ function BulkPurchasing() {
 
               {/* Purchase Items List */}
               <div className="border border-primary-100 rounded-lg p-4 bg-primary-50">
-                <h3 className="font-medium mb-2 text-primary-800">Purchase Items</h3>
+                <h3 className="font-medium mb-2 text-primary-800">{t('purchaseItems')}</h3>
                 {purchaseItems.length === 0 ? (
-                  <p className="text-gray-500 text-sm italic">No items added yet</p>
+                  <p className="text-gray-500 text-sm italic">{t('noItemsAdded')}</p>
                 ) : (
                   purchaseItems.map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-2 border-b border-primary-100 last:border-b-0">
@@ -693,7 +697,7 @@ function BulkPurchasing() {
                         onClick={() => handleRemoveItem(index)}
                         className="text-red-600 hover:text-red-900"
                       >
-                        Remove
+                        {t('remove')}
                       </button>
                     </div>
                   ))
@@ -706,7 +710,7 @@ function BulkPurchasing() {
               {/* Total and Paid Amount */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('totalAmount')}</label>
                   <input
                     type="text"
                     value={`Rs.${totalAmount.toFixed(2)}`}
@@ -715,7 +719,7 @@ function BulkPurchasing() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('paidAmount')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -747,7 +751,7 @@ function BulkPurchasing() {
                 form="purchase-form"
                 className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded shadow-sm hover:from-primary-700 hover:to-primary-800"
               >
-                {isEditMode ? "Update Purchase" : "Create Purchase"}
+                {isEditMode ? t('updatePurchase') : t('createPurchase')}
               </button>
             </div>
           </div>

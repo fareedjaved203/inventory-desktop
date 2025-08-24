@@ -3,10 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog } from 'react-icons/fa';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../utils/translations';
+import LanguageToggle from './LanguageToggle';
 
 function Sidebar({ onLogout }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { language } = useLanguage();
+  const t = useTranslation(language);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
@@ -18,23 +23,24 @@ function Sidebar({ onLogout }) {
   });
 
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: <FaChartLine /> },
-    { path: '/products', label: 'Products', icon: <FaBoxOpen /> },
-    { path: '/sales', label: 'Sales', icon: <FaMoneyBillWave /> },
-    { path: '/contacts', label: 'Contacts', icon: <FaBuilding /> },
-    { path: '/bulk', label: 'Bulk Purchasing', icon: <FaShoppingCart /> },
-    { path: '/returns', label: 'Returns', icon: <FaUndo /> },
-    { path: '/settings', label: 'Settings', icon: <FaCog /> },
+    { path: '/', label: t('dashboard'), icon: <FaChartLine /> },
+    { path: '/products', label: t('products'), icon: <FaBoxOpen /> },
+    { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave /> },
+    { path: '/contacts', label: t('contacts'), icon: <FaBuilding /> },
+    { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart /> },
+    { path: '/returns', label: t('returns'), icon: <FaUndo /> },
+    { path: '/settings', label: t('settings'), icon: <FaCog /> },
   ];
 
   return (
-    <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-primary-700 to-primary-900 text-white shadow-lg h-full flex flex-col transition-all duration-300`}>
+    <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-primary-700 to-primary-900 text-white shadow-lg h-full flex flex-col transition-all duration-300 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className={`p-4 flex ${collapsed ? 'justify-center' : 'justify-between'} items-center border-b border-primary-600`}>
         {!collapsed && (
-          <div>
-            <h1 className="text-xl font-bold text-white">
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-white mb-2">
               {shopSettings?.shopName || 'Inventory System'}
             </h1>
+            <LanguageToggle />
           </div>
         )}
         <button 
@@ -70,7 +76,7 @@ function Sidebar({ onLogout }) {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
           </svg>
-          {!collapsed && <span className="ml-3 text-sm font-medium">Logout</span>}
+          {!collapsed && <span className="ml-3 text-sm font-medium">{language === 'ur' ? 'لاگ آؤٹ' : 'Logout'}</span>}
         </button>
       </div>
       
