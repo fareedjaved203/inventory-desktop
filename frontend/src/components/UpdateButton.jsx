@@ -159,11 +159,11 @@ function UpdateButton() {
           {checking ? (language === 'ur' ? 'چیک کر رہا ہے...' : 'Checking...') : t('checkForUpdates')}
         </button>
 
-        {status && (
+        {/* {status && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm">{status}</p>
           </div>
-        )}
+        )} */}
 
         {updateAvailable && !downloaded && !downloading && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
