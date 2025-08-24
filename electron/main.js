@@ -258,7 +258,7 @@ function startServer() {
   });
 }
 
-function setupDatabase() {
+async function setupDatabase() {
   const userDataPath = app.getPath('userData');
   const dbPath = path.join(userDataPath, 'inventory.db');
   const logPath = path.join(userDataPath, 'setup.log');
@@ -285,7 +285,7 @@ function setupDatabase() {
     writeLog('Created user data directory');
   }
 
-  // Always ensure database schema is up to date
+  // Try Prisma CLI first, then fallback to direct SQLite
   try {
     const { execSync } = require('child_process');
     const isDev = !app.isPackaged;
@@ -293,62 +293,42 @@ function setupDatabase() {
       ? path.join(__dirname, '../backend')
       : path.join(process.resourcesPath, 'backend');
     
-    writeLog('Setting up database schema...');
+    writeLog('Trying Prisma CLI setup...');
     writeLog(`Backend path: ${backendPath}`);
-    
-    // Use db push to create/update schema
-    writeLog('Running: npx prisma db push --force-reset');
-    writeLog(`CWD: ${backendPath}`);
-    writeLog(`DATABASE_URL: file:${dbPath}`);
     
     const result = execSync('npx prisma db push --force-reset', {
       cwd: backendPath,
       env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
       stdio: 'pipe',
-      encoding: 'utf8'
+      encoding: 'utf8',
+      timeout: 30000 // 30 second timeout
     });
     
     writeLog(`Prisma output: ${result}`);
-    writeLog('Database schema created/updated successfully');
+    writeLog('Database schema created with Prisma CLI');
   } catch (error) {
-    writeLog(`Database setup error: ${error.message}`);
-    writeLog(`Error details: ${JSON.stringify(error, null, 2)}`);
-    writeLog(`Error stdout: ${error.stdout?.toString() || 'none'}`);
-    writeLog(`Error stderr: ${error.stderr?.toString() || 'none'}`);
+    writeLog(`Prisma CLI failed: ${error.message}`);
     
-    // Try without force-reset
+    // Fallback to direct SQLite schema creation
     try {
-      const { execSync } = require('child_process');
-      const isDev = !app.isPackaged;
-      const backendPath = isDev 
-        ? path.join(__dirname, '../backend')
-        : path.join(process.resourcesPath, 'backend');
+      writeLog('Using fallback SQLite schema creation...');
+      const { createDatabaseSchema } = require('./create-schema');
+      await createDatabaseSchema(dbPath);
+      writeLog('Database schema created with SQLite fallback');
+    } catch (sqliteError) {
+      writeLog(`SQLite fallback failed: ${sqliteError.message}`);
       
-      writeLog('Trying fallback: npx prisma db push');
-      const fallbackResult = execSync('npx prisma db push', {
-        cwd: backendPath,
-        env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
-        stdio: 'pipe',
-        encoding: 'utf8'
-      });
-      
-      writeLog(`Fallback prisma output: ${fallbackResult}`);
-      writeLog('Database schema created successfully (fallback)');
-    } catch (fallbackError) {
-      writeLog(`Database fallback setup failed: ${fallbackError.message}`);
-      writeLog(`Fallback error details: ${JSON.stringify(fallbackError, null, 2)}`);
-      writeLog(`Fallback stdout: ${fallbackError.stdout?.toString() || 'none'}`);
-      writeLog(`Fallback stderr: ${fallbackError.stderr?.toString() || 'none'}`);
-      // Show detailed error to user
-      const errorMsg = `Failed to initialize database.\n\nError: ${fallbackError.message}\n\nCheck the log file at:\n${logPath}\n\nPlease ensure Node.js is installed and restart the application.`;
+      // Final fallback - show user-friendly error
+      const errorMsg = `Failed to initialize database.\n\nThis might be because Node.js is not installed on your system.\n\nPlease install Node.js from https://nodejs.org and restart the application.\n\nLog file: ${logPath}`;
       dialog.showErrorBox('Database Setup Error', errorMsg);
+      throw sqliteError;
     }
   }
 }
 
 app.whenReady().then(async () => {
   console.log('Electron app ready, setting up...');
-  setupDatabase();
+  await setupDatabase();
   
   try {
     console.log('Starting server...');
