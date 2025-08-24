@@ -285,44 +285,53 @@ async function setupDatabase() {
     writeLog('Created user data directory');
   }
 
-  // Try Prisma CLI first, then fallback to direct SQLite
-  try {
-    const { execSync } = require('child_process');
-    const isDev = !app.isPackaged;
-    const backendPath = isDev 
-      ? path.join(__dirname, '../backend')
-      : path.join(process.resourcesPath, 'backend');
+  // Only create schema if database doesn't exist or is empty
+  const dbExists = fs.existsSync(dbPath);
+  
+  if (!dbExists) {
+    writeLog('Database does not exist, creating new database...');
     
-    writeLog('Trying Prisma CLI setup...');
-    writeLog(`Backend path: ${backendPath}`);
-    
-    const result = execSync('npx prisma db push --force-reset', {
-      cwd: backendPath,
-      env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
-      stdio: 'pipe',
-      encoding: 'utf8',
-      timeout: 30000 // 30 second timeout
-    });
-    
-    writeLog(`Prisma output: ${result}`);
-    writeLog('Database schema created with Prisma CLI');
-  } catch (error) {
-    writeLog(`Prisma CLI failed: ${error.message}`);
-    
-    // Fallback to direct SQLite schema creation
+    // Try Prisma CLI first, then fallback to direct SQLite
     try {
-      writeLog('Using fallback SQLite schema creation...');
-      const { createDatabaseSchema } = require('./create-schema');
-      await createDatabaseSchema(dbPath);
-      writeLog('Database schema created with SQLite fallback');
-    } catch (sqliteError) {
-      writeLog(`SQLite fallback failed: ${sqliteError.message}`);
+      const { execSync } = require('child_process');
+      const isDev = !app.isPackaged;
+      const backendPath = isDev 
+        ? path.join(__dirname, '../backend')
+        : path.join(process.resourcesPath, 'backend');
       
-      // Final fallback - show user-friendly error
-      const errorMsg = `Failed to initialize database.\n\nThis might be because Node.js is not installed on your system.\n\nPlease install Node.js from https://nodejs.org and restart the application.\n\nLog file: ${logPath}`;
-      dialog.showErrorBox('Database Setup Error', errorMsg);
-      throw sqliteError;
+      writeLog('Trying Prisma CLI setup...');
+      writeLog(`Backend path: ${backendPath}`);
+      
+      const result = execSync('npx prisma db push', {
+        cwd: backendPath,
+        env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
+        stdio: 'pipe',
+        encoding: 'utf8',
+        timeout: 30000 // 30 second timeout
+      });
+      
+      writeLog(`Prisma output: ${result}`);
+      writeLog('Database schema created with Prisma CLI');
+    } catch (error) {
+      writeLog(`Prisma CLI failed: ${error.message}`);
+      
+      // Fallback to direct SQLite schema creation
+      try {
+        writeLog('Using fallback SQLite schema creation...');
+        const { createDatabaseSchema } = require('./create-schema');
+        await createDatabaseSchema(dbPath);
+        writeLog('Database schema created with SQLite fallback');
+      } catch (sqliteError) {
+        writeLog(`SQLite fallback failed: ${sqliteError.message}`);
+        
+        // Final fallback - show user-friendly error
+        const errorMsg = `Failed to initialize database.\n\nThis might be because Node.js is not installed on your system.\n\nPlease install Node.js from https://nodejs.org and restart the application.\n\nLog file: ${logPath}`;
+        dialog.showErrorBox('Database Setup Error', errorMsg);
+        throw sqliteError;
+      }
     }
+  } else {
+    writeLog('Database already exists, skipping schema creation');
   }
 }
 
