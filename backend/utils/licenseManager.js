@@ -51,6 +51,11 @@ class LicenseManager {
 
       const now = Math.floor(Date.now() / 1000);
       
+      // Check if activation window has expired (10 minutes from generation)
+      if (now > decoded.activationDeadline) {
+        return { valid: false, error: 'License activation window expired' };
+      }
+      
       if (now > decoded.expiry) {
         return { valid: false, error: 'License expired' };
       }
@@ -85,36 +90,37 @@ class LicenseManager {
   decodeLicenseKey(licenseKey) {
     try {
       const parts = licenseKey.split('-');
-      if (parts.length !== 4) return null;
-      
       const nums = parts.map(part => parseInt(part, 16));
       if (nums.some(isNaN)) return null;
       
-      // Reconstruct expiry timestamp from high and low parts
-      // Using bit shifting: high = expiry >> 16, low = expiry & 0xFFFF
-      const expiry = (nums[2] << 16) | nums[3];
+      if (parts.length === 5) {
+        // New format: RAND1-RAND2-DURATION_HIGH-DURATION_LOW-CHECKSUM
+        const durationSeconds = (nums[2] << 16) | nums[3];
+        const providedChecksum = nums[4];
+        
+        // Validate checksum
+        const calculatedChecksum = (nums[0] + nums[1] + nums[2] + nums[3]) & 0xFFFF;
+        if (providedChecksum !== calculatedChecksum) {
+          console.error('License checksum validation failed');
+          return null;
+        }
+        
+        // Calculate actual timestamps based on current time
+        const currentTime = Math.floor(Date.now() / 1000);
+        const activationDeadline = currentTime + 600; // 10 minutes from now
+        const expiry = currentTime + durationSeconds;
+        
+        return { activationDeadline, expiry, duration: 'New Format' };
+        
+      } else if (parts.length === 4) {
+        // Old format: ACTIVATION_HIGH-ACTIVATION_LOW-EXPIRY_HIGH-EXPIRY_LOW
+        const activationDeadline = (nums[0] << 16) | nums[1];
+        const expiry = (nums[2] << 16) | nums[3];
+        
+        return { activationDeadline, expiry, duration: 'Old Format' };
+      }
       
-      const currentTime = Math.floor(Date.now() / 1000);
-      const timeRemaining = expiry - currentTime;
-      const expiryDate = new Date(expiry * 1000);
-      const currentDate = new Date(currentTime * 1000);
-      
-      console.log('License Debug:', { 
-        licenseKey, 
-        expiry, 
-        currentTime, 
-        timeRemaining,
-        timeRemainingMinutes: Math.floor(timeRemaining / 60),
-        expiryDate: expiryDate.toLocaleString(),
-        currentDate: currentDate.toLocaleString(),
-        parts: nums,
-        timezoneOffset: new Date().getTimezoneOffset()
-      });
-      
-      return {
-        expiry,
-        duration: 'Encoded'
-      };
+      return null;
     } catch (error) {
       console.error('License decode error:', error);
       return null;
@@ -153,13 +159,39 @@ class LicenseManager {
 
   isLicenseValid() {
     const config = this.getDeviceConfig();
-    if (!config.expiry) return false;
+    if (!config.expiry) {
+      // Check if this is first startup - create 3-day trial
+      return this.createTrialLicense();
+    }
     
     const deviceFingerprint = this.getDeviceFingerprint();
     if (config.deviceFingerprint !== deviceFingerprint) return false;
     
     const now = Math.floor(Date.now() / 1000);
     return now <= config.expiry;
+  }
+
+  createTrialLicense() {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const trialExpiry = now + (3 * 24 * 60 * 60); // 3 days
+      const deviceFingerprint = this.getDeviceFingerprint();
+      
+      const config = {
+        licenseKey: 'TRIAL-LICENSE',
+        deviceFingerprint,
+        expiry: trialExpiry,
+        activatedAt: new Date().toISOString(),
+        isTrial: true
+      };
+      
+      fs.writeFileSync(this.deviceConfigFile, JSON.stringify(config, null, 2));
+      console.log('Created 3-day trial license');
+      return true;
+    } catch (error) {
+      console.error('Failed to create trial license:', error);
+      return false;
+    }
   }
 
 

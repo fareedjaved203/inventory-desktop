@@ -60,10 +60,10 @@ goto generate
 
 :lifetime
 cls
-echo Generating LIFETIME license (50 years)...
-set duration=50
+echo Generating LIFETIME license (30 years)...
+set duration=30
 set unit=LIFETIME
-set /a totalMinutes=50 * 525600
+set /a totalMinutes=30 * 525600
 goto generate
 
 :generate
@@ -74,8 +74,8 @@ echo Generating license...
 set /a rand1=%random% * 65536 + %random%
 set /a rand2=%random% * 65536 + %random%
 
-:: Get current timestamp and add duration (using UTC to match JavaScript)
-powershell -command "$now = [int64](([datetime]::UtcNow).Subtract([datetime]'1970-01-01')).TotalSeconds; $expiry = $now + (%totalMinutes% * 60); Write-Host \"Current: $now\"; Write-Host \"Expiry: $expiry\"; Write-Host \"Minutes: %totalMinutes%\"; $high = [int]($expiry -shr 16); $low = $expiry -band 0xFFFF; Write-Host \"High: $high, Low: $low\"; $license = '{0:X4}-{1:X4}-{2:X4}-{3:X4}' -f %rand1%, %rand2%, $high, $low; Write-Host \"LICENSE:$license\"; Write-Host \"EXPIRY:$expiry\"" > temp_license.txt
+:: Get current timestamp and calculate durations
+powershell -command "$now = [int64](([datetime]::UtcNow).Subtract([datetime]'1970-01-01')).TotalSeconds; $activationWindow = 600; $durationSeconds = %totalMinutes% * 60; Write-Host \"Current: $now\"; Write-Host \"ActivationWindow: $activationWindow\"; Write-Host \"DurationSeconds: $durationSeconds\"; Write-Host \"Minutes: %totalMinutes%\"; $rand1 = Get-Random -Maximum 65536; $rand2 = Get-Random -Maximum 65536; $actWin = $activationWindow -band 0xFFFF; $durHigh = [int]($durationSeconds -shr 16); $durLow = $durationSeconds -band 0xFFFF; $checksum = ($rand1 + $rand2 + $durHigh + $durLow) -band 0xFFFF; $license = '{0:X4}-{1:X4}-{2:X4}-{3:X4}-{4:X4}' -f $rand1, $rand2, $durHigh, $durLow, $checksum; Write-Host \"LICENSE:$license\"; Write-Host \"DURATION:$durationSeconds\"" > temp_license.txt
 
 :: Parse the output
 for /f "tokens=1,2 delims=:" %%a in (temp_license.txt) do (
@@ -92,6 +92,7 @@ echo LICENSE GENERATED SUCCESSFULLY!
 echo ===============================================
 echo License Key: %license%
 echo Duration: %duration% %unit%
+echo Activation Window: 10 minutes
 echo Expiry Timestamp: %expiry%
 echo ===============================================
 echo.

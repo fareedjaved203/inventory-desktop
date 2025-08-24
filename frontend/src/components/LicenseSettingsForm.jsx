@@ -46,8 +46,8 @@ export default function LicenseSettingsForm() {
     const days = Math.floor(seconds / 86400);
     const years = Math.floor(days / 365);
     
-    // If more than 30 years, show as Lifetime
-    if (years >= 30) return 'Lifetime';
+    // If more than 25 years, show as Lifetime
+    if (years >= 25) return 'Lifetime';
     
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -72,6 +72,10 @@ export default function LicenseSettingsForm() {
         {valid && (
           <div className="mt-2 text-sm text-gray-600">
             Time Remaining: {formatTimeRemaining(timeRemaining)}
+            {/* Show trial indicator */}
+            {timeRemaining <= (3 * 24 * 60 * 60) && timeRemaining > (2 * 24 * 60 * 60) && (
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Trial</span>
+            )}
           </div>
         )}
       </div>
@@ -85,7 +89,7 @@ export default function LicenseSettingsForm() {
             type="text"
             value={licenseKey}
             onChange={(e) => setLicenseKey(e.target.value)}
-            placeholder="XXXX-XXXX-XXXX-XXXX"
+            placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />

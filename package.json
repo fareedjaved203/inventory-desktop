@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-desktop",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "Desktop Inventory Management System",
   "main": "electron/main.js",
   "scripts": {
