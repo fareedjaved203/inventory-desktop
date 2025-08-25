@@ -1,32 +1,23 @@
-import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import React from "react";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
-// Define the formatting function directly in this file since React-PDF doesn't support imports well
 function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
   if (amount === null || amount === undefined) return showCurrency ? 'Rs.0.00' : '0.00';
   
-  // Convert to number if it's a string
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
-  // Handle invalid input
   if (isNaN(num)) return showCurrency ? 'Rs.0.00' : '0.00';
   
-  // Format with commas for lakhs and crores (1,00,000 format)
   const parts = num.toFixed(2).split('.');
   const integerPart = parts[0];
   const decimalPart = parts[1];
   
-  // Format with commas for lakhs and crores (Pakistani format)
   let formattedInteger = '';
   const length = integerPart.length;
   
   if (length <= 3) {
     formattedInteger = integerPart;
   } else {
-    // First add the last 3 digits
     formattedInteger = integerPart.substring(length - 3);
-    
-    // Then add the rest in groups of 2
     let remaining = integerPart.substring(0, length - 3);
     while (remaining.length > 0) {
       const chunk = remaining.substring(Math.max(0, remaining.length - 2));
@@ -40,130 +31,130 @@ function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontSize: 12,
-    backgroundColor: '#ffffff',
+    padding: 40,
+    fontSize: 11,
+    fontFamily: "Helvetica",
+    color: "#333",
   },
   header: {
-    marginBottom: 30,
-    borderBottom: '2px solid #dc2626',
-    paddingBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    borderBottom: "2px solid #dc2626",
+    paddingBottom: 10,
   },
-  shopNameContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
+  logo: {
+    maxWidth: 60,
+    maxHeight: 60,
+    objectFit: 'contain',
+  },
+  companyInfo: {
+    textAlign: "right",
+    fontSize: 10,
+    lineHeight: 1.4,
   },
   shopName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  brandsContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 10,
-    marginBottom: 15,
-    borderRadius: 5,
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 4,
   },
   brands: {
-    fontSize: 11,
-    color: '#374151',
-    fontWeight: 'bold',
+    fontSize: 10,
+    color: "#666",
+    marginBottom: 2,
   },
-  descriptions: {
-    textAlign: 'center',
-    marginBottom: 10,
+  recipientBox: {
+    marginTop: 20,
+    marginBottom: 15,
   },
-  subtitle: {
+  recipientTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  recipientName: {
     fontSize: 12,
-    marginBottom: 5,
-    color: '#6b7280',
-    textAlign: 'center',
+    fontWeight: "bold",
   },
-  title: {
-    fontSize: 20,
-    marginBottom: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#1f2937',
+  invoiceBox: {
+    backgroundColor: "white",
+    color: "black",
+    padding: 12,
+    borderRadius: 4,
+    width: 200,
+    marginLeft: "auto",
   },
-  info: {
-    marginBottom: 20,
+  invoiceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 10,
+    marginBottom: 4,
   },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 5,
-  },
-  label: {
-    width: 80,
-    color: '#666',
-  },
-  value: {
-    flex: 1,
+  invoiceTotal: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "right",
+    marginTop: 4,
   },
   table: {
     marginTop: 20,
   },
   tableHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    paddingBottom: 5,
-    marginBottom: 5,
+    flexDirection: "row",
+    backgroundColor: "#f3f4f6",
+    fontWeight: "bold",
+    padding: 6,
+    borderBottom: "1px solid #ccc",
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    flexDirection: "row",
+    padding: 6,
+    borderBottom: "1px solid #eee",
   },
-  col1: {
-    flex: 2,
+  col1: { flex: 2 },
+  col2: { flex: 1, textAlign: "right" },
+  col3: { flex: 1, textAlign: "right" },
+  col4: { flex: 1, textAlign: "right" },
+  summary: {
+    marginTop: 15,
+    marginLeft: "auto",
+    width: 200,
   },
-  col2: {
-    flex: 1,
-    textAlign: 'right',
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
   },
-  col3: {
-    flex: 1,
-    textAlign: 'right',
-  },
-  col4: {
-    flex: 1,
-    textAlign: 'right',
-  },
-  total: {
-    marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  totalLabel: {
-    marginRight: 20,
+  summaryTotal: {
+    fontWeight: "bold",
+    fontSize: 12,
+    borderTop: "1px solid #000",
+    marginTop: 6,
+    paddingTop: 6,
   },
   footer: {
     position: 'absolute',
     bottom: 30,
-    left: 30,
-    right: 30,
-  },
-  contactInfo: {
-    fontSize: 12,
-    color: '#374151',
-    marginBottom: 4,
-  },
-  summaryTable: {
-    marginTop: 30,
-    borderTopWidth: 1,
-    borderTopColor: '#000',
-    paddingTop: 10,
-  },
-  summaryRow: {
+    left: 40,
+    right: 40,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 5,
+    justifyContent: 'space-between',
+    fontSize: 9,
+    color: "#666",
+  },
+  statusTag: {
+    padding: '3 6',
+    borderRadius: 4,
+    fontSize: 10,
+    marginLeft: 5,
+  },
+  statusPaid: {
+    backgroundColor: '#d1fae5',
+    color: '#065f46',
+  },
+  statusDue: {
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
   },
 });
 
@@ -180,75 +171,100 @@ function PurchaseInvoicePDF({ purchase, shopSettings }) {
   if (shopSettings?.brand3) {
     brands.push(shopSettings.brand3 + (shopSettings.brand3Registered ? '®' : ''));
   }
+
+  // Calculate payment status
+  const balance = purchase.totalAmount - purchase.paidAmount;
+  let status = '';
+  let statusStyle = {};
   
+  if (balance > 0) {
+    status = 'PAYMENT DUE';
+    statusStyle = styles.statusDue;
+  } else {
+    status = 'FULLY PAID';
+    statusStyle = styles.statusPaid;
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.shopNameContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              {shopSettings?.logo && (
-                <Image 
-                  src={shopSettings.logo} 
-                  style={{ width: 40, height: 40, marginRight: 10 }}
-                />
-              )}
-              <Text style={styles.shopName}>{shopSettings?.shopName || 'PURCHASE INVOICE'}</Text>
-            </View>
-          </View>
-          
-          {brands.length > 0 && (
-            <View style={styles.brandsContainer}>
-              <Text style={styles.brands}>{brands.join(' • ')}</Text>
-            </View>
+          {shopSettings?.logo && (
+            <Image src={shopSettings.logo} style={styles.logo} />
           )}
-          
-          <View style={styles.descriptions}>
-            {shopSettings?.shopDescription && <Text style={styles.subtitle}>{shopSettings.shopDescription}</Text>}
-            {shopSettings?.shopDescription2 && <Text style={styles.subtitle}>{shopSettings.shopDescription2}</Text>}
-          </View>
-          
-          <Text style={styles.title}>PURCHASE INVOICE</Text>
-        </View>
-
-        <View style={styles.info}>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>
-              {new Date(purchase.purchaseDate).toLocaleDateString()} {new Date(purchase.purchaseDate).toLocaleTimeString()}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Contact:</Text>
-            <Text style={styles.value}>{purchase.contact?.name || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Address:</Text>
-            <Text style={styles.value}>{purchase.contact?.address || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Phone:</Text>
-            <Text style={styles.value}>{purchase.contact?.phoneNumber || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Invoice:</Text>
-            <Text style={styles.value}>{purchase.invoiceNumber}</Text>
+          <View style={styles.companyInfo}>
+            <Text style={styles.shopName}>{shopSettings?.shopName || "PURCHASE INVOICE"}</Text>
+            {brands.length > 0 && (
+              <Text style={styles.brands}>{brands.join(" • ")}</Text>
+            )}
+            {shopSettings?.shopDescription && (
+              <Text>{shopSettings.shopDescription}</Text>
+            )}
+            {shopSettings?.shopDescription2 && (
+              <Text>{shopSettings.shopDescription2}</Text>
+            )}
+            <Text> </Text>
+            {shopSettings?.userName1 && (
+              <Text>{shopSettings.userName1}: {shopSettings.userPhone1}</Text>
+            )}
+            {shopSettings?.userName2 && (
+              <Text>{shopSettings.userName2}: {shopSettings.userPhone2}</Text>
+            )}
+            {shopSettings?.userName3 && (
+              <Text>{shopSettings.userName3}: {shopSettings.userPhone3}</Text>
+            )}
           </View>
         </View>
 
+        {/* Recipient */}
+        <View style={styles.recipientBox}>
+          <Text style={styles.recipientTitle}>SUPPLIER:</Text>
+          <Text style={styles.recipientName}>
+            {purchase.contact?.name || "Supplier"}
+          </Text>
+          {Number(purchase.contact?.phoneNumber) && (
+            <Text>Phone: {purchase.contact.phoneNumber}</Text>
+          )}
+          {purchase.contact?.address && (
+            <Text>{purchase.contact.address}</Text>
+          )}
+        </View>
+
+        {/* Invoice Box */}
+        <View style={styles.invoiceBox}>
+          <Text>Invoice #{purchase.invoiceNumber}</Text>
+          <View style={styles.invoiceRow}>
+            <Text>Date</Text>
+            <Text>{new Date(purchase.purchaseDate).toLocaleDateString()}</Text>
+          </View>
+          <View style={styles.invoiceRow}>
+            <Text>Time</Text>
+            <Text>{new Date(purchase.purchaseDate).toLocaleTimeString()}</Text>
+          </View>
+          <View style={styles.invoiceRow}>
+            <Text>Status</Text>
+            <Text style={[styles.statusTag, statusStyle]}>{status}</Text>
+          </View>
+          <Text style={styles.invoiceTotal}>
+            {formatPakistaniCurrencyPDF(purchase.totalAmount)}
+          </Text>
+        </View>
+
+        {/* Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>Item</Text>
-            <Text style={styles.col2}>Quantity</Text>
-            <Text style={styles.col3}>Price</Text>
-            <Text style={styles.col4}>Subtotal</Text>
+            <Text style={styles.col1}>PRODUCT</Text>
+            <Text style={styles.col2}>UNIT PRICE</Text>
+            <Text style={styles.col3}>QTY</Text>
+            <Text style={styles.col4}>TOTAL</Text>
           </View>
 
-          {purchase.items.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
+          {purchase.items.map((item, i) => (
+            <View style={styles.tableRow} key={i}>
               <Text style={styles.col1}>{item.product.name}</Text>
-              <Text style={styles.col2}>{item.quantity}</Text>
-              <Text style={styles.col3}>{formatPakistaniCurrencyPDF(item.purchasePrice)}</Text>
+              <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.purchasePrice)}</Text>
+              <Text style={styles.col3}>{item.quantity}</Text>
               <Text style={styles.col4}>
                 {formatPakistaniCurrencyPDF(item.purchasePrice * item.quantity)}
               </Text>
@@ -256,34 +272,42 @@ function PurchaseInvoicePDF({ purchase, shopSettings }) {
           ))}
         </View>
 
-        <View style={styles.summaryTable}>
+        {/* Summary */}
+        <View style={styles.summary}>
           <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total Amount:</Text>
-            <Text style={styles.col4}>{formatPakistaniCurrencyPDF(purchase.totalAmount)}</Text>
+            <Text>Total Amount</Text>
+            <Text>{formatPakistaniCurrencyPDF(purchase.totalAmount)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Paid Amount:</Text>
-            <Text style={styles.col4}>{formatPakistaniCurrencyPDF(purchase.paidAmount)}</Text>
+            <Text>Paid Amount</Text>
+            <Text>{formatPakistaniCurrencyPDF(purchase.paidAmount)}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Balance:</Text>
-            <Text style={styles.col4}>{formatPakistaniCurrencyPDF(purchase.totalAmount - purchase.paidAmount)}</Text>
-          </View>
-          {purchase.totalAmount > purchase.paidAmount && (
-            <View style={[styles.summaryRow, { marginTop: 10 }]}>
-              <Text style={{ color: '#b45309', fontWeight: 'bold' }}>PAYMENT DUE</Text>
+          {balance > 0 ? (
+            <View style={[styles.summaryRow, styles.summaryTotal]}>
+              <Text>Balance Due</Text>
+              <Text>{formatPakistaniCurrencyPDF(balance)}</Text>
+            </View>
+          ) : (
+            <View style={[styles.summaryRow, styles.summaryTotal]}>
+              <Text>Status</Text>
+              <Text>Fully Paid</Text>
             </View>
           )}
         </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
-          {shopSettings && (
-            <View>
-              {shopSettings.userName1 && <Text style={styles.contactInfo}>{shopSettings.userName1}: {shopSettings.userPhone1}</Text>}
-              {shopSettings.userName2 && <Text style={styles.contactInfo}>{shopSettings.userName2}: {shopSettings.userPhone2}</Text>}
-              {shopSettings.userName3 && <Text style={styles.contactInfo}>{shopSettings.userName3}: {shopSettings.userPhone3}</Text>}
-            </View>
-          )}
+          <Text style={{ fontSize: 8 }}>
+            Need system like this? Contact: 03145292649
+          </Text>
+          <View style={{ border: '1px solid #666', padding: 5, borderRadius: 3 }}>
+            <Text style={{ fontSize: 8 }}>
+              Purchase terms and conditions apply.
+            </Text>
+            <Text style={{ fontSize: 8 }}>
+              Quality check required on delivery.
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>
