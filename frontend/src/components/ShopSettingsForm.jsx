@@ -26,6 +26,7 @@ function ShopSettingsForm() {
     brand2Registered: false,
     brand3: '',
     brand3Registered: false,
+    logo: '',
   });
 
   const { data: settings, isLoading } = useQuery(['shop-settings'], async () => {
@@ -46,14 +47,26 @@ function ShopSettingsForm() {
         brand1Registered: settings.brand1Registered || false,
         brand2Registered: settings.brand2Registered || false,
         brand3Registered: settings.brand3Registered || false,
+        logo: settings.logo || '',
       });
     }
   }, [settings]);
 
   const saveSettings = useMutation(
     async (data) => {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/shop-settings`, data);
-      return response.data;
+      try {
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/shop-settings`, data);
+        return response.data;
+      } catch (error) {
+        // If logo field causes validation error, try without logo for backward compatibility
+        if (error.response?.status === 400 && data.logo) {
+          console.warn('Logo field not supported by backend, saving without logo');
+          const { logo, ...dataWithoutLogo } = data;
+          const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/shop-settings`, dataWithoutLogo);
+          return response.data;
+        }
+        throw error;
+      }
     },
     {
       onSuccess: () => {
@@ -62,14 +75,33 @@ function ShopSettingsForm() {
         setTimeout(() => setShowToast(false), 3000);
       },
       onError: (error) => {
-        alert('Error saving settings: ' + error.response?.data?.error);
+        console.error('Settings save error:', error);
+        const errorMsg = error.response?.data?.error || error.message || 'Unknown error occurred';
+        alert('Error saving settings: ' + errorMsg);
       }
     }
   );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    saveSettings.mutate(formData);
+    try {
+      // Create a copy without logo if it's too large
+      const dataToSave = { ...formData };
+      if (dataToSave.logo && dataToSave.logo.length > 1000000) { // 1MB limit for base64
+        alert(language === 'ur' ? 'لوگو بہت بڑا ہے، براہ کرم چھوٹا فائل استعمال کریں' : 'Logo is too large, please use a smaller file');
+        return;
+      }
+      
+      // Remove logo field if backend doesn't support it (for backward compatibility)
+      if (!dataToSave.logo) {
+        delete dataToSave.logo;
+      }
+      
+      saveSettings.mutate(dataToSave);
+    } catch (error) {
+      console.error('Submit error:', error);
+      alert('Error preparing data: ' + error.message);
+    }
   };
 
   const handleChange = (e) => {
@@ -281,6 +313,47 @@ function ShopSettingsForm() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'لوگو (اختیاری)' : 'Logo (Optional)'}</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                // Check file size (limit to 2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                  alert(language === 'ur' ? 'فائل کا سائز 2MB سے زیادہ نہیں ہونا چاہیے' : 'File size should not exceed 2MB');
+                  e.target.value = '';
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  setFormData({ ...formData, logo: event.target.result });
+                };
+                reader.onerror = () => {
+                  alert(language === 'ur' ? 'فائل پڑھنے میں خرابی' : 'Error reading file');
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'انوائس پر دکھانے کے لیے لوگو اپ لوڈ کریں' : 'Upload a logo to display on invoices'}</p>
+          {formData.logo && (
+            <div className="mt-2">
+              <img src={formData.logo} alt="Logo preview" className="h-16 w-auto border rounded" />
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, logo: '' })}
+                className="ml-2 text-red-600 hover:text-red-800 text-sm"
+              >
+                {language === 'ur' ? 'ہٹائیں' : 'Remove'}
+              </button>
+            </div>
+          )}
         </div>
 
         <button

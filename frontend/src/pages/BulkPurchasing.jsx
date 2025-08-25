@@ -228,9 +228,9 @@ function BulkPurchasing() {
     if (!selectedProduct || !quantity || !purchasePrice) {
       setValidationErrors({
         ...validationErrors,
-        product: !selectedProduct ? "Please select a product from the dropdown" : undefined,
-        quantity: !quantity ? "Please enter a quantity" : undefined,
-        purchasePrice: !purchasePrice ? "Please enter a purchase price" : undefined
+        product: !selectedProduct ? t('productIsRequired') : undefined,
+        quantity: !quantity ? t('quantityIsRequired') : undefined,
+        purchasePrice: !purchasePrice ? t('purchasePriceIsRequired') : undefined
       });
       return;
     }
@@ -239,7 +239,7 @@ function BulkPurchasing() {
     if (productSearchTerm && !selectedProduct) {
       setValidationErrors({
         ...validationErrors,
-        product: "Please select a valid product from the dropdown"
+        product: t('pleaseSelectValidProduct')
       });
       return;
     }
@@ -274,7 +274,7 @@ function BulkPurchasing() {
     if (!selectedContact) {
       setValidationErrors({
         ...validationErrors,
-        contact: "Please select a contact from the dropdown"
+        contact: t('contactIsRequired')
       });
       return;
     }
@@ -283,7 +283,7 @@ function BulkPurchasing() {
     if (contactSearchTerm && !selectedContact) {
       setValidationErrors({
         ...validationErrors,
-        contact: "Please select a valid contact from the dropdown"
+        contact: t('pleaseSelectValidContact')
       });
       return;
     }
@@ -291,7 +291,7 @@ function BulkPurchasing() {
     if (purchaseItems.length === 0) {
       setValidationErrors({
         ...validationErrors,
-        items: "At least one item is required"
+        items: t('atLeastOneItemRequired')
       });
       return;
     }
@@ -300,7 +300,7 @@ function BulkPurchasing() {
     if (parsedPaidAmount > totalAmount) {
       setValidationErrors({
         ...validationErrors,
-        paidAmount: "Paid amount cannot be greater than total amount"
+        paidAmount: t('paidAmountCannotExceedTotal')
       });
       return;
     }
@@ -642,8 +642,19 @@ function BulkPurchasing() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">{t('quantity')}</label>
                       <input
                         type="number"
+                        min="1"
+                        step="1"
                         value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (value <= 0) {
+                            setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
+                          } else {
+                            setValidationErrors({...validationErrors, quantity: undefined});
+                          }
+                          setQuantity(e.target.value);
+                        }}
+                        onWheel={(e) => e.target.blur()}
                         placeholder={t('qty')}
                         className="w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -652,18 +663,29 @@ function BulkPurchasing() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت *' : 'Purchase Price *'}</label>
                       <input
                         type="number"
-                        step="0.01"
+                        step="1"
+                        min="0"
                         value={purchasePrice}
-                        onChange={(e) => setPurchasePrice(e.target.value)}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          if (value <= 0) {
+                            setValidationErrors({...validationErrors, purchasePrice: t('priceMustBePositive')});
+                          } else {
+                            setValidationErrors({...validationErrors, purchasePrice: undefined});
+                          }
+                          setPurchasePrice(e.target.value);
+                        }}
+                        onWheel={(e) => e.target.blur()}
                         placeholder={t('price')}
                         className="w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       {validationErrors.purchasePrice && (
                         <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
                       )}
+                      <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
                     </div>
                     <div className="self-end">
                       <button
@@ -722,9 +744,19 @@ function BulkPurchasing() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('paidAmount')}</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (value > totalAmount) {
+                        setValidationErrors({...validationErrors, paidAmount: t('paidAmountCannotExceedTotal')});
+                      } else {
+                        setValidationErrors({...validationErrors, paidAmount: undefined});
+                      }
+                      setPaidAmount(e.target.value);
+                    }}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   {validationErrors.paidAmount && (
@@ -744,7 +776,7 @@ function BulkPurchasing() {
                 }}
                 className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"

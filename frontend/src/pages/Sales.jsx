@@ -294,9 +294,9 @@ function Sales() {
       setValidationErrors({
         ...validationErrors,
         product: !selectedProduct
-          ? "Please select a product from the dropdown"
+          ? t('productIsRequired')
           : undefined,
-        quantity: !quantity ? "Please enter a quantity" : undefined,
+        quantity: !quantity ? t('quantityIsRequired') : undefined,
       });
       return;
     }
@@ -305,7 +305,7 @@ function Sales() {
     if (productSearchTerm && !selectedProduct) {
       setValidationErrors({
         ...validationErrors,
-        product: "Please select a valid product from the dropdown",
+        product: t('pleaseSelectValidProduct'),
       });
       return;
     }
@@ -315,7 +315,7 @@ function Sales() {
     // Check if the selected quantity is available
     if (quantityNum > selectedProduct.quantity) {
       setValidationErrors({
-        quantity: `Only ${selectedProduct.quantity} units available in stock`,
+        quantity: t('onlyUnitsAvailable').replace('{count}', selectedProduct.quantity),
       });
       return;
     }
@@ -334,7 +334,7 @@ function Sales() {
       // Check if total quantity exceeds available stock
       if (newQuantity > selectedProduct.quantity) {
         setValidationErrors({
-          quantity: `Only ${selectedProduct.quantity} units available in stock (${existingItem.quantity} already added)`,
+          quantity: `${t('onlyUnitsAvailable').replace('{count}', selectedProduct.quantity)} (${existingItem.quantity} ${t('alreadyAdded')})`,
         });
         return;
       }
@@ -451,8 +451,7 @@ function Sales() {
     if (contactSearchTerm && !selectedContact) {
       setValidationErrors({
         ...validationErrors,
-        contact:
-          "Please select a valid contact from the dropdown or clear the field",
+        contact: t('pleaseSelectValidContact'),
       });
       return;
     }
@@ -461,7 +460,7 @@ function Sales() {
     if (parsedPaidAmount > totalAmount) {
       setValidationErrors({
         ...validationErrors,
-        paidAmount: "Credit amount cannot exceed paid amount",
+        paidAmount: t('creditAmountCannotExceedPaid'),
       });
       return;
     }
@@ -469,7 +468,7 @@ function Sales() {
     if (totalAmount > 100000000) {
       setValidationErrors({
         ...validationErrors,
-        total: "Sale total cannot exceed Rs.10 Crores",
+        total: t('saleTotalCannotExceed'),
       });
       return;
     }
@@ -969,7 +968,7 @@ function Sales() {
           <div className="bg-white p-6 rounded-lg w-full max-w-lg h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                {isEditMode ? "Edit Sale" : "New Sale"}
+                {isEditMode ? t('editSale') : t('newSale')}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
@@ -990,7 +989,7 @@ function Sales() {
                             isProductSelected(false);
                             setSelectedProduct(null); // Reset selected product when search changes
                           }}
-                          placeholder="Search products..."
+                          placeholder={t('searchProducts')}
                           className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                         {!productSelected &&
@@ -1036,9 +1035,20 @@ function Sales() {
                     <div className="flex gap-4">
                       <input
                         type="number"
+                        min="1"
+                        step="1"
                         value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        placeholder="Qty"
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (value <= 0) {
+                            setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
+                          } else {
+                            setValidationErrors({...validationErrors, quantity: undefined});
+                          }
+                          setQuantity(e.target.value);
+                        }}
+                        onWheel={(e) => e.target.blur()}
+                        placeholder={t('qty')}
                         className="w-24 rounded-md border-primary-200 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       />
                       <button
@@ -1046,7 +1056,7 @@ function Sales() {
                         onClick={handleAddItem}
                         className="px-4 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200"
                       >
-                        Add
+                        {t('add')}
                       </button>
                     </div>
                     {validationErrors.quantity && (
@@ -1064,11 +1074,11 @@ function Sales() {
 
                 <div className="border border-primary-100 rounded-lg p-4 bg-primary-50">
                   <h3 className="font-medium mb-2 text-primary-800">
-                    Sale Items
+                    {t('saleItems')}
                   </h3>
                   {saleItems.length === 0 ? (
                     <p className="text-gray-500 text-sm italic">
-                      No items added yet
+                      {t('noItemsAdded')}
                     </p>
                   ) : (
                     saleItems?.map((item, index) => (
@@ -1085,17 +1095,17 @@ function Sales() {
                             onClick={() => handleRemoveItem(index)}
                             className="text-red-600 hover:text-red-900 text-sm"
                           >
-                            Remove
+                            {t('remove')}
                           </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2 items-center text-sm">
                           <div>
-                            <label className="text-xs text-gray-500">Qty</label>
+                            <label className="text-xs text-gray-500">{t('qty')}</label>
                             <div className="font-medium">{item.quantity}</div>
                           </div>
                           <div>
                             <label className="text-xs text-gray-500">
-                              Price
+                              {t('price')}
                             </label>
                             <input
                               type="number"
@@ -1110,7 +1120,7 @@ function Sales() {
                           </div>
                           <div>
                             <label className="text-xs text-gray-500">
-                              Subtotal
+                              {t('subtotal')}
                             </label>
                             <div className="font-medium text-primary-800">
                               {formatPakistaniCurrency(item.subtotal)}
@@ -1122,7 +1132,7 @@ function Sales() {
                   )}
                   <div className="mt-2 pt-2 border-t border-primary-200">
                     <div className="font-medium text-primary-800">
-                      Total: {formatPakistaniCurrency(calculateTotal())}
+                      {t('total')}: {formatPakistaniCurrency(calculateTotal())}
                     </div>
                   </div>
                 </div>
@@ -1130,7 +1140,7 @@ function Sales() {
                 {/* Sale Date */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sale Date (Optional)
+                    {t('saleDate')} ({t('optional')})
                   </label>
                   <input
                     type="date"
@@ -1139,14 +1149,14 @@ function Sales() {
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Leave empty to use current date
+                    {t('leaveEmpty')}
                   </p>
                 </div>
 
                 {/* Contact Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact (Optional)
+                    {t('contact')} ({t('optional')})
                   </label>
                   <div className="relative">
                     <input
@@ -1162,7 +1172,7 @@ function Sales() {
                           });
                         }
                       }}
-                      placeholder="Search contacts..."
+                      placeholder={t('searchContacts')}
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                     {contactSearchTerm &&
@@ -1200,7 +1210,7 @@ function Sales() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subtotal
+                      {t('subtotal')}
                     </label>
                     <input
                       type="text"
@@ -1211,11 +1221,11 @@ function Sales() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Discount
+                      {t('discount')}
                     </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="0"
                       max={calculateTotal()}
                       value={discount}
@@ -1226,6 +1236,7 @@ function Sales() {
                           setTotalAmount(calculateTotal() - value);
                         }
                       }}
+                      onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -1235,7 +1246,7 @@ function Sales() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Amount
+                      {t('totalAmount')}
                     </label>
                     <input
                       type="text"
@@ -1246,11 +1257,12 @@ function Sales() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Paid Amount
+                      {t('paidAmount')}
                     </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
+                      min="0"
                       value={paidAmount}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
@@ -1267,6 +1279,7 @@ function Sales() {
                           });
                         }
                       }}
+                      onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                     {validationErrors.paidAmount && (
@@ -1304,7 +1317,7 @@ function Sales() {
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
@@ -1320,7 +1333,7 @@ function Sales() {
                     : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
                 }`}
               >
-                {isEditMode ? "Update Sale" : "Create Sale"}
+                {isEditMode ? t('updateSale') : t('createSale')}
               </button>
             </div>
           </div>

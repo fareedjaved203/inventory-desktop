@@ -18,6 +18,7 @@ const shopSettingsSchema = z.object({
   brand2Registered: z.boolean().optional(),
   brand3: z.string().optional(),
   brand3Registered: z.boolean().optional(),
+  logo: z.string().optional(),
 });
 
 export function setupShopSettingsRoutes(app, prisma) {

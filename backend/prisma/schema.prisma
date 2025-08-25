@@ -168,6 +168,7 @@ model ShopSettings {
   brand2Registered Boolean  @default(false)
   brand3          String?
   brand3Registered Boolean  @default(false)
+  logo            String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

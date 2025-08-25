@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
@@ -229,9 +229,17 @@ function SaleInvoicePDF({ sale, shopSettings }) {
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.header}>
           <View style={styles.shopNameContainer}>
-            <Text style={styles.shopName}>
-              {shopSettings?.shopName || "INVOICE"}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              {shopSettings?.logo && (
+                <Image 
+                  src={shopSettings.logo} 
+                  style={{ width: 40, height: 40, marginRight: 10 }}
+                />
+              )}
+              <Text style={styles.shopName}>
+                {shopSettings?.shopName || "INVOICE"}
+              </Text>
+            </View>
           </View>
 
           {brands.length > 0 && (
@@ -467,7 +475,7 @@ function SaleInvoicePDF({ sale, shopSettings }) {
           </View>
           <View style={{ borderTop: '1px solid #ccc', marginTop: 10, paddingTop: 8 }}>
             <Text style={{ fontSize: 8, textAlign: 'center', color: '#666' }}>
-              Need system like this? contact 03145292649
+              Need system like this? Contact: 03145292649
             </Text>
           </View>
         </View>

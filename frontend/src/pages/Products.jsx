@@ -204,11 +204,14 @@ function Products() {
     
     // Check for empty required fields first
     const errors = {};
+    if (!formData.name.trim()) {
+      errors.name = t('nameIsRequired');
+    }
     if (!formData.price.trim()) {
-      errors.price = "Price is required";
+      errors.price = t('priceIsRequired');
     }
     if (!formData.quantity.trim()) {
-      errors.quantity = "Quantity is required";
+      errors.quantity = t('quantityIsRequired');
     }
     
     if (Object.keys(errors).length > 0) {
@@ -243,7 +246,18 @@ function Products() {
         console.error('Zod validation error:', error.errors);
         const errors = {};
         error.errors.forEach((err) => {
-          errors[err.path[0]] = err.message;
+          const path = err.path[0];
+          if (path === 'name' && err.code === 'too_small') {
+            errors[path] = t('nameIsRequired');
+          } else if (path === 'price' && err.code === 'too_small') {
+            errors[path] = t('priceMustBePositive');
+          } else if (path === 'quantity' && err.code === 'too_small') {
+            errors[path] = t('quantityMustBePositive');
+          } else if (path === 'lowStockThreshold' && err.code === 'too_small') {
+            errors[path] = t('lowStockThresholdMustBeNonNegative');
+          } else {
+            errors[path] = err.message;
+          }
         });
         setValidationErrors(errors);
       } else {
@@ -517,7 +531,7 @@ function Products() {
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
                 <FaBoxOpen className="text-primary-600" />
-                {isEditMode ? 'Edit Product' : 'Add New Product'}
+                {isEditMode ? (language === 'ur' ? 'پروڈکٹ میں تبدیلی' : 'Edit Product') : (language === 'ur' ? 'نیا پروڈکٹ شامل کریں' : 'Add New Product')}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
@@ -525,7 +539,7 @@ function Products() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaBoxOpen className="text-primary-500" /> Name
+                    <FaBoxOpen className="text-primary-500" /> {language === 'ur' ? 'نام *' : 'Name *'}
                   </label>
                   <input
                     type="text"
@@ -540,18 +554,21 @@ function Products() {
                       }
                     }}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder={language === 'ur' ? 'پروڈکٹ کا نام درج کریں' : 'Enter product name'}
                   />
                   {validationErrors.name && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'پروڈکٹ کا منفرد نام ضروری ہے' : 'Unique product name is required'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'تفصیل' : 'Description'}</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     rows="3"
+                    placeholder={language === 'ur' ? 'پروڈکٹ کی تفصیل (اختیاری)' : 'Product description (optional)'}
                   />
                   {validationErrors.description && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
@@ -559,13 +576,14 @@ function Products() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaTag className="text-primary-500" /> SKU (Optional)
+                    <FaTag className="text-primary-500" /> {language === 'ur' ? 'ایس کے یو (اختیاری)' : 'SKU (Optional)'}
                   </label>
                   <input
                     type="text"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder={language === 'ur' ? 'پروڈکٹ کوڈ' : 'Product code'}
                   />
                   {validationErrors.sku && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.sku}</p>
@@ -573,85 +591,116 @@ function Products() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaDollarSign className="text-primary-500" /> Sell Price
+                    <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'فروخت کی قیمت *' : 'Sell Price *'}
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     max="100000000"
                     value={formData.price}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
                       if (value > 100000000) {
-                        setValidationErrors({...validationErrors, price: "Price cannot exceed Rs.10 Crores"});
+                        setValidationErrors({...validationErrors, price: t('priceCannotExceed')});
                       } else {
                         setValidationErrors({...validationErrors, price: undefined});
                       }
                       setFormData({ ...formData, price: e.target.value });
                     }}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder={language === 'ur' ? 'قیمت روپے میں' : 'Price in rupees'}
                   />
                   {validationErrors.price && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں' : 'Enter whole numbers only, no decimals'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaDollarSign className="text-blue-500" /> Purchase Price (Optional)
+                    <FaDollarSign className="text-blue-500" /> {language === 'ur' ? 'خریداری کی قیمت (اختیاری)' : 'Purchase Price (Optional)'}
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     max="100000000"
                     value={formData.purchasePrice}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
                       if (value > 100000000) {
-                        setValidationErrors({...validationErrors, purchasePrice: "Purchase price cannot exceed Rs.10 Crores"});
+                        setValidationErrors({...validationErrors, purchasePrice: t('purchasePriceCannotExceed')});
                       } else {
                         setValidationErrors({...validationErrors, purchasePrice: undefined});
                       }
                       setFormData({ ...formData, purchasePrice: e.target.value });
                     }}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder={language === 'ur' ? 'خریداری کی قیمت' : 'Purchase price'}
                   />
                   {validationErrors.purchasePrice && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Used for profit calculation'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaWarehouse className="text-primary-500" /> Quantity
+                    <FaWarehouse className="text-primary-500" /> {language === 'ur' ? 'مقدار *' : 'Quantity *'}
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (value < 0) {
+                        setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
+                      } else {
+                        setValidationErrors({...validationErrors, quantity: undefined});
+                      }
+                      setFormData({ ...formData, quantity: e.target.value });
+                    }}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder={language === 'ur' ? 'اسٹاک کی مقدار' : 'Stock quantity'}
                   />
                   {validationErrors.quantity && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-orange-500">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
-                    Low Stock Alert Threshold
+                    {language === 'ur' ? 'کم اسٹاک الرٹ کی حد' : 'Low Stock Alert Threshold'}
                   </label>
                   <input
                     type="number"
                     min="0"
+                    step="1"
                     value={formData.lowStockThreshold}
-                    onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (value < 0) {
+                        setValidationErrors({...validationErrors, lowStockThreshold: t('lowStockThresholdMustBeNonNegative')});
+                      } else {
+                        setValidationErrors({...validationErrors, lowStockThreshold: undefined});
+                      }
+                      setFormData({ ...formData, lowStockThreshold: e.target.value });
+                    }}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="10"
                   />
                   {validationErrors.lowStockThreshold && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.lowStockThreshold}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">Product will appear in low stock alerts when quantity ≤ this value</p>
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'جب مقدار اس قیمت سے کم یا برابر ہو تو الرٹ آئے گا' : 'Product will appear in low stock alerts when quantity ≤ this value'}</p>
                 </div>
               </div>
               </form>
@@ -665,14 +714,14 @@ function Products() {
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 form="product-form"
                 className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm"
               >
-                {isEditMode ? 'Update' : 'Save'}
+                {isEditMode ? t('update') : t('save')}
               </button>
             </div>
           </div>

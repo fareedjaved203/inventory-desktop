@@ -300,7 +300,7 @@ function SimpleDateInvoicePDF({ date, sales, shopSettings }) {
           </View>
           <View style={{ borderTop: '1px solid #ccc', marginTop: 10, paddingTop: 8 }}>
             <Text style={{ fontSize: 8, textAlign: 'center', color: '#666' }}>
-              Need system like this? contact 03145292649
+              Need system like this? Contact: 03145292649
             </Text>
           </View>
         </View>

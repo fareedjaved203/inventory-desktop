@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useLicense } from '../hooks/useLicense';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function LicenseSettingsForm() {
+  const { language } = useLanguage();
   const [licenseKey, setLicenseKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -10,7 +12,7 @@ export default function LicenseSettingsForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!licenseKey.trim()) {
-      setMessage('Please enter a license key');
+      setMessage(language === 'ur' ? 'براہ کرم لائسنس کی داخل کریں' : 'Please enter a license key');
       return;
     }
 
@@ -27,54 +29,61 @@ export default function LicenseSettingsForm() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('License updated successfully!');
+        setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');
         setLicenseKey('');
         refreshLicense();
       } else {
-        setMessage(data.error || 'Failed to update license');
+        setMessage(data.error || (language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license'));
       }
     } catch (err) {
-      setMessage('Failed to update license');
+      setMessage(language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license');
     } finally {
       setLoading(false);
     }
   };
 
   const formatTimeRemaining = (seconds) => {
-    if (seconds <= 0) return 'Expired';
+    if (seconds <= 0) return language === 'ur' ? 'ختم ہو گیا' : 'Expired';
     
     const days = Math.floor(seconds / 86400);
     const years = Math.floor(days / 365);
     
     // If more than 25 years, show as Lifetime
-    if (years >= 25) return 'Lifetime';
+    if (years >= 25) return language === 'ur' ? 'زندگی بھر' : 'Lifetime';
     
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     
-    if (years > 0) return `${years} years ${days % 365}d`;
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    if (language === 'ur') {
+      if (years > 0) return `${years} سال ${days % 365} دن`;
+      if (days > 0) return `${days} دن ${hours} گھنٹے ${minutes} منٹ`;
+      if (hours > 0) return `${hours} گھنٹے ${minutes} منٹ`;
+      return `${minutes} منٹ`;
+    } else {
+      if (years > 0) return `${years} years ${days % 365}d`;
+      if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">License Management</h2>
+    <div className={`bg-white p-6 rounded-lg shadow ${language === 'ur' ? 'font-urdu' : ''}`}>
+      <h2 className="text-xl font-semibold mb-4">{language === 'ur' ? 'لائسنس کا انتظام' : 'License Management'}</h2>
       
       <div className="mb-4 p-4 bg-gray-50 rounded">
         <div className="flex justify-between items-center">
-          <span className="font-medium">License Status:</span>
+          <span className="font-medium">{language === 'ur' ? 'لائسنس کی صورتحال' : 'License Status'}:</span>
           <span className={`px-2 py-1 rounded text-sm ${valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {valid ? 'Active' : 'Expired'}
+            {valid ? (language === 'ur' ? 'فعال' : 'Active') : (language === 'ur' ? 'ختم ہو گیا' : 'Expired')}
           </span>
         </div>
         {valid && (
           <div className="mt-2 text-sm text-gray-600">
-            Time Remaining: {formatTimeRemaining(timeRemaining)}
+            {language === 'ur' ? 'باقی وقت' : 'Time Remaining'}: {formatTimeRemaining(timeRemaining)}
             {/* Show trial indicator */}
             {timeRemaining <= (3 * 24 * 60 * 60) && timeRemaining > (2 * 24 * 60 * 60) && (
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Trial</span>
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{language === 'ur' ? 'آزمائشی' : 'Trial'}</span>
             )}
           </div>
         )}
@@ -83,7 +92,7 @@ export default function LicenseSettingsForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-2">
-            Update License Key
+            {language === 'ur' ? 'لائسنس کی اپڈیٹ کریں' : 'Update License Key'}
           </label>
           <input
             type="text"
@@ -106,7 +115,7 @@ export default function LicenseSettingsForm() {
           disabled={loading}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Updating...' : 'Update License'}
+          {loading ? (language === 'ur' ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (language === 'ur' ? 'لائسنس اپڈیٹ کریں' : 'Update License')}
         </button>
       </form>
     </div>

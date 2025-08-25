@@ -275,7 +275,48 @@ export const translations = {
     purchaseDue: 'Purchase Due',
     salesDue: 'Sales Due',
     dueCredits: 'Due Credits',
-    clickToView: 'Click to view'
+    clickToView: 'Click to view',
+    
+    // Modal validation messages
+    nameIsRequired: 'Name is required',
+    priceIsRequired: 'Price is required',
+    quantityIsRequired: 'Quantity is required',
+    contactIsRequired: 'Contact is required',
+    productIsRequired: 'Product is required',
+    purchasePriceIsRequired: 'Purchase price is required',
+    priceCannotExceed: 'Price cannot exceed Rs.10 Crores',
+    purchasePriceCannotExceed: 'Purchase price cannot exceed Rs.10 Crores',
+    quantityMustBePositive: 'Quantity must be positive',
+    priceMustBePositive: 'Price must be positive',
+    lowStockThresholdMustBeNonNegative: 'Low stock threshold must be non-negative',
+    onlyUnitsAvailable: 'Only {count} units available in stock',
+    alreadyAdded: 'already added',
+    pleaseSelectValidProduct: 'Please select a valid product from the dropdown',
+    pleaseSelectValidContact: 'Please select a valid contact from the dropdown',
+    atLeastOneItemRequired: 'At least one item is required',
+    paidAmountCannotExceedTotal: 'Paid amount cannot exceed total amount',
+    creditAmountCannotExceedPaid: 'Credit amount cannot exceed paid amount',
+    saleTotalCannotExceed: 'Sale total cannot exceed Rs.10 Crores',
+    
+    // License management
+    licenseManagement: 'License Management',
+    licenseStatus: 'License Status',
+    active: 'Active',
+    expired: 'Expired',
+    timeRemaining: 'Time Remaining',
+    trial: 'Trial',
+    updateLicenseKey: 'Update License Key',
+    updating: 'Updating...',
+    updateLicense: 'Update License',
+    licenseUpdatedSuccessfully: 'License updated successfully!',
+    pleaseEnterLicenseKey: 'Please enter a license key',
+    failedToUpdateLicense: 'Failed to update license',
+    lifetime: 'Lifetime',
+    
+    // Logo field
+    logo: 'Logo',
+    logoOptional: 'Logo (Optional)',
+    logoDescription: 'Upload a logo to display on invoices'
   },
   ur: {
     // Navigation
@@ -553,7 +594,48 @@ export const translations = {
     purchaseDue: 'خریداری کا بقایا',
     salesDue: 'سیلز کا بقایا',
     dueCredits: 'بقایا کریڈٹس',
-    clickToView: 'دیکھنے کے لیے کلک کریں'
+    clickToView: 'دیکھنے کے لیے کلک کریں',
+    
+    // Modal validation messages
+    nameIsRequired: 'نام ضروری ہے',
+    priceIsRequired: 'قیمت ضروری ہے',
+    quantityIsRequired: 'مقدار ضروری ہے',
+    contactIsRequired: 'رابطہ ضروری ہے',
+    productIsRequired: 'پروڈکٹ ضروری ہے',
+    purchasePriceIsRequired: 'خریداری کی قیمت ضروری ہے',
+    priceCannotExceed: 'قیمت 10 کروڑ روپے سے زیادہ نہیں ہو سکتی',
+    purchasePriceCannotExceed: 'خریداری کی قیمت 10 کروڑ روپے سے زیادہ نہیں ہو سکتی',
+    quantityMustBePositive: 'مقدار مثبت ہونی چاہیے',
+    priceMustBePositive: 'قیمت مثبت ہونی چاہیے',
+    lowStockThresholdMustBeNonNegative: 'کم اسٹاک کی حد غیر منفی ہونی چاہیے',
+    onlyUnitsAvailable: 'صرف {count} یونٹس اسٹاک میں دستیاب ہیں',
+    alreadyAdded: 'پہلے سے شامل',
+    pleaseSelectValidProduct: 'براہ کرم ڈراپ ڈاؤن سے درست پروڈکٹ منتخب کریں',
+    pleaseSelectValidContact: 'براہ کرم ڈراپ ڈاؤن سے درست رابطہ منتخب کریں',
+    atLeastOneItemRequired: 'کم از کم ایک آئٹم ضروری ہے',
+    paidAmountCannotExceedTotal: 'ادا شدہ رقم کل رقم سے زیادہ نہیں ہو سکتی',
+    creditAmountCannotExceedPaid: 'کریڈٹ کی رقم ادا شدہ رقم سے زیادہ نہیں ہو سکتی',
+    saleTotalCannotExceed: 'سیل کا کل 10 کروڑ روپے سے زیادہ نہیں ہو سکتا',
+    
+    // License management
+    licenseManagement: 'لائسنس کا انتظام',
+    licenseStatus: 'لائسنس کی صورتحال',
+    active: 'فعال',
+    expired: 'ختم ہو گیا',
+    timeRemaining: 'باقی وقت',
+    trial: 'آزمائشی',
+    updateLicenseKey: 'لائسنس کی اپڈیٹ کریں',
+    updating: 'اپڈیٹ ہو رہا ہے...',
+    updateLicense: 'لائسنس اپڈیٹ کریں',
+    licenseUpdatedSuccessfully: 'لائسنس کامیابی سے اپڈیٹ ہو گیا!',
+    pleaseEnterLicenseKey: 'براہ کرم لائسنس کی داخل کریں',
+    failedToUpdateLicense: 'لائسنس اپڈیٹ کرنے میں ناکام',
+    lifetime: 'زندگی بھر',
+    
+    // Logo field
+    logo: 'لوگو',
+    logoOptional: 'لوگو (اختیاری)',
+    logoDescription: 'انوائس پر دکھانے کے لیے لوگو اپ لوڈ کریں'
   }
 };
 

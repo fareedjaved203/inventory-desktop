@@ -35,8 +35,70 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const prisma = new PrismaClient();
+let prisma;
+
+// Initialize Prisma with error handling
+try {
+  prisma = new PrismaClient();
+} catch (error) {
+  console.error('Failed to initialize Prisma client:', error);
+  process.exit(1);
+}
+
 const port = process.env.PORT || 3000;
+
+// Auto-migration function for logo field
+async function checkAndMigrateLogo(prisma) {
+  try {
+    const result = await prisma.$queryRaw`PRAGMA table_info(ShopSettings)`;
+    const logoColumnExists = result.some(column => column.name === 'logo');
+    
+    if (!logoColumnExists) {
+      console.log('Adding logo column to ShopSettings table...');
+      await prisma.$executeRaw`ALTER TABLE ShopSettings ADD COLUMN logo TEXT`;
+      console.log('Logo column added successfully!');
+    }
+  } catch (error) {
+    if (!error.message.includes('duplicate column name')) {
+      console.warn('Logo migration warning:', error.message);
+    }
+  }
+}
+
+// Test database connection and recreate if needed
+async function ensureDatabaseExists() {
+  try {
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('Database connection successful');
+  } catch (error) {
+    console.error('Database connection failed:', error.message);
+    console.log('Attempting to recreate database...');
+    
+    try {
+      // Try to push schema to create database
+      const { execSync } = require('child_process');
+      const result = execSync('npx prisma db push --force-reset', {
+        cwd: process.cwd(),
+        stdio: 'pipe',
+        encoding: 'utf8',
+        timeout: 30000
+      });
+      console.log('Database recreated successfully');
+    } catch (recreateError) {
+      console.error('Failed to recreate database:', recreateError.message);
+      throw new Error('Database initialization failed');
+    }
+  }
+}
+
+// Run database checks and migration on startup
+ensureDatabaseExists()
+  .then(() => checkAndMigrateLogo(prisma))
+  .catch(error => {
+    console.error('Database startup failed:', error);
+    process.exit(1);
+  });
 
 // Add BigInt serialization support
 BigInt.prototype.toJSON = function() {
@@ -44,7 +106,8 @@ BigInt.prototype.toJSON = function() {
 };
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Serve static files from frontend build
 const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;

@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-desktop",
-  "version": "3.0.0",
+  "version": "3.9.0",
   "description": "Desktop Inventory Management System",
   "main": "electron/main.js",
   "scripts": {
@@ -27,7 +27,9 @@
       "backend/**/*",
       "frontend/dist/**/*",
       "!backend/node_modules/.cache",
-      "!backend/prisma/migrations"
+      "!backend/prisma/migrations",
+      "!backend/.env",
+      "!backend/prisma/inventory.db"
     ],
     "extraResources": [
       {
