@@ -174,7 +174,7 @@ class LicenseManager {
   createTrialLicense() {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const trialExpiry = now + (3 * 24 * 60 * 60); // 3 days
+      const trialExpiry = now + (30 * 24 * 60 * 60); // 30 days
       const deviceFingerprint = this.getDeviceFingerprint();
       
       const config = {
@@ -186,7 +186,7 @@ class LicenseManager {
       };
       
       fs.writeFileSync(this.deviceConfigFile, JSON.stringify(config, null, 2));
-      console.log('Created 3-day trial license');
+      console.log('Created 30-day trial license');
       return true;
     } catch (error) {
       console.error('Failed to create trial license:', error);

@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   logo: {
-    maxWidth: 60,
-    maxHeight: 60,
+    maxWidth: 100,
+    maxHeight: 100,
     objectFit: 'contain',
   },
   companyInfo: {
