@@ -119,7 +119,7 @@ function Returns() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-gray-700">
-                  <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+                  <span className="text-sm px-2 py-1 rounded">
                     {returnItem.reason || (language === 'ur' ? 'کوئی وجہ فراہم نہیں کی گئی' : 'No reason provided')}
                   </span>
                 </td>

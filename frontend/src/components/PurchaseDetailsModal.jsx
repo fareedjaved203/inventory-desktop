@@ -44,7 +44,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
           </div>
         </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium mb-2">Purchase Information</h3>
@@ -62,8 +62,8 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
 
           <div>
             <h3 className="text-lg font-medium mb-2">Items</h3>
-            <div className="bg-gray-50 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
+            <div className="bg-gray-50 rounded-lg overflow-x-auto overflow-y-visible">
+              <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: "600px" }}>
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
