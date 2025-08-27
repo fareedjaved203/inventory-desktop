@@ -1,7 +1,7 @@
 {
-  "name": "inventory-management-desktop",
-  "version": "4.1.0",
-  "description": "Desktop Inventory Management System",
+  "name": "hisab-ghar",
+  "version": "4.2.0",
+  "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
     "electron": "electron .",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.inventory.desktop",
-    "productName": "Inventory Management System",
+    "productName": "Hisab Ghar",
     "directories": {
       "output": "dist"
     },
@@ -43,9 +43,10 @@
     ],
     "win": {
       "target": "nsis",
-      "publisherName": "Inventory Management System",
+      "icon": "assets/icon.png",
+      "publisherName": "Hisab Ghar",
       "verifyUpdateCodeSignature": false,
-      "artifactName": "Inventory-Management-System-Setup-${version}.${ext}"
+      "artifactName": "Hisab-Ghar-Setup-${version}.${ext}"
     },
     "mac": {
       "target": "dmg",
@@ -65,7 +66,7 @@
       "repo": "inventory-desktop"
     }
   },
-  "author": "Inventory Management System",
+  "author": "Hisab Ghar",
   "repository": {
     "type": "git",
     "url": "https://github.com/fareedjaved203/inventory-desktop.git"

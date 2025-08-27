@@ -10,7 +10,7 @@ npx electron-builder --win
 
 echo.
 echo Build complete! Files created in dist folder:
-echo - Inventory Management System Setup [version].exe
+echo - Hisab Ghar Setup [version].exe
 echo - latest.yml
 echo.
 echo Upload both files to GitHub releases for auto-updates.

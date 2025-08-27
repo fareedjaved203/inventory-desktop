@@ -1,6 +1,6 @@
-# Inventory Management System
+# Hisab Ghar
 
-A complete inventory management system with SQLite database, containerized in a single Docker image.
+A complete Hisab Ghar with SQLite database, containerized in a single Docker image.
 
 ## Features
 

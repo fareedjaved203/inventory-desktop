@@ -81,7 +81,7 @@ function Sidebar({ onLogout }) {
       </div>
       
       <div className="p-4 text-center text-xs text-primary-300">
-        {!collapsed && <p>Inventory Management</p>}
+        {!collapsed && <p>Hisab Ghar</p>}
       </div>
     </div>
   );
