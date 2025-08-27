@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "dist:linux": "npm run build && electron-builder --linux"
   },
   "build": {
-    "appId": "com.inventory.desktop",
+    "appId": "com.hisabghar.desktop",
     "productName": "Hisab Ghar",
     "directories": {
       "output": "dist"
@@ -46,7 +46,8 @@
       "icon": "assets/icon.png",
       "publisherName": "Hisab Ghar",
       "verifyUpdateCodeSignature": false,
-      "artifactName": "Hisab-Ghar-Setup-${version}.${ext}"
+      "artifactName": "Hisab-Ghar-Setup-${version}.${ext}",
+      "executableName": "HisabGhar"
     },
     "mac": {
       "target": "dmg",
@@ -58,7 +59,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": false
     },
     "publish": {
       "provider": "github",

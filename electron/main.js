@@ -16,7 +16,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Your App Name',
+    title: 'Hisab Ghar',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -66,7 +66,7 @@ function createWindow() {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'About',
-              message: 'Your App Name',
+              message: 'Hisab Ghar',
               detail: 'Version 1.0.0\nA complete inventory management solution'
             });
           }
