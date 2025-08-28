@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "4.4.0",
+  "version": "4.6.0",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
@@ -41,6 +41,7 @@
         "to": "frontend/dist"
       }
     ],
+
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png",
@@ -63,7 +64,9 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "runAfterFinish": false
+      "runAfterFinish": false,
+      "include": "installer.nsh",
+      "differentialPackage": false
     },
     "publish": {
       "provider": "github",

@@ -266,13 +266,13 @@ function startServer() {
       reject(error);
     });
 
-    // Timeout after 15 seconds
+    // Timeout after 8 seconds (reduced from 15 for faster startup)
     setTimeout(() => {
       if (!serverStarted) {
         console.log('Server startup timeout, continuing anyway...');
       }
       resolve();
-    }, 15000);
+    }, 8000);
   });
 }
 
@@ -325,7 +325,7 @@ async function setupDatabase() {
         env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
         stdio: 'pipe',
         encoding: 'utf8',
-        timeout: 30000 // 30 second timeout
+        timeout: 15000 // 15 second timeout (reduced from 30s for faster startup)
       });
       
       writeLog(`Prisma output: ${result}`);
@@ -363,7 +363,7 @@ app.whenReady().then(async () => {
     console.log('Creating window...');
     createWindow();
     
-    // Wait a bit for server to fully start
+    // Wait a bit for server to fully start (reduced from 2s to 1s for faster startup)
     setTimeout(() => {
       const url = isDev ? 'http://localhost:5173' : `http://localhost:${serverPort}`;
       console.log('Loading URL:', url);
@@ -374,7 +374,7 @@ app.whenReady().then(async () => {
           mainWindow.loadURL(`http://localhost:${serverPort}`);
         }
       });
-    }, 2000);
+    }, 1000);
   } catch (error) {
     console.error('Failed to start application:', error);
     dialog.showErrorBox('Startup Error', 'Failed to start the application server.');

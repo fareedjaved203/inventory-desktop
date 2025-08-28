@@ -7,14 +7,18 @@ const LanguageToggle = () => {
   return (
     <button
       onClick={toggleLanguage}
-      className="flex items-center space-x-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20"
+      className={`flex items-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20 ${
+        language === 'ur' ? 'space-x-3' : 'space-x-2'
+      }`}
       title={language === 'en' ? 'Switch to Urdu' : 'انگریزی میں تبدیل کریں'}
     >
-      <span className="text-sm font-medium text-white">
+      <span className={`text-sm font-medium text-white ${
+        language === 'ur' ? 'min-w-[32px]' : ''
+      }`}>
         {language === 'en' ? 'EN' : 'اردو'}
       </span>
-      <div className={`w-8 h-4 rounded-full relative transition-colors ${
-        language === 'ur' ? 'bg-green-400' : 'bg-blue-400'
+      <div className={`w-8 h-4 rounded-full relative transition-colors flex-shrink-0 ${
+        language === 'ur' ? 'bg-green-400 ml-2' : 'bg-blue-400'
       }`}>
         <div 
           className={`w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${
