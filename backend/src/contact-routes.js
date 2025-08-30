@@ -130,6 +130,276 @@ export function setupContactRoutes(app, prisma) {
     }
   );
 
+  // Get customer statement data
+  app.get('/api/contacts/:id/statement', async (req, res) => {
+    try {
+      const { id: contactId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Get contact details
+      const contact = await prisma.contact.findUnique({
+        where: { id: contactId }
+      });
+      
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      
+      // Date range filter
+      const dateFilter = {};
+      if (startDate || endDate) {
+        dateFilter.date = {};
+        if (startDate) dateFilter.date.gte = new Date(startDate);
+        if (endDate) dateFilter.date.lte = new Date(endDate);
+      }
+      
+      const saleDateFilter = {};
+      if (startDate || endDate) {
+        saleDateFilter.saleDate = {};
+        if (startDate) saleDateFilter.saleDate.gte = new Date(startDate);
+        if (endDate) saleDateFilter.saleDate.lte = new Date(endDate);
+      }
+      
+      const returnDateFilter = {};
+      if (startDate || endDate) {
+        returnDateFilter.returnDate = {};
+        if (startDate) returnDateFilter.returnDate.gte = new Date(startDate);
+        if (endDate) returnDateFilter.returnDate.lte = new Date(endDate);
+      }
+      
+      const purchaseDateFilter = {};
+      if (startDate || endDate) {
+        purchaseDateFilter.purchaseDate = {};
+        if (startDate) purchaseDateFilter.purchaseDate.gte = new Date(startDate);
+        if (endDate) purchaseDateFilter.purchaseDate.lte = new Date(endDate);
+      }
+      
+      // Get all transactions
+      const [sales, loanTransactions, returns, bulkPurchases] = await Promise.all([
+        prisma.sale.findMany({
+          where: {
+            contactId,
+            ...saleDateFilter
+          },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          },
+          orderBy: { saleDate: 'asc' }
+        }),
+        prisma.loanTransaction.findMany({
+          where: {
+            contactId,
+            ...dateFilter
+          },
+          orderBy: { date: 'asc' }
+        }),
+        prisma.saleReturn.findMany({
+          where: {
+            sale: {
+              contactId
+            },
+            ...returnDateFilter
+          },
+          include: {
+            sale: true,
+            items: {
+              include: {
+                product: true
+              }
+            }
+          },
+          orderBy: { returnDate: 'asc' }
+        }),
+        prisma.bulkPurchase.findMany({
+          where: {
+            contactId,
+            ...purchaseDateFilter
+          },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          },
+          orderBy: { purchaseDate: 'asc' }
+        })
+      ]);
+      
+      // Calculate opening balance (transactions before start date)
+      let openingBalance = 0;
+      if (startDate) {
+        const beforeStartDate = new Date(startDate);
+        
+        const [salesBefore, loansBefore, returnsBefore, purchasesBefore] = await Promise.all([
+          prisma.sale.findMany({
+            where: {
+              contactId,
+              saleDate: { lt: beforeStartDate }
+            }
+          }),
+          prisma.loanTransaction.findMany({
+            where: {
+              contactId,
+              date: { lt: beforeStartDate }
+            }
+          }),
+          prisma.saleReturn.findMany({
+            where: {
+              sale: { contactId },
+              returnDate: { lt: beforeStartDate }
+            }
+          }),
+          prisma.bulkPurchase.findMany({
+            where: {
+              contactId,
+              purchaseDate: { lt: beforeStartDate }
+            }
+          })
+        ]);
+        
+        // Calculate opening balance
+        salesBefore.forEach(sale => {
+          openingBalance += Number(sale.totalAmount) - Number(sale.paidAmount);
+        });
+        
+        purchasesBefore.forEach(purchase => {
+          openingBalance -= Number(purchase.totalAmount) - Number(purchase.paidAmount);
+        });
+        
+        loansBefore.forEach(loan => {
+          const amount = Number(loan.amount);
+          if (loan.type === 'GIVEN' || loan.type === 'RETURNED_TO_CONTACT') {
+            openingBalance += amount;
+          } else if (loan.type === 'TAKEN' || loan.type === 'RETURNED_BY_CONTACT') {
+            openingBalance -= amount;
+          }
+        });
+        
+        returnsBefore.forEach(returnItem => {
+          if (returnItem.refundPaid) {
+            openingBalance -= Number(returnItem.refundAmount || 0);
+          }
+        });
+      }
+      
+      // Combine and sort all transactions by date
+      const allTransactions = [];
+      
+      // Add sales
+      sales.forEach(sale => {
+        allTransactions.push({
+          type: 'SALE',
+          date: sale.saleDate,
+          description: `Sale Invoice #${sale.billNumber}`,
+          debit: Number(sale.totalAmount),
+          credit: Number(sale.paidAmount),
+          reference: sale.billNumber,
+          data: sale
+        });
+      });
+      
+      // Add bulk purchases
+      bulkPurchases.forEach(purchase => {
+        allTransactions.push({
+          type: 'PURCHASE',
+          date: purchase.purchaseDate,
+          description: `Purchase Invoice #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
+          debit: 0,
+          credit: Number(purchase.totalAmount) - Number(purchase.paidAmount),
+          reference: purchase.invoiceNumber || purchase.id,
+          data: purchase
+        });
+        
+        // Add payment if any
+        if (Number(purchase.paidAmount) > 0) {
+          allTransactions.push({
+            type: 'PURCHASE_PAYMENT',
+            date: purchase.purchaseDate,
+            description: `Purchase Payment #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
+            debit: Number(purchase.paidAmount),
+            credit: 0,
+            reference: purchase.invoiceNumber || purchase.id,
+            data: purchase
+          });
+        }
+      });
+      
+      // Add loan transactions
+      loanTransactions.forEach(loan => {
+        const amount = Number(loan.amount);
+        let debit = 0, credit = 0;
+        let description = '';
+        
+        if (loan.type === 'GIVEN') {
+          debit = amount;
+          description = `Loan Given${loan.description ? ` - ${loan.description}` : ''}`;
+        } else if (loan.type === 'TAKEN') {
+          credit = amount;
+          description = `Loan Taken${loan.description ? ` - ${loan.description}` : ''}`;
+        } else if (loan.type === 'RETURNED_BY_CONTACT') {
+          credit = amount;
+          description = `Loan Returned by Customer${loan.description ? ` - ${loan.description}` : ''}`;
+        } else if (loan.type === 'RETURNED_TO_CONTACT') {
+          debit = amount;
+          description = `Loan Returned to Customer${loan.description ? ` - ${loan.description}` : ''}`;
+        }
+        
+        allTransactions.push({
+          type: 'LOAN',
+          date: loan.date,
+          description,
+          debit,
+          credit,
+          reference: loan.id,
+          data: loan
+        });
+      });
+      
+      // Add returns
+      returns.forEach(returnItem => {
+        if (returnItem.refundPaid && returnItem.refundAmount > 0) {
+          allTransactions.push({
+            type: 'RETURN',
+            date: returnItem.returnDate,
+            description: `Return Refund #${returnItem.returnNumber}`,
+            debit: 0,
+            credit: Number(returnItem.refundAmount),
+            reference: returnItem.returnNumber,
+            data: returnItem
+          });
+        }
+      });
+      
+      // Sort by date
+      allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Calculate running balance
+      let runningBalance = openingBalance;
+      const transactionsWithBalance = allTransactions.map(transaction => {
+        runningBalance += transaction.debit - transaction.credit;
+        return {
+          ...transaction,
+          runningBalance
+        };
+      });
+      
+      res.json({
+        contact,
+        openingBalance,
+        closingBalance: runningBalance,
+        transactions: transactionsWithBalance
+      });
+    } catch (error) {
+      console.error('Error fetching customer statement:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Delete a contact
   app.delete('/api/contacts/:id', async (req, res) => {
     try {

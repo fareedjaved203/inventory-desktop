@@ -4,11 +4,13 @@ import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
+import CustomerStatementPDF from '../components/CustomerStatementPDF';
 import { debounce } from 'lodash';
-import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign } from 'react-icons/fa';
+import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign, FaFileAlt } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 
 function Contacts() {
   const queryClient = useQueryClient();
@@ -28,6 +30,11 @@ function Contacts() {
   const [loanDescription, setLoanDescription] = useState('');
   const [loanTransactions, setLoanTransactions] = useState([]);
   const [activeTab, setActiveTab] = useState('given');
+  const [showStatementModal, setShowStatementModal] = useState(false);
+  const [statementStartDate, setStatementStartDate] = useState('');
+  const [statementEndDate, setStatementEndDate] = useState('');
+  const [statementData, setStatementData] = useState(null);
+  const [shopSettings, setShopSettings] = useState(null);
 
   const {
     register,
@@ -178,6 +185,27 @@ function Contacts() {
     }
   );
 
+  // Fetch shop settings
+  const { data: shopSettingsData } = useQuery(
+    ['shop-settings'],
+    async () => {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+      return response.data;
+    }
+  );
+
+  // Fetch customer statement data
+  const fetchStatementData = async (contactId, startDate, endDate) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/contacts/${contactId}/statement?${params.toString()}`
+    );
+    return response.data;
+  };
+
   const onSubmit = (data) => {
     if (selectedContact) {
       updateContact.mutate({ id: selectedContact.id, data });
@@ -208,6 +236,18 @@ function Contacts() {
       type: loanType,
       description: loanDescription
     });
+  };
+
+  const handleGenerateStatement = async () => {
+    if (!selectedContact) return;
+    
+    try {
+      const data = await fetchStatementData(selectedContact.id, statementStartDate, statementEndDate);
+      setStatementData(data);
+      setShopSettings(shopSettingsData);
+    } catch (error) {
+      console.error('Error fetching statement data:', error);
+    }
   };
 
   if (isLoading) return (
@@ -263,7 +303,7 @@ function Contacts() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto border border-gray-100">
         <table className="min-w-full">
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
@@ -309,6 +349,19 @@ function Contacts() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       {t('loans')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedContact(contact);
+                        setShowStatementModal(true);
+                        setStatementStartDate('');
+                        setStatementEndDate('');
+                        setStatementData(null);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
+                    >
+                      <FaFileAlt className="w-4 h-4" />
+                      Statement
                     </button>
                     <button
                       onClick={() => {
@@ -761,6 +814,133 @@ function Contacts() {
                   setLoanAmount('');
                   setLoanDescription('');
                   setActiveTab('given');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Statement Modal */}
+      {showStatementModal && selectedContact && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl shadow-xl border border-gray-200">
+            <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
+              <FaFileAlt className="text-blue-600" />
+              Customer Statement - {selectedContact.name}
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={statementStartDate}
+                    onChange={(e) => setStatementStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={statementEndDate}
+                    onChange={(e) => setStatementEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-600">
+                <p>• Leave dates empty to generate complete statement</p>
+                <p>• Statement includes sales, purchases, loans, payments, and returns</p>
+                <p>• Running balance shows amount customer owes or credit balance</p>
+                <p>• Sales increase customer debt, purchases reduce it</p>
+              </div>
+              
+              <div className="flex justify-between items-center pt-4">
+                <button
+                  onClick={handleGenerateStatement}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <FaFileAlt />
+                  Generate Statement
+                </button>
+                
+                {statementData && shopSettings && (
+                  <PDFDownloadLink
+                    document={
+                      <CustomerStatementPDF 
+                        statementData={statementData}
+                        shopSettings={shopSettings}
+                        startDate={statementStartDate}
+                        endDate={statementEndDate}
+                      />
+                    }
+                    fileName={`${selectedContact.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement_${new Date().toISOString().split('T')[0]}.pdf`}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                  >
+                    {({ loading }) => (
+                      loading ? 'Preparing PDF...' : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download PDF
+                        </>
+                      )
+                    )}
+                  </PDFDownloadLink>
+                )}
+              </div>
+              
+              {statementData && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium mb-3">Statement Summary:</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Opening Balance:</span>
+                      <span className={`ml-2 font-medium ${
+                        statementData.openingBalance >= 0 ? 'text-gray-800' : 'text-gray-600'
+                      }`}>
+                        {formatPakistaniCurrency(Math.abs(statementData.openingBalance))}
+                        {statementData.openingBalance >= 0 ? ' (Receivable)' : ' (Payable)'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Closing Balance:</span>
+                      <span className={`ml-2 font-medium ${
+                        statementData.closingBalance >= 0 ? 'text-gray-800' : 'text-gray-600'
+                      }`}>
+                        {formatPakistaniCurrency(Math.abs(statementData.closingBalance))}
+                        {statementData.closingBalance >= 0 ? ' (Customer Owes)' : ' (We Owe)'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-gray-600">Total Transactions:</span>
+                    <span className="ml-2 font-medium">{statementData.transactions?.length || 0}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowStatementModal(false);
+                  setSelectedContact(null);
+                  setStatementStartDate('');
+                  setStatementEndDate('');
+                  setStatementData(null);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
