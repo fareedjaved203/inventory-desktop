@@ -64,15 +64,36 @@ export function setupAuthRoutes(app, prisma) {
     try {
       const { email, password } = req.body;
       
+      // First check admin users
       const user = await prisma.user.findUnique({
         where: { email }
       });
 
-      if (!user || user.password !== password) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+      if (user && user.password === password) {
+        return res.json({ success: true, userType: 'admin' });
       }
 
-      res.json({ success: true });
+      // Then check employees if admin login failed
+      if (prisma.employee) {
+        const bcrypt = await import('bcrypt');
+        const employee = await prisma.employee.findUnique({
+          where: { email },
+          include: { branch: true }
+        });
+
+        if (employee && await bcrypt.compare(password, employee.password)) {
+          return res.json({ 
+            success: true, 
+            userType: 'employee',
+            permissions: JSON.parse(employee.permissions || '[]'),
+            branch: employee.branch,
+            employeeId: employee.id,
+            employeeName: `${employee.firstName} ${employee.lastName}`
+          });
+        }
+      }
+
+      return res.status(401).json({ error: 'Invalid credentials' });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ error: error.message || 'Login failed' });

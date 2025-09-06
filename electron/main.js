@@ -223,12 +223,16 @@ function startServer() {
     console.log('Is packaged:', app.isPackaged);
     
     // Set environment variables for the server
+    const postgresUrl = 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar';
+    const sqliteUrl = `file:${dbPath}`;
+    
     const env = {
       ...process.env,
       PORT: serverPort,
       NODE_ENV: isDev ? 'development' : undefined,
       ELECTRON_APP: 'true',
-      DATABASE_URL: `file:${dbPath}`
+      DATABASE_URL: postgresUrl, // Try PostgreSQL first
+      FALLBACK_DATABASE_URL: sqliteUrl // Fallback to SQLite if PostgreSQL fails
     };
 
     serverProcess = spawn('node', [serverPath], {
@@ -278,7 +282,6 @@ function startServer() {
 
 async function setupDatabase() {
   const userDataPath = app.getPath('userData');
-  const dbPath = path.join(userDataPath, 'inventory.db');
   const logPath = path.join(userDataPath, 'setup.log');
   
   function writeLog(message) {
@@ -294,8 +297,6 @@ async function setupDatabase() {
   
   writeLog('Setting up database...');
   writeLog(`User data path: ${userDataPath}`);
-  writeLog(`Database path: ${dbPath}`);
-  writeLog(`Log path: ${logPath}`);
   
   // Ensure user data directory exists
   if (!fs.existsSync(userDataPath)) {
@@ -303,53 +304,60 @@ async function setupDatabase() {
     writeLog('Created user data directory');
   }
 
-  // Only create schema if database doesn't exist or is empty
-  const dbExists = fs.existsSync(dbPath);
-  
-  if (!dbExists) {
-    writeLog('Database does not exist, creating new database...');
+  // Check for automatic migration from SQLite to PostgreSQL
+  try {
+    const isDev = !app.isPackaged;
+    const scriptsPath = isDev 
+      ? path.join(__dirname, '../scripts')
+      : path.join(process.resourcesPath, 'scripts');
     
-    // Try Prisma CLI first, then fallback to direct SQLite
-    try {
+    const migrationScript = path.join(scriptsPath, 'check-and-migrate.js');
+    
+    if (fs.existsSync(migrationScript)) {
+      writeLog('Running automatic migration check...');
+      
       const { execSync } = require('child_process');
-      const isDev = !app.isPackaged;
       const backendPath = isDev 
         ? path.join(__dirname, '../backend')
         : path.join(process.resourcesPath, 'backend');
       
-      writeLog('Trying Prisma CLI setup...');
-      writeLog(`Backend path: ${backendPath}`);
+      // Set environment for migration
+      const env = {
+        ...process.env,
+        ELECTRON_USER_DATA: userDataPath,
+        DATABASE_URL: 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar'
+      };
       
-      const result = execSync('npx prisma db push', {
+      execSync(`node "${migrationScript}"`, {
         cwd: backendPath,
-        env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
+        env,
         stdio: 'pipe',
-        encoding: 'utf8',
-        timeout: 15000 // 15 second timeout (reduced from 30s for faster startup)
+        timeout: 60000 // 1 minute timeout for migration
       });
       
-      writeLog(`Prisma output: ${result}`);
-      writeLog('Database schema created with Prisma CLI');
-    } catch (error) {
-      writeLog(`Prisma CLI failed: ${error.message}`);
+      writeLog('Migration check completed');
+    }
+  } catch (error) {
+    writeLog(`Migration check failed: ${error.message}`);
+    // Continue with fallback SQLite setup if migration fails
+    
+    const dbPath = path.join(userDataPath, 'inventory.db');
+    const dbExists = fs.existsSync(dbPath);
+    
+    if (!dbExists) {
+      writeLog('Creating SQLite fallback database...');
       
-      // Fallback to direct SQLite schema creation
       try {
-        writeLog('Using fallback SQLite schema creation...');
         const { createDatabaseSchema } = require('./create-schema');
         await createDatabaseSchema(dbPath);
-        writeLog('Database schema created with SQLite fallback');
+        writeLog('SQLite fallback database created');
       } catch (sqliteError) {
         writeLog(`SQLite fallback failed: ${sqliteError.message}`);
-        
-        // Final fallback - show user-friendly error
-        const errorMsg = `Failed to initialize database.\n\nThis might be because Node.js is not installed on your system.\n\nPlease install Node.js from https://nodejs.org and restart the application.\n\nLog file: ${logPath}`;
+        const errorMsg = `Failed to initialize database.\n\nLog file: ${logPath}`;
         dialog.showErrorBox('Database Setup Error', errorMsg);
         throw sqliteError;
       }
     }
-  } else {
-    writeLog('Database already exists, skipping schema creation');
   }
 }
 

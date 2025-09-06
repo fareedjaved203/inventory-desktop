@@ -10,6 +10,9 @@ import Sales from './pages/Sales';
 import Contacts from './pages/Contacts';
 import BulkPurchasing from './pages/BulkPurchasing';
 import Returns from './pages/Returns';
+import Branches from './pages/Branches';
+import Employees from './pages/Employees';
+import EmployeeStats from './pages/EmployeeStats';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
@@ -32,10 +35,19 @@ function AppContent() {
     if (!authTime || Date.now() - parseInt(authTime) > 3600000) {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('authTime');
+      localStorage.removeItem('userPermissions');
+      localStorage.removeItem('userType');
       return false;
     }
     
     return isAuth;
+  });
+  const [userPermissions, setUserPermissions] = useState(() => {
+    const stored = localStorage.getItem('userPermissions');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [userType, setUserType] = useState(() => {
+    return localStorage.getItem('userType') || 'admin';
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
   
@@ -72,11 +84,26 @@ function AppContent() {
     }
   }, []);
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = (authData = {}) => {
     setIsAuthenticated(true);
     setShowAuthModal(false);
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('authTime', Date.now().toString());
+    
+    // Store user permissions and type
+    const permissions = authData.permissions || [];
+    const type = authData.userType || 'admin';
+    setUserPermissions(permissions);
+    setUserType(type);
+    localStorage.setItem('userPermissions', JSON.stringify(permissions));
+    localStorage.setItem('userType', type);
+    
+    // Store employee info if employee login
+    if (authData.employeeId) {
+      localStorage.setItem('employeeId', authData.employeeId);
+      localStorage.setItem('employeeName', authData.employeeName);
+    }
+    
     // Invalidate auth check to refetch user count
     queryClient.invalidateQueries(['auth-check']);
   };
@@ -86,6 +113,12 @@ function AppContent() {
     setShowAuthModal(true);
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('authTime');
+    localStorage.removeItem('userPermissions');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('employeeId');
+    localStorage.removeItem('employeeName');
+    setUserPermissions([]);
+    setUserType('admin');
   };
 
   const handleLicenseValidated = () => {
@@ -120,16 +153,19 @@ function AppContent() {
   return (
     <Router>
       <div className="flex h-screen bg-gray-50">
-        <Sidebar onLogout={handleLogout} />
+        <Sidebar onLogout={handleLogout} userPermissions={userPermissions} userType={userType} />
         <div className="flex-1 flex flex-col overflow-auto">
           <div className="flex-1 p-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/employee-stats" element={<EmployeeStats />} />
               <Route path="/products" element={<Products />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/bulk" element={<BulkPurchasing />} />
               <Route path="/returns" element={<Returns />} />
+              <Route path="/branches" element={<Branches />} />
+              <Route path="/employees" element={<Employees />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -5,6 +5,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import DashboardCard from '../components/DashboardCard';
 import SalesChart from '../components/SalesChart';
 import SalesTrendChart from '../components/SalesTrendChart';
+import BranchEmployeeSalesChart from '../components/BranchEmployeeSalesChart';
 import { FaBox, FaWarehouse, FaExclamationTriangle, FaCalendarDay, FaCalendarWeek, FaCalendarAlt, FaCalendar, FaSync } from 'react-icons/fa';
 import { RiMoneyDollarCircleFill } from "react-icons/ri";
 import { MdOutlinePayments } from "react-icons/md";
@@ -236,6 +237,12 @@ function Dashboard() {
       <ErrorBoundary>
         <div className="mb-8">
           <SalesChart />
+        </div>
+      </ErrorBoundary>
+      
+      <ErrorBoundary>
+        <div className="mb-8">
+          <BranchEmployeeSalesChart />
         </div>
       </ErrorBoundary>
     </div>

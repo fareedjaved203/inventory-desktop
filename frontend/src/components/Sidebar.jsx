@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import LanguageToggle from './LanguageToggle';
 
-function Sidebar({ onLogout }) {
+function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const { language } = useLanguage();
@@ -22,15 +22,25 @@ function Sidebar({ onLogout }) {
     refetchOnWindowFocus: false,
   });
 
-  const menuItems = [
-    { path: '/', label: t('dashboard'), icon: <FaChartLine /> },
-    { path: '/products', label: t('products'), icon: <FaBoxOpen /> },
-    { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave /> },
-    { path: '/contacts', label: t('contacts'), icon: <FaBuilding /> },
-    { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart /> },
-    { path: '/returns', label: t('returns'), icon: <FaUndo /> },
-    { path: '/settings', label: t('settings'), icon: <FaCog /> },
+  const allMenuItems = [
+    { path: '/', label: t('dashboard'), icon: <FaChartLine />, permission: 'dashboard' },
+    { path: '/employee-stats', label: 'Employee Stats', icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
+    { path: '/products', label: t('products'), icon: <FaBoxOpen />, permission: 'products' },
+    { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave />, permission: 'sales' },
+    { path: '/contacts', label: t('contacts'), icon: <FaBuilding />, permission: 'contacts' },
+    { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart />, permission: 'bulk-purchases' },
+    { path: '/returns', label: t('returns'), icon: <FaUndo />, permission: 'returns' },
+    { path: '/branches', label: 'Branches', icon: <FaCodeBranch />, permission: 'branches' },
+    { path: '/employees', label: 'Employees', icon: <FaUsers />, permission: 'employees' },
+    { path: '/settings', label: t('settings'), icon: <FaCog />, permission: 'settings' },
   ];
+
+  // Filter menu items based on user permissions
+  const menuItems = userType === 'admin' 
+    ? allMenuItems.filter(item => !item.employeeOnly)
+    : allMenuItems.filter(item => 
+        item.employeeOnly || userPermissions.includes(item.permission)
+      );
 
   return (
     <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-primary-700 to-primary-900 text-white shadow-lg h-full flex flex-col transition-all duration-300 ${language === 'ur' ? 'font-urdu' : ''}`}>

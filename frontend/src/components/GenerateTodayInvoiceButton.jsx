@@ -8,10 +8,13 @@ function GenerateTodayInvoiceButton({ sales }) {
   useEffect(() => {
     const fetchShopSettings = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
-        setShopSettings(response.data);
+        const apiUrl = `${import.meta.env.VITE_API_URL}/api/shop-settings`;
+        const response = await axios.get(apiUrl);
+        // Handle null response from database
+        setShopSettings(response.data || {});
       } catch (error) {
-        console.error('Failed to fetch shop settings:', error);
+        // Set empty shop settings to allow PDF generation
+        setShopSettings({});
       } finally {
         setLoading(false);
       }
@@ -31,10 +34,11 @@ function GenerateTodayInvoiceButton({ sales }) {
   useEffect(() => {
     const fetchTodaySales = async () => {
       try {
-        // Convert YYYY-MM-DD to DD/MM/YYYY format for API search
         const [year, month, day] = today.split('-');
-        const searchDate = `${day}/${month}/${year}`;
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/sales?limit=1000&search=${searchDate}`);
+        const dateParam = `${day}/${month}/${year}`;
+        const apiUrl = `${import.meta.env.VITE_API_URL}/api/sales?limit=1000&date=${encodeURIComponent(dateParam)}`;
+        
+        const response = await axios.get(apiUrl);
         setTodaySales(response.data.items || []);
       } catch (error) {
         console.error('Failed to fetch today\'s sales:', error);
@@ -48,21 +52,40 @@ function GenerateTodayInvoiceButton({ sales }) {
   }, [today, loading, sales]);
 
   const handleGeneratePDF = async () => {
-    if (!todaySales.length || !shopSettings) return;
+    
+    if (!todaySales.length) {
+      alert('No sales found for today!');
+      return;
+    }
+    
+    // Use default shop settings if empty or null
+    const finalShopSettings = (!shopSettings || Object.keys(shopSettings).length === 0) ? {
+      shopName: 'Daily Sales Report',
+      shopDescription: '',
+      shopDescription2: ''
+    } : shopSettings;
     
     try {
-      const { PDFDownloadLink, pdf } = await import('@react-pdf/renderer');
+      const { pdf } = await import('@react-pdf/renderer');
       const { default: SimpleDateInvoicePDF } = await import('./SimpleDateInvoicePDF');
       
-      const blob = await pdf(<SimpleDateInvoicePDF date={today} sales={todaySales} shopSettings={shopSettings} />).toBlob();
+      console.log('Creating PDF document...');
+      const pdfDoc = <SimpleDateInvoicePDF date={today} sales={todaySales} shopSettings={finalShopSettings} />;
+      const blob = await pdf(pdfDoc).toBlob();
+      
+      console.log('PDF blob created, size:', blob.size);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `daily-sales-${today}.pdf`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      console.log('PDF download initiated');
     } catch (error) {
       console.error('PDF generation failed:', error);
+      alert(`Failed to generate PDF: ${error.message}`);
     }
   };
 
@@ -81,7 +104,7 @@ function GenerateTodayInvoiceButton({ sales }) {
     <button
       onClick={handleGeneratePDF}
       disabled={todaySales.length === 0}
-      className={`px-4 py-2 rounded-lg whitespace-nowrap flex items-center gap-2 ${
+      className={`px-3 py-2 text-sm rounded-lg whitespace-nowrap flex items-center gap-2 ${
         todaySales.length === 0
           ? 'bg-gray-400 text-white cursor-not-allowed'
           : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 shadow-sm'
@@ -91,7 +114,7 @@ function GenerateTodayInvoiceButton({ sales }) {
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
       </svg>
       {todaySales.length > 0 
-        ? `Generate Today's Invoice (${todaySales.length})` 
+        ? `Today's Invoice (${todaySales.length})` 
         : 'No Sales Today'
       }
     </button>

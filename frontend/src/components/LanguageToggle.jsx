@@ -1,33 +1,64 @@
-import React from 'react';
+import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { FaGlobe, FaChevronDown } from 'react-icons/fa';
 
-const LanguageToggle = () => {
-  const { language, toggleLanguage } = useLanguage();
+function LanguageToggle() {
+  const { language, setLanguage } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'ur', name: 'اردو', flag: '🇵🇰' }
+  ];
+
+  const currentLanguage = languages.find(lang => lang.code === language);
+
+  const handleLanguageChange = (langCode) => {
+    setLanguage(langCode);
+    setIsOpen(false);
+  };
 
   return (
-    <button
-      onClick={toggleLanguage}
-      className={`flex items-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20 ${
-        language === 'ur' ? 'space-x-3' : 'space-x-2'
-      }`}
-      title={language === 'en' ? 'Switch to Urdu' : 'انگریزی میں تبدیل کریں'}
-    >
-      <span className={`text-sm font-medium text-white ${
-        language === 'ur' ? 'min-w-[32px]' : ''
-      }`}>
-        {language === 'en' ? 'EN' : 'اردو'}
-      </span>
-      <div className={`w-8 h-4 rounded-full relative transition-colors flex-shrink-0 ${
-        language === 'ur' ? 'bg-green-400 ml-2' : 'bg-blue-400'
-      }`}>
-        <div 
-          className={`w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${
-            language === 'ur' ? 'transform translate-x-4' : 'translate-x-0.5'
-          }`}
-        />
-      </div>
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-2 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors min-w-[100px] border border-white/20"
+      >
+        <FaGlobe className="text-sm" />
+        <span className="flex items-center gap-1">
+          <span>{currentLanguage?.flag}</span>
+          <span>{currentLanguage?.name}</span>
+        </span>
+        <FaChevronDown className={`text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[120px]">
+            {languages.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                  language === lang.code ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+                } ${lang.code === languages[0].code ? 'rounded-t-lg' : ''} ${lang.code === languages[languages.length - 1].code ? 'rounded-b-lg' : ''}`}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.name}</span>
+                {language === lang.code && (
+                  <span className="ml-auto text-primary-600">✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
-};
+}
 
 export default LanguageToggle;

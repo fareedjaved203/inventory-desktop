@@ -102,6 +102,7 @@ export function setupSalesRoutes(app, prisma) {
               paidAmount: req.body.paidAmount || 0,
               saleDate,
               ...(req.body.contactId && { contact: { connect: { id: req.body.contactId } } }),
+              ...(req.body.employeeId && { employee: { connect: { id: req.body.employeeId } } }),
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
@@ -668,6 +669,7 @@ export function setupSalesRoutes(app, prisma) {
               paidAmount: req.body.paidAmount || 0,
               ...(saleDate && { saleDate }),
               ...(req.body.contactId ? { contact: { connect: { id: req.body.contactId } } } : { contact: { disconnect: true } }),
+              ...(req.body.employeeId ? { employee: { connect: { id: req.body.employeeId } } } : {}),
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,

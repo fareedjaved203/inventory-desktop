@@ -14,22 +14,22 @@ import { setupShopSettingsRoutes } from './shop-settings-routes.js';
 import { setupReturnRoutes } from './return-routes.js';
 import { setupLoanRoutes } from './loan-routes.js';
 import { setupAuthRoutes } from './auth-routes.js';
+import { setupBranchRoutes } from './branch-routes.js';
+import { setupEmployeeRoutes } from './employee-routes.js';
+import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { validateRequest } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 
 dotenv.config();
 
-// Handle Electron environment
-if (process.env.ELECTRON_APP) {
-  console.log('Running in Electron mode');
-  console.log('Database URL:', process.env.DATABASE_URL);
-}
 
-// Debug: Log environment variables
-console.log('Environment variables loaded:');
-console.log('SMTP_USER:', process.env.SMTP_USER);
-console.log('SMTP_HOST:', process.env.SMTP_HOST);
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+
+// Handle Electron environment and database selection
+let databaseUrl = process.env.DATABASE_URL;
+let isPostgreSQL = databaseUrl?.startsWith('postgresql');
+
+console.log('Initial Database URL:', databaseUrl);
+console.log('Initial Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,68 +37,64 @@ const __dirname = path.dirname(__filename);
 const app = express();
 let prisma;
 
-// Initialize Prisma with error handling
-try {
-  prisma = new PrismaClient();
-} catch (error) {
-  console.error('Failed to initialize Prisma client:', error);
-  process.exit(1);
-}
-
-const port = process.env.PORT || 3000;
-
-// Auto-migration function for logo field
-async function checkAndMigrateLogo(prisma) {
+// Initialize application
+async function initializeApp() {
+  // Set PostgreSQL URL for Electron
+  if (process.env.ELECTRON_APP) {
+    console.log('Running in Electron mode');
+    const postgresUrl = 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar';
+    process.env.DATABASE_URL = postgresUrl;
+    databaseUrl = postgresUrl;
+    isPostgreSQL = true;
+    console.log('Using PostgreSQL database');
+  }
+  
+  console.log('Database URL:', process.env.DATABASE_URL);
+  
   try {
-    const result = await prisma.$queryRaw`PRAGMA table_info(ShopSettings)`;
-    const logoColumnExists = result.some(column => column.name === 'logo');
-    
-    if (!logoColumnExists) {
-      console.log('Adding logo column to ShopSettings table...');
-      await prisma.$executeRaw`ALTER TABLE ShopSettings ADD COLUMN logo TEXT`;
-      console.log('Logo column added successfully!');
-    }
+    prisma = new PrismaClient();
   } catch (error) {
-    if (!error.message.includes('duplicate column name')) {
-      console.warn('Logo migration warning:', error.message);
+    console.error('Failed to initialize Prisma client:', error);
+    process.exit(1);
+  }
+  
+  // Run database checks and migration
+  try {
+    const result = await ensureDatabaseExists();
+    console.log('Using PostgreSQL database');
+    await checkAndMigrate();
+  } catch (error) {
+    console.error('Database startup failed:', error);
+    if (!process.env.ELECTRON_APP) {
+      process.exit(1);
     }
   }
 }
 
-// Test database connection and recreate if needed
+// Start initialization
+initializeApp().catch(console.error);
+
+const port = process.env.PORT || 3000;
+
+// PostgreSQL migrations are handled by Prisma migrate
+async function checkAndMigrate() {
+  console.log('PostgreSQL migrations handled by Prisma migrate');
+}
+
+// Test database connection
 async function ensureDatabaseExists() {
   try {
     await prisma.$connect();
     await prisma.$queryRaw`SELECT 1`;
-    console.log('Database connection successful');
+    console.log('PostgreSQL connection successful');
+    return { success: true, isPostgreSQL: true };
   } catch (error) {
-    console.error('Database connection failed:', error.message);
-    console.log('Attempting to recreate database...');
-    
-    try {
-      // Try to push schema to create database
-      const { execSync } = require('child_process');
-      const result = execSync('npx prisma db push --force-reset', {
-        cwd: process.cwd(),
-        stdio: 'pipe',
-        encoding: 'utf8',
-        timeout: 30000
-      });
-      console.log('Database recreated successfully');
-    } catch (recreateError) {
-      console.error('Failed to recreate database:', recreateError.message);
-      throw new Error('Database initialization failed');
-    }
+    console.log('PostgreSQL connection failed - will be set up by installer');
+    return { success: false, isPostgreSQL: true };
   }
 }
 
-// Run database checks and migration on startup
-ensureDatabaseExists()
-  .then(() => checkAndMigrateLogo(prisma))
-  .catch(error => {
-    console.error('Database startup failed:', error);
-    process.exit(1);
-  });
+
 
 // Add BigInt serialization support
 BigInt.prototype.toJSON = function() {
@@ -126,6 +122,9 @@ setupShopSettingsRoutes(app, prisma);
 setupReturnRoutes(app, prisma);
 setupLoanRoutes(app, prisma);
 setupAuthRoutes(app, prisma);
+setupBranchRoutes(app, prisma);
+setupEmployeeRoutes(app, prisma);
+setupEmployeeStatsRoutes(app, prisma);
 
 // License routes
 app.use('/api/license', licenseRoutes);

@@ -473,6 +473,8 @@ function Sales() {
       return;
     }
 
+    const employeeId = localStorage.getItem('employeeId');
+    console.log('Employee ID from localStorage:', employeeId);
     const saleData = {
       items: saleItems?.map((item) => ({
         productId: item.productId,
@@ -484,7 +486,9 @@ function Sales() {
       paidAmount: parsedPaidAmount,
       ...(selectedContact && { contactId: selectedContact.id }),
       ...(saleDate && { saleDate }),
+      ...(employeeId && { employeeId }),
     };
+    console.log('Sale data being sent:', saleData);
 
     try {
       saleSchema.parse(saleData);

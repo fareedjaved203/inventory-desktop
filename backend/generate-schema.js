@@ -1,4 +1,9 @@
-// This is your Prisma schema file,
+import fs from 'fs';
+import path from 'path';
+
+const isPostgreSQL = process.env.DATABASE_URL?.startsWith('postgresql');
+
+const baseSchema = `// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -6,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "${isPostgreSQL ? 'postgresql' : 'sqlite'}"
   url      = env("DATABASE_URL")
 }
 
@@ -199,3 +204,10 @@ model Employee {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+`;
+
+// Write the schema file
+const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+fs.writeFileSync(schemaPath, baseSchema);
+
+console.log(`Generated ${isPostgreSQL ? 'PostgreSQL' : 'SQLite'} schema at ${schemaPath}`);

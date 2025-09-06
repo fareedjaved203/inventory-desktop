@@ -22,14 +22,14 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
     try {
       const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
       const data = { email, password };
-      await axios.post(`${import.meta.env.VITE_API_URL}${endpoint}`, data);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}${endpoint}`, data);
       
       // Invalidate auth check query to refetch user count
       if (queryClient) {
         queryClient.invalidateQueries(['auth-check']);
       }
       
-      onSuccess();
+      onSuccess(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Authentication failed');
     } finally {
@@ -107,6 +107,7 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter email"
               />
@@ -127,6 +128,7 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={4}
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
                 className="w-full pl-10 pr-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter password"
               />
