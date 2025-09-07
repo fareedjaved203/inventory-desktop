@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -29,8 +29,8 @@ function BranchEmployeeSalesChart() {
   const { data: branchData, isLoading } = useQuery(
     ['branch-employee-sales', period],
     async () => {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/branch-employee-sales?period=${period}`
+      const response = await api.get(
+        `/api/branch-employee-sales?period=${period}`
       );
       return response.data;
     },

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import api from '../utils/axios';
 
-export default function LicenseModal({ isOpen, onLicenseValidated }) {
+export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
   const [licenseKey, setLicenseKey] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,21 +17,17 @@ export default function LicenseModal({ isOpen, onLicenseValidated }) {
     setError('');
 
     try {
-      const response = await fetch('/api/license/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ licenseKey: licenseKey.trim() })
+      const response = await api.post('/api/license/validate', {
+        licenseKey: licenseKey.trim()
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.data.success) {
         onLicenseValidated();
       } else {
-        setError(data.error || 'Invalid license key');
+        setError('Invalid license key');
       }
     } catch (err) {
-      setError('Failed to validate license');
+      setError(err.response?.data?.error || 'Failed to validate license');
     } finally {
       setLoading(false);
     }
@@ -70,11 +67,18 @@ export default function LicenseModal({ isOpen, onLicenseValidated }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 mb-3"
           >
             {loading ? 'Validating...' : 'Activate License'}
           </button>
         </form>
+        
+        <button
+          onClick={onLogout}
+          className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );

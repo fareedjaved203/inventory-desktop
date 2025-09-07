@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from '../utils/axios';
 import { z } from "zod";
 
 const branchSchema = z.object({
@@ -21,7 +21,7 @@ function Branches() {
     ["branches"],
     async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/branches`, {
+        const response = await api.get('/api/branches', {
           headers: { 'Cache-Control': 'no-cache' }
         });
         console.log('Branches API response:', response.data);
@@ -43,7 +43,7 @@ function Branches() {
 
   const createBranch = useMutation(
     async (branchData) => {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/branches`, branchData);
+      const response = await api.post('/api/branches', branchData);
       return response.data;
     },
     {
@@ -61,7 +61,7 @@ function Branches() {
 
   const updateBranch = useMutation(
     async ({ id, ...branchData }) => {
-      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/branches/${id}`, branchData);
+      const response = await api.put(`/api/branches/${id}`, branchData);
       return response.data;
     },
     {
@@ -75,7 +75,7 @@ function Branches() {
 
   const deleteBranch = useMutation(
     async (id) => {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/branches/${id}`);
+      await api.delete(`/api/branches/${id}`);
     },
     {
       onSuccess: () => {

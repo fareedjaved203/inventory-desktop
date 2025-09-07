@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
 import ErrorBoundary from '../components/ErrorBoundary';
 import DashboardCard from '../components/DashboardCard';
@@ -21,7 +21,7 @@ function Dashboard() {
   
   // Fetch basic dashboard data
   const { data, isLoading, error } = useQuery(['dashboard'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard`);
+    const response = await api.get('/api/dashboard');
     return response.data;
   }, {
     retry: 2,
@@ -30,7 +30,7 @@ function Dashboard() {
 
   // Fetch enhanced sales statistics
   const { data: salesStats, isLoading: isLoadingStats, error: statsError } = useQuery(['dashboard-stats'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`);
+    const response = await api.get('/api/dashboard/stats');
     return response.data;
   }, {
     retry: 2,

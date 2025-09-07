@@ -1,14 +1,15 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { bulkPurchaseSchema, querySchema } from './schemas.js';
 
 export function setupBulkPurchaseRoutes(app, prisma) {
   // Get bulk purchases with pending payments
-  app.get('/api/bulk-purchases/pending-payments', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/bulk-purchases/pending-payments', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
 
       // For SQLite, we need to use raw comparison
       const allPurchases = await prisma.bulkPurchase.findMany({
+        where: { userId: req.userId },
         select: {
           id: true,
           totalAmount: true,
@@ -21,6 +22,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
         .map(purchase => purchase.id);
       
       const where = {
+        userId: req.userId,
         id: {
           in: pendingPurchaseIds
         }
@@ -66,11 +68,11 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   });
 
   // Get all bulk purchases with search and pagination
-  app.get('/api/bulk-purchases', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/bulk-purchases', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '', contactId = '' } = req.query;
 
-      const where = {};
+      const where = { userId: req.userId };
       
       // Add search filter for ID, invoice number and contact name
       if (search) {
@@ -117,10 +119,13 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   });
 
   // Get a single bulk purchase
-  app.get('/api/bulk-purchases/:id', async (req, res) => {
+  app.get('/api/bulk-purchases/:id', authenticateToken, async (req, res) => {
     try {
       const purchase = await prisma.bulkPurchase.findUnique({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
         include: {
           contact: true,
           items: {
@@ -142,6 +147,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   // Create a bulk purchase
   app.post(
     '/api/bulk-purchases',
+    authenticateToken,
     validateRequest({ body: bulkPurchaseSchema }),
     async (req, res) => {
       try {
@@ -160,6 +166,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               totalAmount: req.body.totalAmount,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
+              userId: req.userId,
               contact: {
                 connect: { id: req.body.contactId }
               },
@@ -210,13 +217,17 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   // Update a bulk purchase
   app.put(
     '/api/bulk-purchases/:id',
+    authenticateToken,
     validateRequest({ body: bulkPurchaseSchema }),
     async (req, res) => {
       try {
         const purchase = await prisma.$transaction(async (prisma) => {
           // Get the existing purchase
           const existingPurchase = await prisma.bulkPurchase.findUnique({
-            where: { id: req.params.id },
+            where: { 
+              id: req.params.id,
+              userId: req.userId
+            },
             include: {
               items: true
             }
@@ -245,7 +256,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Update the purchase with new items
           const updatedPurchase = await prisma.bulkPurchase.update({
-            where: { id: req.params.id },
+            where: { 
+              id: req.params.id,
+              userId: req.userId
+            },
             data: {
               totalAmount: req.body.totalAmount,
               paidAmount: req.body.paidAmount,
@@ -297,12 +311,15 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   );
 
   // Delete a bulk purchase
-  app.delete('/api/bulk-purchases/:id', async (req, res) => {
+  app.delete('/api/bulk-purchases/:id', authenticateToken, async (req, res) => {
     try {
       await prisma.$transaction(async (prisma) => {
         // Get the purchase with its items
         const purchase = await prisma.bulkPurchase.findUnique({
-          where: { id: req.params.id },
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          },
           include: {
             items: true
           }
@@ -331,7 +348,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
         // Then delete the purchase
         await prisma.bulkPurchase.delete({
-          where: { id: req.params.id }
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          }
         });
       });
 

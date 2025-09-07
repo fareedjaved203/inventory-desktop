@@ -17,7 +17,7 @@ import { setupAuthRoutes } from './auth-routes.js';
 import { setupBranchRoutes } from './branch-routes.js';
 import { setupEmployeeRoutes } from './employee-routes.js';
 import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 
 dotenv.config();
@@ -130,19 +130,20 @@ setupEmployeeStatsRoutes(app, prisma);
 app.use('/api/license', licenseRoutes);
 
 // Get all products with search and pagination
-app.get('/api/products', validateRequest({ query: querySchema }), async (req, res) => {
+app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
 
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search } },
-            { description: { contains: search } },
-            { sku: { contains: search } },
-          ],
-        }
-      : {};
+    const where = {
+      userId: req.userId,
+      ...(search ? {
+        OR: [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { sku: { contains: search } },
+        ],
+      } : {})
+    };
 
     const [total, items] = await Promise.all([
       prisma.product.count({ where }),
@@ -171,12 +172,14 @@ app.get('/api/products', validateRequest({ query: querySchema }), async (req, re
 });
 
 // Get low stock products
-app.get('/api/products/low-stock', validateRequest({ query: querySchema }), async (req, res) => {
+app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     
     // Get all products and filter by dynamic threshold
-    const allProducts = await prisma.product.findMany();
+    const allProducts = await prisma.product.findMany({
+      where: { userId: req.userId }
+    });
     let lowStockProducts = allProducts.filter(product => 
       Number(product.quantity) <= Number(product.lowStockThreshold || 10)
     );
@@ -213,13 +216,14 @@ app.get('/api/products/low-stock', validateRequest({ query: querySchema }), asyn
 });
 
 // Get damaged products
-app.get('/api/products/damaged', validateRequest({ query: querySchema }), async (req, res) => {
+app.get('/api/products/damaged', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     
     // Check if damagedQuantity column exists
     try {
       const where = {
+        userId: req.userId,
         damagedQuantity: {
           gt: 0,
         },
@@ -260,13 +264,16 @@ app.get('/api/products/damaged', validateRequest({ query: querySchema }), async 
 });
 
 // Mark product as damaged
-app.post('/api/products/:id/damage', async (req, res) => {
+app.post('/api/products/:id/damage', authenticateToken, async (req, res) => {
   try {
     const { quantity } = req.body;
     const productId = req.params.id;
     
     const product = await prisma.product.findUnique({
-      where: { id: productId }
+      where: { 
+        id: productId,
+        userId: req.userId
+      }
     });
     
     if (!product) {
@@ -314,13 +321,16 @@ app.post('/api/products/:id/damage', async (req, res) => {
 });
 
 // Restore damaged product
-app.post('/api/products/:id/restore', async (req, res) => {
+app.post('/api/products/:id/restore', authenticateToken, async (req, res) => {
   try {
     const { quantity } = req.body;
     const productId = req.params.id;
     
     const product = await prisma.product.findUnique({
-      where: { id: productId }
+      where: { 
+        id: productId,
+        userId: req.userId
+      }
     });
     
     if (!product) {
@@ -358,10 +368,13 @@ app.post('/api/products/:id/restore', async (req, res) => {
 });
 
 // Get a single product
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     const product = await prisma.product.findUnique({
-      where: { id: req.params.id },
+      where: { 
+        id: req.params.id,
+        userId: req.userId
+      },
     });
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -380,12 +393,16 @@ app.get('/api/products/:id', async (req, res) => {
 // Create a product
 app.post(
   '/api/products',
+  authenticateToken,
   validateRequest({ body: productSchema }),
   async (req, res) => {
     try {
       // Check for existing product with same name
       const existingProduct = await prisma.product.findFirst({
-        where: { name: req.body.name }
+        where: { 
+          name: req.body.name,
+          userId: req.userId
+        }
       });
       
       if (existingProduct) {
@@ -393,7 +410,10 @@ app.post(
       }
       
       const product = await prisma.product.create({
-        data: req.body,
+        data: {
+          ...req.body,
+          userId: req.userId
+        },
       });
       res.status(201).json({
         ...product,
@@ -422,6 +442,7 @@ app.post(
 // Update a product
 app.put(
   '/api/products/:id',
+  authenticateToken,
   validateRequest({ body: productUpdateSchema }),
   async (req, res) => {
     try {
@@ -430,6 +451,7 @@ app.put(
         const existingProduct = await prisma.product.findFirst({
           where: {
             name: req.body.name,
+            userId: req.userId,
             NOT: { id: req.params.id }
           }
         });
@@ -440,7 +462,10 @@ app.put(
       }
       
       const product = await prisma.product.update({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
         data: req.body,
       });
       res.json({
@@ -471,10 +496,13 @@ app.put(
 );
 
 // Delete a product
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     await prisma.product.delete({
-      where: { id: req.params.id },
+      where: { 
+        id: req.params.id,
+        userId: req.userId
+      },
     });
     res.status(204).send();
   } catch (error) {
@@ -491,26 +519,29 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // Get dashboard stats
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
     const [totalProducts, totalInventory, lowStock, totalSales, recentSales, pendingPayments] = await Promise.all([
-      prisma.product.count(),
+      prisma.product.count({ where: { userId: req.userId } }),
       prisma.product.aggregate({
+        where: { userId: req.userId },
         _sum: {
           quantity: true,
         },
       }),
-      prisma.product.findMany().then(products => 
+      prisma.product.findMany({ where: { userId: req.userId } }).then(products => 
         products.filter(product => 
           Number(product.quantity) <= Number(product.lowStockThreshold || 10)
         ).length
       ),
       prisma.sale.aggregate({
+        where: { userId: req.userId },
         _sum: {
           totalAmount: true,
         },
       }),
       prisma.sale.findMany({
+        where: { userId: req.userId },
         take: 5,
         orderBy: { saleDate: 'desc' },
         include: {
@@ -522,6 +553,7 @@ app.get('/api/dashboard', async (req, res) => {
         },
       }),
       prisma.bulkPurchase.findMany({
+        where: { userId: req.userId },
         select: {
           totalAmount: true,
           paidAmount: true

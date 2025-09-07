@@ -1,5 +1,24 @@
 import { validateRequest } from './middleware.js';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Middleware to get current user ID
+const getCurrentUserId = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
 
 const authSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -28,28 +47,60 @@ const updateEmailSchema = z.object({
 });
 
 export function setupAuthRoutes(app, prisma) {
-  // Check if any user exists
+  // Check if any user exists (always allow signup now)
   app.get('/api/auth/check', async (req, res) => {
     try {
       const userCount = await prisma.user.count();
-      res.json({ hasUser: userCount > 0 });
+      res.json({ hasUser: userCount > 0, allowSignup: true });
     } catch (error) {
-      res.json({ hasUser: false });
+      res.json({ hasUser: false, allowSignup: true });
     }
   });
 
-  // Signup (only if no users exist)
+  // Signup (allow multiple users now)
   app.post('/api/auth/signup', validateRequest({ body: signupSchema }), async (req, res) => {
     try {
       const { email, password } = req.body;
       
-      const userCount = await prisma.user.count();
-      if (userCount > 0) {
-        return res.status(400).json({ error: 'User already exists' });
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({ error: 'User with this email already exists' });
       }
 
-      await prisma.user.create({
-        data: { email, password }
+      const bcrypt = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user with 7-day trial
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+      const trialExpiry = Math.floor(trialEndDate.getTime() / 1000);
+
+      const user = await prisma.user.create({
+        data: { 
+          email, 
+          password: hashedPassword,
+          trialEndDate
+        }
+      });
+
+      // Create trial license
+      console.log('Creating trial license for new user:', user.id);
+      const licenseManager = (await import('../utils/licenseManager.js')).default;
+      const trialResult = await licenseManager.createTrialLicense(user.id);
+      console.log('Trial license creation result:', trialResult);
+
+      // Send notification email in background
+      setImmediate(async () => {
+        try {
+          const emailService = (await import('./email-service.js')).default;
+          await emailService.sendNewUserNotification(email);
+        } catch (emailError) {
+          console.error('Failed to send new user notification:', emailError);
+        }
       });
 
       res.json({ success: true });
@@ -69,26 +120,40 @@ export function setupAuthRoutes(app, prisma) {
         where: { email }
       });
 
-      if (user && user.password === password) {
-        return res.json({ success: true, userType: 'admin' });
+      if (user) {
+        const bcrypt = await import('bcrypt');
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (isValidPassword) {
+          const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+          return res.json({ success: true, userType: 'admin', token, userId: user.id });
+        }
       }
 
       // Then check employees if admin login failed
       if (prisma.employee) {
         const bcrypt = await import('bcrypt');
-        const employee = await prisma.employee.findUnique({
+        const employee = await prisma.employee.findFirst({
           where: { email },
           include: { branch: true }
         });
 
         if (employee && await bcrypt.compare(password, employee.password)) {
+          // Check if admin's license is expired for employee login
+          const adminUser = await prisma.user.findUnique({ where: { id: employee.userId } });
+          if (adminUser && adminUser.trialEndDate && new Date() > adminUser.trialEndDate) {
+            return res.status(403).json({ error: 'License expired. Please contact administrator to renew license.' });
+          }
+          
+          const token = jwt.sign({ userId: employee.userId }, JWT_SECRET, { expiresIn: '24h' });
           return res.json({ 
             success: true, 
             userType: 'employee',
             permissions: JSON.parse(employee.permissions || '[]'),
             branch: employee.branch,
             employeeId: employee.id,
-            employeeName: `${employee.firstName} ${employee.lastName}`
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            token,
+            userId: employee.userId
           });
         }
       }
@@ -160,10 +225,13 @@ export function setupAuthRoutes(app, prisma) {
         return res.status(400).json({ error: 'OTP has expired' });
       }
 
+      const bcrypt = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
       await prisma.user.update({
         where: { id: user.id },
         data: { 
-          password: newPassword,
+          password: hashedPassword,
           resetOtp: null,
           otpExpiry: null
         }
@@ -184,7 +252,10 @@ export function setupAuthRoutes(app, prisma) {
         where: { email: currentEmail }
       });
 
-      if (!user || user.password !== password) {
+      const bcrypt = await import('bcrypt');
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      
+      if (!user || !isValidPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 

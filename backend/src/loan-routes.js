@@ -1,4 +1,4 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 
 const loanTransactionSchema = z.object({
@@ -9,12 +9,15 @@ const loanTransactionSchema = z.object({
 
 export function setupLoanRoutes(app, prisma) {
   // Get loan transactions and summary for a contact
-  app.get('/api/contacts/:contactId/loans', async (req, res) => {
+  app.get('/api/contacts/:contactId/loans', authenticateToken, async (req, res) => {
     try {
       const { contactId } = req.params;
       
       const transactions = await prisma.loanTransaction.findMany({
-        where: { contactId },
+        where: { 
+          contactId,
+          userId: req.userId
+        },
         orderBy: { date: 'desc' }
       });
       
@@ -56,14 +59,15 @@ export function setupLoanRoutes(app, prisma) {
   });
 
   // Create a new loan transaction
-  app.post('/api/contacts/:contactId/loans', validateRequest({ body: loanTransactionSchema }), async (req, res) => {
+  app.post('/api/contacts/:contactId/loans', authenticateToken, validateRequest({ body: loanTransactionSchema }), async (req, res) => {
     try {
       const { contactId } = req.params;
       
       const transaction = await prisma.loanTransaction.create({
         data: {
           ...req.body,
-          contactId
+          contactId,
+          userId: req.userId
         }
       });
       
@@ -77,7 +81,7 @@ export function setupLoanRoutes(app, prisma) {
   });
 
   // Delete a loan transaction
-  app.delete('/api/contacts/:contactId/loans/:transactionId', async (req, res) => {
+  app.delete('/api/contacts/:contactId/loans/:transactionId', authenticateToken, async (req, res) => {
     try {
       const { contactId, transactionId } = req.params;
       
@@ -85,7 +89,8 @@ export function setupLoanRoutes(app, prisma) {
       const transaction = await prisma.loanTransaction.findFirst({
         where: {
           id: transactionId,
-          contactId
+          contactId,
+          userId: req.userId
         }
       });
       
@@ -94,7 +99,10 @@ export function setupLoanRoutes(app, prisma) {
       }
       
       await prisma.loanTransaction.delete({
-        where: { id: transactionId }
+        where: { 
+          id: transactionId,
+          userId: req.userId
+        }
       });
       
       res.status(204).send();

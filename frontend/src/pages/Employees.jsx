@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from '../utils/axios';
 import { z } from "zod";
 
 const employeeSchema = z.object({
@@ -48,7 +48,7 @@ function Employees() {
     ["employees"],
     async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/employees`, {
+        const response = await api.get('/api/employees', {
           headers: { 'Cache-Control': 'no-cache' }
         });
         console.log('Employees API response:', response.data);
@@ -71,7 +71,7 @@ function Employees() {
   const { data: branches } = useQuery(
     ["branches"],
     async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/branches`, {
+      const response = await api.get('/api/branches', {
         headers: { 'Cache-Control': 'no-cache' }
       });
       return response.data || [];
@@ -84,7 +84,7 @@ function Employees() {
 
   const createEmployee = useMutation(
     async (employeeData) => {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/employees`, employeeData);
+      const response = await api.post('/api/employees', employeeData);
       return response.data;
     },
     {
@@ -92,13 +92,17 @@ function Employees() {
         queryClient.invalidateQueries(["employees"]);
         setIsModalOpen(false);
         resetForm();
+        setApiError(null);
+      },
+      onError: (error) => {
+        setApiError(error.response?.data?.error || 'Failed to create employee');
       },
     }
   );
 
   const updateEmployee = useMutation(
     async ({ id, ...employeeData }) => {
-      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/employees/${id}`, employeeData);
+      const response = await api.put(`/api/employees/${id}`, employeeData);
       return response.data;
     },
     {
@@ -106,13 +110,17 @@ function Employees() {
         queryClient.invalidateQueries(["employees"]);
         setIsModalOpen(false);
         resetForm();
+        setApiError(null);
+      },
+      onError: (error) => {
+        setApiError(error.response?.data?.error || 'Failed to update employee');
       },
     }
   );
 
   const deleteEmployee = useMutation(
     async (id) => {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/employees/${id}`);
+      await api.delete(`/api/employees/${id}`);
     },
     {
       onSuccess: () => {
@@ -125,6 +133,7 @@ function Employees() {
     setFormData({ firstName: "", lastName: "", phone: "", email: "", password: "", branchId: "", permissions: [] });
     setEditingEmployee(null);
     setValidationErrors({});
+    setApiError(null);
   };
 
   const handleSubmit = (e) => {
@@ -312,6 +321,9 @@ function Employees() {
                 />
                 {validationErrors.email && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                )}
+                {apiError && apiError.includes('email') && (
+                  <p className="text-red-500 text-sm mt-1">{apiError}</p>
                 )}
               </div>
               <div>

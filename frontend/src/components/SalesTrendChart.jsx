@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -30,8 +30,8 @@ function SalesTrendChart() {
   const { data: salesData, isLoading } = useQuery(
     ['sales-analytics', selectedPeriod],
     async () => {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/sales-analytics?interval=${selectedPeriod}`
+      const response = await api.get(
+        `/api/sales-analytics?interval=${selectedPeriod}`
       );
       return response.data;
     }

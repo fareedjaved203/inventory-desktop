@@ -1,4 +1,4 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { Prisma } from '@prisma/client';
 import { saleSchema, querySchema } from './schemas.js';
 
@@ -62,6 +62,7 @@ export function setupSalesRoutes(app, prisma) {
   // Create a sale
   app.post(
     '/api/sales',
+    authenticateToken,
     validateRequest({ body: saleSchema }),
     async (req, res) => {
       try {
@@ -72,8 +73,11 @@ export function setupSalesRoutes(app, prisma) {
           while (!isUnique) {
             billNumber = Math.floor(1000000 + Math.random() * 9000000).toString();
             
-            const existingSale = await prisma.sale.findUnique({
-              where: { billNumber }
+            const existingSale = await prisma.sale.findFirst({
+              where: { 
+                billNumber,
+                userId: req.userId
+              }
             });
             
             if (!existingSale) {
@@ -101,6 +105,7 @@ export function setupSalesRoutes(app, prisma) {
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount || 0,
               saleDate,
+              userId: req.userId,
               ...(req.body.contactId && { contact: { connect: { id: req.body.contactId } } }),
               ...(req.body.employeeId && { employee: { connect: { id: req.body.employeeId } } }),
               items: {
@@ -159,12 +164,13 @@ export function setupSalesRoutes(app, prisma) {
   );
 
   // Get sales with credit balance (overpaid)
-  app.get('/api/sales/credit-balance', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/sales/credit-balance', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
 
       // Get all sales with returns to calculate credit balance
       const allSales = await prisma.sale.findMany({
+        where: { userId: req.userId },
         include: {
           returns: {
             include: {
@@ -237,12 +243,13 @@ export function setupSalesRoutes(app, prisma) {
   });
 
   // Get sales with pending payments
-  app.get('/api/sales/pending-payments', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/sales/pending-payments', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
 
       // Get all sales with returns to calculate net amounts
       const allSales = await prisma.sale.findMany({
+        where: { userId: req.userId },
         include: {
           returns: true
         }
@@ -297,6 +304,7 @@ export function setupSalesRoutes(app, prisma) {
       const saleIds = items.map(sale => sale.id);
       const fullSales = await prisma.sale.findMany({
         where: {
+          userId: req.userId,
           id: {
             in: saleIds
           }
@@ -362,7 +370,7 @@ export function setupSalesRoutes(app, prisma) {
   });
 
   // Get all sales with search and pagination
-  app.get('/api/sales', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/sales', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
       let date = decodeURIComponent(req.query.date || '');
@@ -376,7 +384,7 @@ export function setupSalesRoutes(app, prisma) {
         }
       }
 
-      let where = {};
+      let where = { userId: req.userId };
       let conditions = [];
 
       // Handle date filter (from date picker)
@@ -484,7 +492,10 @@ export function setupSalesRoutes(app, prisma) {
 
       // Combine all conditions with AND logic
       if (conditions.length > 0) {
-        where = conditions.length === 1 ? conditions[0] : { AND: conditions };
+        where = {
+          userId: req.userId,
+          ...(conditions.length === 1 ? conditions[0] : { AND: conditions })
+        };
       }
 
       const [total, salesData] = await Promise.all([
@@ -555,10 +566,13 @@ export function setupSalesRoutes(app, prisma) {
   });
 
   // Get a single sale
-  app.get('/api/sales/:id', async (req, res) => {
+  app.get('/api/sales/:id', authenticateToken, async (req, res) => {
     try {
       const sale = await prisma.sale.findUnique({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
         include: {
           items: {
             include: {
@@ -617,12 +631,16 @@ export function setupSalesRoutes(app, prisma) {
   // Update a sale
   app.put(
     '/api/sales/:id',
+    authenticateToken,
     validateRequest({ body: saleSchema }),
     async (req, res) => {
       try {
         const sale = await prisma.$transaction(async (prisma) => {
           const existingSale = await prisma.sale.findUnique({
-            where: { id: req.params.id },
+            where: { 
+              id: req.params.id,
+              userId: req.userId
+            },
             include: {
               items: true
             }
@@ -661,7 +679,10 @@ export function setupSalesRoutes(app, prisma) {
           );
 
           const updatedSale = await prisma.sale.update({
-            where: { id: req.params.id },
+            where: { 
+              id: req.params.id,
+              userId: req.userId
+            },
             data: {
               totalAmount: req.body.totalAmount,
               originalTotalAmount: req.body.totalAmount + (req.body.discount || 0),
@@ -725,11 +746,14 @@ export function setupSalesRoutes(app, prisma) {
   );
 
   // Delete a sale
-  app.delete('/api/sales/:id', async (req, res) => {
+  app.delete('/api/sales/:id', authenticateToken, async (req, res) => {
     try {
       await prisma.$transaction(async (prisma) => {
         const sale = await prisma.sale.findUnique({
-          where: { id: req.params.id },
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          },
           include: {
             items: true,
             returns: {
@@ -797,7 +821,10 @@ export function setupSalesRoutes(app, prisma) {
 
         // Delete the sale
         await prisma.sale.delete({
-          where: { id: req.params.id }
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          }
         });
       });
 
@@ -813,7 +840,7 @@ export function setupSalesRoutes(app, prisma) {
 const analyticsCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
-app.get('/api/sales-analytics', async (req, res) => {
+app.get('/api/sales-analytics', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate, interval = 'daily' } = req.query;
 
@@ -859,6 +886,7 @@ app.get('/api/sales-analytics', async (req, res) => {
 
     const sales = await prisma.sale.findMany({
       where: {
+        userId: req.userId,
         saleDate: {
           gte: start,
           lte: end

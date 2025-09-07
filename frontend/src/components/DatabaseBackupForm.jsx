@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { FaDatabase, FaEnvelope, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
 function DatabaseBackupForm() {
@@ -19,12 +19,12 @@ function DatabaseBackupForm() {
   const [credentialsExist, setCredentialsExist] = useState(false);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+    const response = await api.get('/api/shop-settings');
     return response.data;
   });
 
   const { data: driveSettings } = useQuery(['drive-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/user/drive-settings`);
+    const response = await api.get('/api/user/drive-settings');
     return response.data;
   });
 
@@ -47,8 +47,8 @@ function DatabaseBackupForm() {
     setDriveError(null);
 
     try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/user/drive-settings`,
+      await api.post(
+        '/api/user/drive-settings',
         { serviceAccountKey }
       );
       
@@ -68,8 +68,8 @@ function DatabaseBackupForm() {
     setDriveError(null);
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/user/drive-backup`
+      const response = await api.post(
+        '/api/user/drive-backup'
       );
       
       setDriveSuccess(true);
@@ -82,7 +82,7 @@ function DatabaseBackupForm() {
 
   const handleDeleteCredentials = async () => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/user/drive-settings`);
+      await api.delete('/api/user/drive-settings');
       setCredentialsExist(false);
       setDriveSuccess(false);
     } catch (err) {
@@ -98,8 +98,8 @@ function DatabaseBackupForm() {
     setPreviewUrl(null);
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/user/backup`,
+      const response = await api.post(
+        '/api/user/backup',
         { email }
       );
       

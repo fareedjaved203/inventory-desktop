@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -14,7 +14,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
   const t = useTranslation(language);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+    const response = await api.get('/api/shop-settings');
     return response.data;
   }, {
     staleTime: 10 * 60 * 1000, // 10 minutes

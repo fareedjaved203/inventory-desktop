@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -30,7 +30,7 @@ function ShopSettingsForm() {
   });
 
   const { data: settings, isLoading } = useQuery(['shop-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+    const response = await api.get('/api/shop-settings');
     return response.data;
   }, {
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -55,14 +55,14 @@ function ShopSettingsForm() {
   const saveSettings = useMutation(
     async (data) => {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/shop-settings`, data);
+        const response = await api.post('/api/shop-settings', data);
         return response.data;
       } catch (error) {
         // If logo field causes validation error, try without logo for backward compatibility
         if (error.response?.status === 400 && data.logo) {
           console.warn('Logo field not supported by backend, saving without logo');
           const { logo, ...dataWithoutLogo } = data;
-          const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/shop-settings`, dataWithoutLogo);
+          const response = await api.post('/api/shop-settings', dataWithoutLogo);
           return response.data;
         }
         throw error;

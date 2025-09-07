@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../utils/axios';
 
 export function useLicense() {
   const [licenseStatus, setLicenseStatus] = useState({
@@ -10,10 +11,9 @@ export function useLicense() {
 
   const checkLicenseStatus = async () => {
     try {
-      const response = await fetch('/api/license/status');
-      const data = await response.json();
+      const response = await api.get('/api/license/status');
       setLicenseStatus({
-        ...data,
+        ...response.data,
         loading: false
       });
     } catch (error) {

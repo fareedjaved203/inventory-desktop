@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLicense } from '../hooks/useLicense';
 import { useLanguage } from '../contexts/LanguageContext';
+import api from '../utils/axios';
 
 export default function LicenseSettingsForm() {
   const { language } = useLanguage();
@@ -20,23 +21,19 @@ export default function LicenseSettingsForm() {
     setMessage('');
 
     try {
-      const response = await fetch('/api/license/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ licenseKey: licenseKey.trim() })
+      const response = await api.post('/api/license/validate', {
+        licenseKey: licenseKey.trim()
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.data.success) {
         setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');
         setLicenseKey('');
         refreshLicense();
       } else {
-        setMessage(data.error || (language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license'));
+        setMessage(language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license');
       }
     } catch (err) {
-      setMessage(language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license');
+      setMessage(err.response?.data?.error || (language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license'));
     } finally {
       setLoading(false);
     }

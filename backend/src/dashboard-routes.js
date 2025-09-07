@@ -1,8 +1,8 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 
 export function setupDashboardRoutes(app, prisma) {
   // Get enhanced dashboard stats
-  app.get('/api/dashboard/stats', async (req, res) => {
+  app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
       // Get current Pakistan time using Asia/Karachi timezone
       const now = new Date();
@@ -30,6 +30,7 @@ export function setupDashboardRoutes(app, prisma) {
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
           where: {
+            userId: req.userId,
             saleDate: {
               gte: todayPakistan,
               lt: new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000)
@@ -41,6 +42,7 @@ export function setupDashboardRoutes(app, prisma) {
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
           where: {
+            userId: req.userId,
             saleDate: {
               gte: sevenDaysAgo
             }
@@ -51,6 +53,7 @@ export function setupDashboardRoutes(app, prisma) {
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
           where: {
+            userId: req.userId,
             saleDate: {
               gte: thirtyDaysAgo
             }
@@ -61,6 +64,7 @@ export function setupDashboardRoutes(app, prisma) {
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
           where: {
+            userId: req.userId,
             saleDate: {
               gte: yearAgo
             }
@@ -69,6 +73,7 @@ export function setupDashboardRoutes(app, prisma) {
         
         // Total Due Amount (Bulk Purchases) - Get all and filter in JS
         prisma.bulkPurchase.findMany({
+          where: { userId: req.userId },
           select: {
             totalAmount: true,
             paidAmount: true
@@ -77,6 +82,7 @@ export function setupDashboardRoutes(app, prisma) {
         
         // Total Due Amount (Sales) - Get all with returns and filter in JS
         prisma.sale.findMany({
+          where: { userId: req.userId },
           include: {
             returns: true
           }
@@ -84,6 +90,7 @@ export function setupDashboardRoutes(app, prisma) {
         
         // Total Due Credits (Sales with credit balance)
         prisma.sale.findMany({
+          where: { userId: req.userId },
           include: {
             returns: true
           }
@@ -92,6 +99,7 @@ export function setupDashboardRoutes(app, prisma) {
         // Profit Today
         prisma.sale.findMany({
           where: {
+            userId: req.userId,
             saleDate: {
               gte: todayPakistan,
               lt: new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000)
@@ -105,6 +113,7 @@ export function setupDashboardRoutes(app, prisma) {
         // Profit Last 7 Days
         prisma.sale.findMany({
           where: {
+            userId: req.userId,
             saleDate: {
               gte: sevenDaysAgo
             }
@@ -117,6 +126,7 @@ export function setupDashboardRoutes(app, prisma) {
         // Profit Last 30 Days
         prisma.sale.findMany({
           where: {
+            userId: req.userId,
             saleDate: {
               gte: thirtyDaysAgo
             }
@@ -129,6 +139,7 @@ export function setupDashboardRoutes(app, prisma) {
         // Profit Last 365 Days
         prisma.sale.findMany({
           where: {
+            userId: req.userId,
             saleDate: {
               gte: yearAgo
             }

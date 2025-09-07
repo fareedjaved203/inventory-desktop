@@ -90,6 +90,14 @@ function AppContent() {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('authTime', Date.now().toString());
     
+    // Store JWT token and user ID
+    if (authData.token) {
+      localStorage.setItem('authToken', authData.token);
+    }
+    if (authData.userId) {
+      localStorage.setItem('userId', authData.userId);
+    }
+    
     // Store user permissions and type
     const permissions = authData.permissions || [];
     const type = authData.userType || 'admin';
@@ -113,6 +121,8 @@ function AppContent() {
     setShowAuthModal(true);
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('authTime');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userId');
     localStorage.removeItem('userPermissions');
     localStorage.removeItem('userType');
     localStorage.removeItem('employeeId');
@@ -143,7 +153,6 @@ function AppContent() {
   if (!isAuthenticated && showAuthModal) {
     return (
       <AuthModal 
-        isSignup={!authCheck?.hasUser} 
         onSuccess={handleAuthSuccess}
         queryClient={queryClient}
       />
@@ -180,6 +189,7 @@ function AppContent() {
       <LicenseModal 
         isOpen={showLicenseModal && isAuthenticated}
         onLicenseValidated={handleLicenseValidated}
+        onLogout={handleLogout}
       />
     </Router>
   );

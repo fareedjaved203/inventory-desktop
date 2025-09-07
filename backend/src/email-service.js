@@ -223,6 +223,41 @@ class EmailService {
   }
 
   /**
+   * Send new user notification to admin
+   * @param {string} userEmail - New user's email
+   * @returns {Promise<Object>} - Email sending result
+   */
+  async sendNewUserNotification(userEmail) {
+    // Initialize transporter if needed
+    await this.initTransporter();
+    
+    try {
+      const info = await this.transporter.sendMail({
+        from: process.env.EMAIL_FROM || 'fareedjaved203@gmail.com',
+        to: 'fareedjaved203@gmail.com',
+        subject: 'New User Signup - Hisab Ghar',
+        text: `A new user has signed up: ${userEmail}`,
+        html: `
+          <h2>New User Signup Notification</h2>
+          <p>A new user has signed up for Hisab Ghar:</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <strong>Email:</strong> ${userEmail}<br>
+            <strong>Date:</strong> ${new Date().toLocaleString()}<br>
+            <strong>Trial Period:</strong> 7 days
+          </div>
+          <p>The user has been given a 7-day free trial.</p>
+        `
+      });
+
+      console.log('New user notification sent successfully:', info.messageId);
+      return info;
+    } catch (error) {
+      console.error('Error sending new user notification:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Test the email configuration
    * @param {string} email - Test recipient email
    * @returns {Promise<Object>} - Test result

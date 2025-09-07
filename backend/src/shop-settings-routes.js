@@ -1,4 +1,4 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 
 const shopSettingsSchema = z.object({
@@ -23,9 +23,11 @@ const shopSettingsSchema = z.object({
 
 export function setupShopSettingsRoutes(app, prisma) {
   // Get shop settings
-  app.get('/api/shop-settings', async (req, res) => {
+  app.get('/api/shop-settings', authenticateToken, async (req, res) => {
     try {
-      const settings = await prisma.shopSettings.findFirst();
+      const settings = await prisma.shopSettings.findFirst({
+        where: { userId: req.userId }
+      });
       res.json(settings);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -33,9 +35,11 @@ export function setupShopSettingsRoutes(app, prisma) {
   });
 
   // Create or update shop settings
-  app.post('/api/shop-settings', validateRequest({ body: shopSettingsSchema }), async (req, res) => {
+  app.post('/api/shop-settings', authenticateToken, validateRequest({ body: shopSettingsSchema }), async (req, res) => {
     try {
-      const existingSettings = await prisma.shopSettings.findFirst();
+      const existingSettings = await prisma.shopSettings.findFirst({
+        where: { userId: req.userId }
+      });
       
       let settings;
       if (existingSettings) {
@@ -45,7 +49,10 @@ export function setupShopSettingsRoutes(app, prisma) {
         });
       } else {
         settings = await prisma.shopSettings.create({
-          data: req.body,
+          data: {
+            ...req.body,
+            userId: req.userId
+          },
         });
       }
       

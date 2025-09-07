@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/axios';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -77,8 +77,8 @@ function Products() {
       if (showDamaged) endpoint = '/api/products/damaged';
       
       const searchParam = !showDamaged ? `&search=${debouncedSearchTerm}` : '';
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}${endpoint}?page=${currentPage}&limit=${itemsPerPage}${searchParam}`
+      const response = await api.get(
+        `${endpoint}?page=${currentPage}&limit=${itemsPerPage}${searchParam}`
       );
       return response.data;
     }
@@ -94,8 +94,8 @@ function Products() {
   const updateProduct = useMutation(
     async (updatedProduct) => {
       console.log("payload of product:", updatedProduct)
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/products/${updatedProduct.id.toString()}`,
+      const response = await api.put(
+        `/api/products/${updatedProduct.id.toString()}`,
         updatedProduct
       );
       return response.data;
@@ -121,8 +121,8 @@ function Products() {
 
   const deleteProduct = useMutation(
     async (productId) => {
-      const response = await axios.delete(
-        `${import.meta.env.VITE_API_URL}/api/products/${productId}`
+      const response = await api.delete(
+        `/api/products/${productId}`
       );
       return response.data;
     },
@@ -141,8 +141,8 @@ function Products() {
 
   const createProduct = useMutation(
     async (newProduct) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/products`,
+      const response = await api.post(
+        `/api/products`,
         newProduct
       );
       return response.data;
@@ -164,8 +164,8 @@ function Products() {
 
   const markAsDamaged = useMutation(
     async ({ productId, quantity }) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/products/${productId}/damage`,
+      const response = await api.post(
+        `/api/products/${productId}/damage`,
         { quantity }
       );
       return response.data;
@@ -182,8 +182,8 @@ function Products() {
 
   const restoreDamaged = useMutation(
     async ({ productId, quantity }) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/products/${productId}/restore`,
+      const response = await api.post(
+        `/api/products/${productId}/restore`,
         { quantity }
       );
       return response.data;

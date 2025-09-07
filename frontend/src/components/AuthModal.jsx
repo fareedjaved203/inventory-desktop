@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 
-function AuthModal({ isSignup, onSuccess, queryClient }) {
+function AuthModal({ onSuccess, queryClient }) {
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -87,7 +88,7 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
           </h2>
           <p className="text-gray-600">
             {isSignup 
-              ? 'Set up your admin account to get started' 
+              ? 'Start your 7-day free trial' 
               : 'Sign in to access your inventory system'
             }
           </p>
@@ -161,14 +162,32 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
           </button>
         </form>
 
-        {!isSignup && !showForgotPassword && (
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setShowForgotPassword(true)}
-              className="text-sm text-primary-600 hover:text-primary-800"
-            >
-              Forgot Password?
-            </button>
+        {!showForgotPassword && (
+          <div className="mt-4 text-center space-y-2">
+            {!isSignup && (
+              <button
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-primary-600 hover:text-primary-800 block w-full"
+              >
+                Forgot Password?
+              </button>
+            )}
+            <div className="border-t pt-4">
+              <p className="text-sm text-gray-600 mb-2">
+                {isSignup ? 'Already have an account?' : "Don't have an account?"}
+              </p>
+              <button
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setError('');
+                  setEmail('');
+                  setPassword('');
+                }}
+                className="text-primary-600 hover:text-primary-800 font-medium"
+              >
+                {isSignup ? 'Sign In' : 'Create Account'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -261,7 +280,7 @@ function AuthModal({ isSignup, onSuccess, queryClient }) {
         {isSignup && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-700">
-              <strong>Note:</strong> This will be your admin account. Keep your credentials secure.
+              <strong>7-Day Free Trial:</strong> Full access to all features. No credit card required.
             </p>
           </div>
         )}

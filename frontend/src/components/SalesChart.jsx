@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import {
   LineChart,
   Line,
@@ -26,8 +26,8 @@ function SalesChart() {
   const { data, isLoading, error, refetch } = useQuery(
     ['salesAnalytics', interval, showDateRange ? dateRange : undefined],
     async () => {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/sales-analytics`,
+      const response = await api.get(
+        '/api/sales-analytics',
         {
           params: {
             interval,

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/axios';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -105,8 +105,8 @@ function BulkPurchasing() {
     ['bulk-purchases', debouncedSearchTerm, currentPage, showPendingPayments],
     async () => {
       const endpoint = showPendingPayments ? '/api/bulk-purchases/pending-payments' : '/api/bulk-purchases';
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}${endpoint}?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`
+      const response = await api.get(
+        `${endpoint}?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`
       );
       return response.data;
     }
@@ -117,7 +117,7 @@ function BulkPurchasing() {
     ['contacts', debouncedContactSearchTerm],
     async () => {
       const searchParam = debouncedContactSearchTerm ? `&search=${debouncedContactSearchTerm}` : '';
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/contacts?limit=100${searchParam}`);
+      const response = await api.get(`/api/contacts?limit=100${searchParam}`);
       return response.data.items;
     }
   );
@@ -127,7 +127,7 @@ function BulkPurchasing() {
     ['products', debouncedProductSearchTerm],
     async () => {
       const searchParam = debouncedProductSearchTerm ? `&search=${debouncedProductSearchTerm}` : '';
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products?limit=100${searchParam}`);
+      const response = await api.get(`/api/products?limit=100${searchParam}`);
       return response.data.items;
     }
   );
@@ -150,8 +150,8 @@ function BulkPurchasing() {
   // Create bulk purchase mutation
   const createPurchase = useMutation(
     async (purchaseData) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/bulk-purchases`,
+      const response = await api.post(
+        '/api/bulk-purchases',
         purchaseData
       );
       return response.data;
@@ -168,8 +168,8 @@ function BulkPurchasing() {
   // Update bulk purchase mutation
   const updatePurchase = useMutation(
     async (updatedPurchase) => {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/bulk-purchases/${updatedPurchase.id}`,
+      const response = await api.put(
+        `/api/bulk-purchases/${updatedPurchase.id}`,
         updatedPurchase
       );
       return response.data;
@@ -189,8 +189,8 @@ function BulkPurchasing() {
   const [selectedPurchase, setSelectedPurchase] = useState(null);
   const deletePurchase = useMutation(
     async (purchaseId) => {
-      const response = await axios.delete(
-        `${import.meta.env.VITE_API_URL}/api/bulk-purchases/${purchaseId}`
+      const response = await api.delete(
+        `/api/bulk-purchases/${purchaseId}`
       );
       return response.data;
     },

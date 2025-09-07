@@ -1,21 +1,22 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { contactSchema, contactUpdateSchema, querySchema } from './schemas.js';
 
 export function setupContactRoutes(app, prisma) {
   // Get all contacts with search and pagination
-  app.get('/api/contacts', validateRequest({ query: querySchema }), async (req, res) => {
+  app.get('/api/contacts', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
 
-      const where = search
-        ? {
-            OR: [
-              { name: { contains: search } },
-              { address: { contains: search } },
-              { phoneNumber: { contains: search } },
-            ],
-          }
-        : {};
+      const where = {
+        userId: req.userId,
+        ...(search ? {
+          OR: [
+            { name: { contains: search } },
+            { address: { contains: search } },
+            { phoneNumber: { contains: search } },
+          ],
+        } : {})
+      };
 
       const [total, items] = await Promise.all([
         prisma.contact.count({ where }),
@@ -42,10 +43,13 @@ export function setupContactRoutes(app, prisma) {
   });
 
   // Get a single contact
-  app.get('/api/contacts/:id', async (req, res) => {
+  app.get('/api/contacts/:id', authenticateToken, async (req, res) => {
     try {
       const contact = await prisma.contact.findUnique({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
       });
 
       if (!contact) {
@@ -64,12 +68,16 @@ export function setupContactRoutes(app, prisma) {
   // Create a new contact
   app.post(
     '/api/contacts',
+    authenticateToken,
     validateRequest({ body: contactSchema }),
     async (req, res) => {
       try {
         // Check if contact with same name exists
         const existingContact = await prisma.contact.findFirst({
-          where: { name: req.body.name }
+          where: { 
+            name: req.body.name,
+            userId: req.userId
+          }
         });
 
         if (existingContact) {
@@ -77,7 +85,10 @@ export function setupContactRoutes(app, prisma) {
         }
 
         const contact = await prisma.contact.create({
-          data: req.body,
+          data: {
+            ...req.body,
+            userId: req.userId
+          },
         });
 
         res.status(201).json({
@@ -93,6 +104,7 @@ export function setupContactRoutes(app, prisma) {
   // Update a contact
   app.put(
     '/api/contacts/:id',
+    authenticateToken,
     validateRequest({ body: contactUpdateSchema }),
     async (req, res) => {
       try {
@@ -101,6 +113,7 @@ export function setupContactRoutes(app, prisma) {
           const existingContact = await prisma.contact.findFirst({
             where: {
               name: req.body.name,
+              userId: req.userId,
               NOT: {
                 id: req.params.id
               }
@@ -113,7 +126,10 @@ export function setupContactRoutes(app, prisma) {
         }
 
         const contact = await prisma.contact.update({
-          where: { id: req.params.id },
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          },
           data: req.body,
         });
 
@@ -131,14 +147,17 @@ export function setupContactRoutes(app, prisma) {
   );
 
   // Get customer statement data
-  app.get('/api/contacts/:id/statement', async (req, res) => {
+  app.get('/api/contacts/:id/statement', authenticateToken, async (req, res) => {
     try {
       const { id: contactId } = req.params;
       const { startDate, endDate } = req.query;
       
       // Get contact details
       const contact = await prisma.contact.findUnique({
-        where: { id: contactId }
+        where: { 
+          id: contactId,
+          userId: req.userId
+        }
       });
       
       if (!contact) {
@@ -179,6 +198,7 @@ export function setupContactRoutes(app, prisma) {
         prisma.sale.findMany({
           where: {
             contactId,
+            userId: req.userId,
             ...saleDateFilter
           },
           include: {
@@ -193,6 +213,7 @@ export function setupContactRoutes(app, prisma) {
         prisma.loanTransaction.findMany({
           where: {
             contactId,
+            userId: req.userId,
             ...dateFilter
           },
           orderBy: { date: 'asc' }
@@ -200,7 +221,8 @@ export function setupContactRoutes(app, prisma) {
         prisma.saleReturn.findMany({
           where: {
             sale: {
-              contactId
+              contactId,
+              userId: req.userId
             },
             ...returnDateFilter
           },
@@ -217,6 +239,7 @@ export function setupContactRoutes(app, prisma) {
         prisma.bulkPurchase.findMany({
           where: {
             contactId,
+            userId: req.userId,
             ...purchaseDateFilter
           },
           include: {
@@ -239,24 +262,30 @@ export function setupContactRoutes(app, prisma) {
           prisma.sale.findMany({
             where: {
               contactId,
+              userId: req.userId,
               saleDate: { lt: beforeStartDate }
             }
           }),
           prisma.loanTransaction.findMany({
             where: {
               contactId,
+              userId: req.userId,
               date: { lt: beforeStartDate }
             }
           }),
           prisma.saleReturn.findMany({
             where: {
-              sale: { contactId },
+              sale: { 
+                contactId,
+                userId: req.userId
+              },
               returnDate: { lt: beforeStartDate }
             }
           }),
           prisma.bulkPurchase.findMany({
             where: {
               contactId,
+              userId: req.userId,
               purchaseDate: { lt: beforeStartDate }
             }
           })
@@ -401,15 +430,15 @@ export function setupContactRoutes(app, prisma) {
   });
 
   // Delete a contact
-  app.delete('/api/contacts/:id', async (req, res) => {
+  app.delete('/api/contacts/:id', authenticateToken, async (req, res) => {
     try {
       const contactId = req.params.id;
       
       // Check what's preventing deletion
       const [sales, purchases, loans] = await Promise.all([
-        prisma.sale.count({ where: { contactId } }),
-        prisma.bulkPurchase.count({ where: { contactId } }),
-        prisma.loanTransaction.count({ where: { contactId } })
+        prisma.sale.count({ where: { contactId, userId: req.userId } }),
+        prisma.bulkPurchase.count({ where: { contactId, userId: req.userId } }),
+        prisma.loanTransaction.count({ where: { contactId, userId: req.userId } })
       ]);
       
       if (sales > 0 || purchases > 0) {
@@ -426,12 +455,18 @@ export function setupContactRoutes(app, prisma) {
       await prisma.$transaction(async (prisma) => {
         if (loans > 0) {
           await prisma.loanTransaction.deleteMany({
-            where: { contactId }
+            where: { 
+              contactId,
+              userId: req.userId
+            }
           });
         }
         
         await prisma.contact.delete({
-          where: { id: contactId }
+          where: { 
+            id: contactId,
+            userId: req.userId
+          }
         });
       });
       

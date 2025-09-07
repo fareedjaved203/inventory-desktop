@@ -1,4 +1,4 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 
 const branchSchema = z.object({
@@ -19,7 +19,7 @@ export function setupBranchRoutes(app, prisma) {
   });
   
   // Get all branches
-  app.get('/api/branches', async (req, res) => {
+  app.get('/api/branches', authenticateToken, async (req, res) => {
     try {
       // Check if branch model exists
       if (!prisma.branch) {
@@ -28,6 +28,7 @@ export function setupBranchRoutes(app, prisma) {
       }
       
       const branches = await prisma.branch.findMany({
+        where: { userId: req.userId },
         include: {
           employees: true
         },
@@ -41,14 +42,17 @@ export function setupBranchRoutes(app, prisma) {
   });
 
   // Create branch
-  app.post('/api/branches', validateRequest({ body: branchSchema }), async (req, res) => {
+  app.post('/api/branches', authenticateToken, validateRequest({ body: branchSchema }), async (req, res) => {
     try {
       if (!prisma.branch) {
         return res.status(500).json({ error: 'Branch model not available. Please restart the server.' });
       }
       
       const branch = await prisma.branch.create({
-        data: req.body,
+        data: {
+          ...req.body,
+          userId: req.userId
+        },
         include: {
           employees: true
         }
@@ -64,10 +68,13 @@ export function setupBranchRoutes(app, prisma) {
   });
 
   // Update branch
-  app.put('/api/branches/:id', validateRequest({ body: branchSchema }), async (req, res) => {
+  app.put('/api/branches/:id', authenticateToken, validateRequest({ body: branchSchema }), async (req, res) => {
     try {
       const branch = await prisma.branch.update({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
         data: req.body,
         include: {
           employees: true
@@ -87,10 +94,13 @@ export function setupBranchRoutes(app, prisma) {
   });
 
   // Delete branch
-  app.delete('/api/branches/:id', async (req, res) => {
+  app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
     try {
       await prisma.branch.delete({
-        where: { id: req.params.id }
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        }
       });
       res.status(204).send();
     } catch (error) {

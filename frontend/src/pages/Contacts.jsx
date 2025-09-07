@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -60,8 +60,8 @@ function Contacts() {
   const { data: contactsData, isLoading, error } = useQuery(
     ['contacts', page, debouncedSearchTerm],
     async () => {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/contacts?page=${page}&search=${debouncedSearchTerm}`
+      const response = await api.get(
+        `/api/contacts?page=${page}&search=${debouncedSearchTerm}`
       );
       return response.data;
     }
@@ -77,8 +77,8 @@ function Contacts() {
   // Create contact mutation
   const createContact = useMutation(
     async (data) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/contacts`,
+      const response = await api.post(
+        '/api/contacts',
         data
       );
       return response.data;
@@ -99,8 +99,8 @@ function Contacts() {
   // Update contact mutation
   const updateContact = useMutation(
     async ({ id, data }) => {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/contacts/${id}`,
+      const response = await api.put(
+        `/api/contacts/${id}`,
         data
       );
       return response.data;
@@ -121,8 +121,8 @@ function Contacts() {
   // Delete contact mutation
   const deleteContact = useMutation(
     async (id) => {
-      const response = await axios.delete(
-        `${import.meta.env.VITE_API_URL}/api/contacts/${id}`
+      const response = await api.delete(
+        `/api/contacts/${id}`
       );
       return response.data;
     },
@@ -144,8 +144,8 @@ function Contacts() {
     ['loan-transactions', selectedContact?.id],
     async () => {
       if (!selectedContact?.id) return null;
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/contacts/${selectedContact.id}/loans`
+      const response = await api.get(
+        `/api/contacts/${selectedContact.id}/loans`
       );
       return response.data;
     },
@@ -155,8 +155,8 @@ function Contacts() {
   // Create loan transaction mutation
   const createLoanTransaction = useMutation(
     async (data) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/contacts/${selectedContact.id}/loans`,
+      const response = await api.post(
+        `/api/contacts/${selectedContact.id}/loans`,
         data
       );
       return response.data;
@@ -173,8 +173,8 @@ function Contacts() {
   // Delete loan transaction mutation
   const deleteLoanTransaction = useMutation(
     async (transactionId) => {
-      const response = await axios.delete(
-        `${import.meta.env.VITE_API_URL}/api/contacts/${selectedContact.id}/loans/${transactionId}`
+      const response = await api.delete(
+        `/api/contacts/${selectedContact.id}/loans/${transactionId}`
       );
       return response.data;
     },
@@ -189,7 +189,7 @@ function Contacts() {
   const { data: shopSettingsData } = useQuery(
     ['shop-settings'],
     async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+      const response = await api.get('/api/shop-settings');
       return response.data;
     }
   );
@@ -200,8 +200,8 @@ function Contacts() {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/contacts/${contactId}/statement?${params.toString()}`
+    const response = await api.get(
+      `/api/contacts/${contactId}/statement?${params.toString()}`
     );
     return response.data;
   };

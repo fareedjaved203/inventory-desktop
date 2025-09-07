@@ -1,4 +1,4 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 
@@ -18,9 +18,10 @@ const employeeUpdateSchema = employeeSchema.partial().extend({
 
 export function setupEmployeeRoutes(app, prisma) {
   // Get all employees
-  app.get('/api/employees', async (req, res) => {
+  app.get('/api/employees', authenticateToken, async (req, res) => {
     try {
       const employees = await prisma.employee.findMany({
+        where: { userId: req.userId },
         include: {
           branch: true
         },
@@ -40,7 +41,7 @@ export function setupEmployeeRoutes(app, prisma) {
   });
 
   // Create employee
-  app.post('/api/employees', validateRequest({ body: employeeSchema }), async (req, res) => {
+  app.post('/api/employees', authenticateToken, validateRequest({ body: employeeSchema }), async (req, res) => {
     try {
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
       
@@ -48,7 +49,8 @@ export function setupEmployeeRoutes(app, prisma) {
         data: {
           ...req.body,
           password: hashedPassword,
-          permissions: JSON.stringify(req.body.permissions)
+          permissions: JSON.stringify(req.body.permissions),
+          userId: req.userId
         },
         include: {
           branch: true
@@ -63,14 +65,14 @@ export function setupEmployeeRoutes(app, prisma) {
       });
     } catch (error) {
       if (error.code === 'P2002') {
-        return res.status(400).json({ error: 'Email must be unique' });
+        return res.status(400).json({ error: 'This email is already registered. Please use a different email address.' });
       }
       res.status(500).json({ error: error.message });
     }
   });
 
   // Update employee
-  app.put('/api/employees/:id', validateRequest({ body: employeeUpdateSchema }), async (req, res) => {
+  app.put('/api/employees/:id', authenticateToken, validateRequest({ body: employeeUpdateSchema }), async (req, res) => {
     try {
       const updateData = { ...req.body };
       
@@ -83,7 +85,10 @@ export function setupEmployeeRoutes(app, prisma) {
       }
       
       const employee = await prisma.employee.update({
-        where: { id: req.params.id },
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        },
         data: updateData,
         include: {
           branch: true
@@ -98,7 +103,7 @@ export function setupEmployeeRoutes(app, prisma) {
       });
     } catch (error) {
       if (error.code === 'P2002') {
-        return res.status(400).json({ error: 'Email must be unique' });
+        return res.status(400).json({ error: 'This email is already registered. Please use a different email address.' });
       }
       if (error.code === 'P2025') {
         return res.status(404).json({ error: 'Employee not found' });
@@ -108,10 +113,13 @@ export function setupEmployeeRoutes(app, prisma) {
   });
 
   // Delete employee
-  app.delete('/api/employees/:id', async (req, res) => {
+  app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     try {
       await prisma.employee.delete({
-        where: { id: req.params.id }
+        where: { 
+          id: req.params.id,
+          userId: req.userId
+        }
       });
       res.status(204).send();
     } catch (error) {
