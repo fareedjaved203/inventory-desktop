@@ -1,3 +1,5 @@
+import { authenticateToken } from './middleware.js';
+
 export function setupEmployeeStatsRoutes(app, prisma) {
   // Get employee stats
   app.get('/api/employee-stats/:employeeId', async (req, res) => {
@@ -80,7 +82,7 @@ export function setupEmployeeStatsRoutes(app, prisma) {
   });
 
   // Get branch-wise employee sales for dashboard
-  app.get('/api/branch-employee-sales', async (req, res) => {
+  app.get('/api/branch-employee-sales', authenticateToken, async (req, res) => {
     try {
       const { period = '30days' } = req.query;
       
@@ -114,6 +116,9 @@ export function setupEmployeeStatsRoutes(app, prisma) {
       }
       
       const branches = await prisma.branch.findMany({
+        where: {
+          userId: req.userId
+        },
         include: {
           employees: {
             include: {

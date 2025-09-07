@@ -17,6 +17,7 @@ import { setupAuthRoutes } from './auth-routes.js';
 import { setupBranchRoutes } from './branch-routes.js';
 import { setupEmployeeRoutes } from './employee-routes.js';
 import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
+import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 
@@ -125,6 +126,7 @@ setupAuthRoutes(app, prisma);
 setupBranchRoutes(app, prisma);
 setupEmployeeRoutes(app, prisma);
 setupEmployeeStatsRoutes(app, prisma);
+setupSuperAdminRoutes(app, prisma);
 
 // License routes
 app.use('/api/license', licenseRoutes);

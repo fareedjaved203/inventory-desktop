@@ -36,7 +36,9 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
   ];
 
   // Filter menu items based on user permissions
-  const menuItems = userType === 'admin' 
+  const menuItems = userType === 'superadmin'
+    ? [] // Super admin has no sidebar menu items
+    : userType === 'admin' 
     ? allMenuItems.filter(item => !item.employeeOnly)
     : allMenuItems.filter(item => 
         item.employeeOnly || userPermissions.includes(item.permission)

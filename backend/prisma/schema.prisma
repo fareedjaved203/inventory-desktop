@@ -6,30 +6,35 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Product {
   id          String     @id @default(uuid())
-  name        String     @unique
+  name        String
   description String
   price       BigInt
   purchasePrice BigInt?  @default(0)
   sku         String?
   quantity    BigInt
+  unit        String     @default("pcs")
   damagedQuantity BigInt @default(0)
   lowStockThreshold BigInt @default(10)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   SaleItem    SaleItem[]
   BulkPurchaseItem BulkPurchaseItem[]
   SaleReturnItem SaleReturnItem[]
+  
+  @@unique([name, userId])
 }
 
 model Sale {
   id          String     @id @default(uuid())
-  billNumber  String     @unique
+  billNumber  String
   totalAmount BigInt
   originalTotalAmount BigInt?
   discount    BigInt     @default(0)
@@ -39,10 +44,14 @@ model Sale {
   contactId   String?
   employee    Employee?  @relation(fields: [employeeId], references: [id])
   employeeId  String?
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items       SaleItem[]
   returns     SaleReturn[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  
+  @@unique([billNumber, userId])
 }
 
 model SaleItem {
@@ -63,6 +72,8 @@ model Contact {
   name      String
   address   String?
   phoneNumber     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   purchases BulkPurchase[]
@@ -72,15 +83,19 @@ model Contact {
 
 model BulkPurchase {
   id          String     @id @default(uuid())
-  invoiceNumber String?   @unique
+  invoiceNumber String?
   totalAmount BigInt
   paidAmount  BigInt
   purchaseDate DateTime   @default(now())
   contact     Contact    @relation(fields: [contactId], references: [id])
   contactId   String
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items       BulkPurchaseItem[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  
+  @@unique([invoiceNumber, userId])
 }
 
 model BulkPurchaseItem {
@@ -131,6 +146,8 @@ model LoanTransaction {
   date        DateTime @default(now())
   contact     Contact  @relation(fields: [contactId], references: [id])
   contactId   String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -143,13 +160,25 @@ model DriveSettings {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  resetOtp  String?
-  otpExpiry DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  resetOtp     String?
+  otpExpiry    DateTime?
+  role         String   @default("admin")
+  companyName  String?
+  trialEndDate DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  products     Product[]
+  sales        Sale[]
+  contacts     Contact[]
+  bulkPurchases BulkPurchase[]
+  loanTransactions LoanTransaction[]
+  shopSettings ShopSettings[]
+  branches     Branch[]
+  employees    Employee[]
+  license      License?
 }
 
 model ShopSettings {
@@ -171,18 +200,25 @@ model ShopSettings {
   brand3          String?
   brand3Registered Boolean  @default(false)
   logo            String?
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
 model Branch {
   id        String     @id @default(uuid())
-  name      String     @unique
-  code      String     @unique
+  name      String
+  code      String
   location  String
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   employees Employee[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  
+  @@unique([name, userId])
+  @@unique([code, userId])
 }
 
 model Employee {
@@ -190,12 +226,29 @@ model Employee {
   firstName   String
   lastName    String
   phone       String
-  email       String   @unique
+  email       String
   password    String
   permissions String   // JSON string of permissions
   branch      Branch   @relation(fields: [branchId], references: [id])
   branchId    String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sales       Sale[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  @@unique([email, userId])
+}
+
+model License {
+  id               String   @id @default(uuid())
+  licenseKey       String?
+  deviceFingerprint String?
+  expiry           BigInt?
+  activatedAt      DateTime?
+  isTrial          Boolean  @default(false)
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

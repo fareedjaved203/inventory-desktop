@@ -166,7 +166,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               totalAmount: req.body.totalAmount,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
-              userId: req.userId,
+              user: {
+                connect: { id: req.userId }
+              },
               contact: {
                 connect: { id: req.body.contactId }
               },

@@ -18,6 +18,7 @@ const productSchema = z.object({
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").optional(),
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
+  unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
   lowStockThreshold: z.number().int().min(0, "Low stock threshold must be non-negative"),
 });
 
@@ -49,6 +50,7 @@ function Products() {
     purchasePrice: '',
     sku: '',
     quantity: '',
+    unit: 'pcs',
     lowStockThreshold: '10',
   });
 
@@ -104,7 +106,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', lowStockThreshold: '10' });
+        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
         setIsEditMode(false);
         setValidationErrors({});
       },
@@ -151,7 +153,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', lowStockThreshold: '10' });
+        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
         setValidationErrors({});
       },
       onError: (error) => {
@@ -275,6 +277,7 @@ function Products() {
       purchasePrice: product.purchasePrice ? product.purchasePrice.toString() : '',
       sku: product.sku,
       quantity: product.quantity.toString(),
+      unit: product.unit || 'pcs',
       lowStockThreshold: (product.lowStockThreshold || 10).toString(),
     });
     setIsEditMode(true);
@@ -387,6 +390,7 @@ function Products() {
                   purchasePrice: '',
                   sku: '',
                   quantity: '',
+                  unit: 'pcs',
                   lowStockThreshold: '10'
                 });
                 setValidationErrors({});
@@ -645,33 +649,64 @@ function Products() {
                   )}
                   <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Used for profit calculation'}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaWarehouse className="text-primary-500" /> {language === 'ur' ? 'مقدار *' : 'Quantity *'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.quantity}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (value < 0) {
-                        setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
-                      } else {
-                        setValidationErrors({...validationErrors, quantity: undefined});
-                      }
-                      setFormData({ ...formData, quantity: e.target.value });
-                    }}
-                    onWheel={(e) => e.target.blur()}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={language === 'ur' ? 'اسٹاک کی مقدار' : 'Stock quantity'}
-                  />
-                  {validationErrors.quantity && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <FaWarehouse className="text-primary-500" /> {language === 'ur' ? 'مقدار *' : 'Quantity *'}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.quantity}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (value < 0) {
+                          setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
+                        } else {
+                          setValidationErrors({...validationErrors, quantity: undefined});
+                        }
+                        setFormData({ ...formData, quantity: e.target.value });
+                      }}
+                      onWheel={(e) => e.target.blur()}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder={language === 'ur' ? 'اسٹاک کی مقدار' : 'Stock quantity'}
+                    />
+                    {validationErrors.quantity && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {language === 'ur' ? 'یونٹ' : 'Unit'}
+                    </label>
+                    <select
+                      value={formData.unit}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="pcs">Pieces</option>
+                      <option value="dozen">Dozen</option>
+                      <option value="kg">Kilogram</option>
+                      <option value="gram">Gram</option>
+                      <option value="ltr">Liter</option>
+                      <option value="ml">Milliliter</option>
+                      <option value="ft">Feet</option>
+                      <option value="metre">Meter</option>
+                      <option value="sqft">Square Feet</option>
+                      <option value="carton">Carton</option>
+                      <option value="roll">Roll</option>
+                      <option value="sheet">Sheet</option>
+                      <option value="drum">Drum</option>
+                      <option value="packet">Packet</option>
+                      <option value="bottle">Bottle</option>
+                      <option value="bag">Bag</option>
+                      <option value="pair">Pair</option>
+                      <option value="set">Set</option>
+                    </select>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-orange-500">

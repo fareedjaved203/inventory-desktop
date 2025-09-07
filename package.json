@@ -28,10 +28,10 @@
       "frontend/dist/**/*",
       "scripts/**/*",
       "setup-database.bat",
+      "installer.nsh",
       "!backend/node_modules/.cache",
       "!backend/prisma/migrations",
-      "!backend/.env",
-      "!backend/prisma/inventory.db"
+      "!backend/.env"
     ],
     "extraResources": [
       {
@@ -41,6 +41,14 @@
       {
         "from": "frontend/dist",
         "to": "frontend/dist"
+      },
+      {
+        "from": "scripts",
+        "to": "scripts"
+      },
+      {
+        "from": "setup-database.bat",
+        "to": "setup-database.bat"
       }
     ],
 
@@ -68,6 +76,7 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": false,
       "include": "installer.nsh",
+      "installerLanguages": ["en"],
       "differentialPackage": false
     },
     "publish": {

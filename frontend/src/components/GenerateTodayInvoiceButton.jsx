@@ -70,6 +70,9 @@ function GenerateTodayInvoiceButton({ sales }) {
       const { default: SimpleDateInvoicePDF } = await import('./SimpleDateInvoicePDF');
       
       console.log('Creating PDF document...');
+      // Convert today back to YYYY-MM-DD format for PDF filename
+      const [day, month, year] = today.split('/');
+      const pdfDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       const pdfDoc = <SimpleDateInvoicePDF date={today} sales={todaySales} shopSettings={finalShopSettings} />;
       const blob = await pdf(pdfDoc).toBlob();
       
@@ -77,7 +80,7 @@ function GenerateTodayInvoiceButton({ sales }) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `daily-sales-${today}.pdf`;
+      link.download = `daily-sales-${today.replace(/\//g, '-')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

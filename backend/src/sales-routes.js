@@ -2,9 +2,8 @@ import { validateRequest, authenticateToken } from './middleware.js';
 import { Prisma } from '@prisma/client';
 import { saleSchema, querySchema } from './schemas.js';
 
-// Helper function to get current time in Pakistan and store as UTC
+// Helper function to get current Pakistan time
 function getCurrentPakistanTime() {
-  // Get current time in Pakistan timezone (UTC+5)
   const now = new Date();
   const pakistanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Karachi"}));
   return pakistanTime;
@@ -28,15 +27,11 @@ function parseDateDDMMYYYY(dateString) {
     return null;
   }
   
-  console.log('Attempting to parse date:', dateString);
-  
   const parts = dateString.split('/');
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1;
     const year = parseInt(parts[2], 10);
-
-    console.log('Parsed components:', { day, month: month + 1, year });
 
     if (day >= 1 && day <= 31 && 
         month >= 0 && month <= 11 && 
@@ -48,13 +43,11 @@ function parseDateDDMMYYYY(dateString) {
           date.getUTCMonth() === month && 
           date.getUTCDate() === day) {
         
-        console.log('Successfully parsed date:', date.toISOString());
         return date;
       }
     }
   }
   
-  console.log('Failed to parse date:', dateString);
   return null;
 }
 
@@ -106,8 +99,8 @@ export function setupSalesRoutes(app, prisma) {
               paidAmount: req.body.paidAmount || 0,
               saleDate,
               userId: req.userId,
-              ...(req.body.contactId && { contact: { connect: { id: req.body.contactId } } }),
-              ...(req.body.employeeId && { employee: { connect: { id: req.body.employeeId } } }),
+              ...(req.body.contactId && { contactId: req.body.contactId }),
+              ...(req.body.employeeId && { employeeId: req.body.employeeId }),
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
@@ -411,7 +404,6 @@ export function setupSalesRoutes(app, prisma) {
               lt: new Date(endOfDay.getTime() + 1),
             }
           });
-          console.log('Added date condition for:', date);
         }
       }
 
@@ -447,7 +439,6 @@ export function setupSalesRoutes(app, prisma) {
                 lt: new Date(endOfDay.getTime() + 1),
               }
             });
-            console.log('Added search date condition for:', search);
           } else {
             // If date parsing failed, search by bill number and contact name
             conditions.push({
@@ -689,8 +680,8 @@ export function setupSalesRoutes(app, prisma) {
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount || 0,
               ...(saleDate && { saleDate }),
-              ...(req.body.contactId ? { contact: { connect: { id: req.body.contactId } } } : { contact: { disconnect: true } }),
-              ...(req.body.employeeId ? { employee: { connect: { id: req.body.employeeId } } } : {}),
+              contactId: req.body.contactId || null,
+              employeeId: req.body.employeeId || null,
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,

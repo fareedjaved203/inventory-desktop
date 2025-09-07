@@ -93,6 +93,9 @@ export function setupAuthRoutes(app, prisma) {
       const trialResult = await licenseManager.createTrialLicense(user.id);
       console.log('Trial license creation result:', trialResult);
 
+      // Generate JWT token for immediate login
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+
       // Send notification email in background
       setImmediate(async () => {
         try {
@@ -103,7 +106,7 @@ export function setupAuthRoutes(app, prisma) {
         }
       });
 
-      res.json({ success: true });
+      res.json({ success: true, token, userId: user.id, userType: 'admin' });
     } catch (error) {
       console.error('Signup error:', error);
       res.status(500).json({ error: error.message || 'Failed to create user' });
@@ -125,7 +128,8 @@ export function setupAuthRoutes(app, prisma) {
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (isValidPassword) {
           const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
-          return res.json({ success: true, userType: 'admin', token, userId: user.id });
+          const userType = user.role === 'superadmin' ? 'superadmin' : 'admin';
+          return res.json({ success: true, userType, token, userId: user.id });
         }
       }
 

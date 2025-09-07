@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -14,9 +14,11 @@ import Branches from './pages/Branches';
 import Employees from './pages/Employees';
 import EmployeeStats from './pages/EmployeeStats';
 import Settings from './pages/Settings';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
 import LicenseModal from './components/LicenseModal';
+import SplashScreen from './components/SplashScreen';
 import { useLicense } from './hooks/useLicense';
 
 const queryClient = new QueryClient();
@@ -71,8 +73,13 @@ function AppContent() {
 
   useEffect(() => {
     // Only show license modal after authentication is complete
+    console.log('License check:', { licenseLoading, licenseValid, isAuthenticated });
     if (!licenseLoading && !licenseValid && isAuthenticated) {
+      console.log('Showing license modal');
       setShowLicenseModal(true);
+    } else if (!licenseLoading && licenseValid && isAuthenticated) {
+      console.log('License is valid, hiding modal');
+      setShowLicenseModal(false);
     }
   }, [licenseValid, licenseLoading, isAuthenticated]);
 
@@ -114,6 +121,25 @@ function AppContent() {
     
     // Invalidate auth check to refetch user count
     queryClient.invalidateQueries(['auth-check']);
+    
+    // Redirect based on user type
+    setTimeout(() => {
+      if (type === 'superadmin') {
+        window.location.replace('/super-admin');
+      } else if (type === 'employee') {
+        window.location.replace('/employee-stats');
+      } else {
+        // Regular admin user
+        window.location.replace('/');
+      }
+    }, 100);
+    
+    // Refresh license status for non-super admin users
+    if (type !== 'superadmin') {
+      setTimeout(() => {
+        refreshLicense();
+      }, 500);
+    }
   };
 
   const handleLogout = () => {
@@ -137,14 +163,7 @@ function AppContent() {
   };
 
   if (isLoading || licenseLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   // Don't block app startup with license modal
@@ -176,6 +195,9 @@ function AppContent() {
               <Route path="/branches" element={<Branches />} />
               <Route path="/employees" element={<Employees />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/super-admin" element={
+                userType === 'superadmin' ? <SuperAdminDashboard /> : <Dashboard />
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
