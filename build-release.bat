@@ -1,28 +1,23 @@
 @echo off
 echo Building release installer with PostgreSQL support...
 
-REM Update backend dependencies for PostgreSQL
-echo Updating backend dependencies...
+REM Install backend dependencies from scratch
+echo Installing backend dependencies...
 cd backend
 
-REM Clear npm cache and node_modules
-echo Clearing cache...
-npm cache clean --force
+REM Clean install - remove everything and reinstall
 if exist node_modules rmdir /s /q node_modules
+if exist package-lock.json del package-lock.json
 
-REM Install with verbose output
-echo Installing dependencies...
-npm install --verbose
+REM Fresh install of all dependencies
+echo Fresh install of all dependencies...
+npm install
 if %errorlevel% neq 0 (
     echo Backend npm install failed!
-    echo Trying with --force flag...
-    npm install --force
-    if %errorlevel% neq 0 (
-        echo Backend npm install still failed!
-        pause
-        exit /b 1
-    )
+    pause
+    exit /b 1
 )
+
 cd ..
 
 REM Build frontend and backend

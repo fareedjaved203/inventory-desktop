@@ -94,6 +94,13 @@ function createWindow() {
     // Updates will only be checked when user requests
   });
 
+  // Show window immediately when content starts loading to display splash screen
+  mainWindow.webContents.once('did-start-loading', () => {
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  });
+
   // Handle version request
   ipcMain.handle('get-version', () => {
     return app.getVersion();

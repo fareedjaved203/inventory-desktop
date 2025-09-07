@@ -6,6 +6,7 @@ import DashboardCard from '../components/DashboardCard';
 import SalesChart from '../components/SalesChart';
 import SalesTrendChart from '../components/SalesTrendChart';
 import BranchEmployeeSalesChart from '../components/BranchEmployeeSalesChart';
+import AWSSpinner from '../components/AWSSpinner';
 import { FaBox, FaWarehouse, FaExclamationTriangle, FaCalendarDay, FaCalendarWeek, FaCalendarAlt, FaCalendar, FaSync } from 'react-icons/fa';
 import { RiMoneyDollarCircleFill } from "react-icons/ri";
 import { MdOutlinePayments } from "react-icons/md";
@@ -64,10 +65,14 @@ function Dashboard() {
         <h1 className="text-3xl font-bold text-primary-800">{t('dashboard')}</h1>
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
           disabled={isLoading || isLoadingStats}
         >
-          <FaSync className={`${isLoading || isLoadingStats ? 'animate-spin' : ''}`} />
+          {isLoading || isLoadingStats ? (
+            <AWSSpinner size="sm" className="text-white" />
+          ) : (
+            <FaSync />
+          )}
           {language === 'ur' ? 'ریفریش' : 'Refresh'}
         </button>
       </div>

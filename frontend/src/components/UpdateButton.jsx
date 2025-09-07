@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+import AWSSpinner from './AWSSpinner';
 
 function UpdateButton() {
   const { language } = useLanguage();
@@ -154,8 +155,9 @@ function UpdateButton() {
         <button
           onClick={checkForUpdates}
           disabled={checking}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
         >
+          {checking && <AWSSpinner size="sm" className="text-white" />}
           {checking ? (language === 'ur' ? 'چیک کر رہا ہے...' : 'Checking...') : t('checkForUpdates')}
         </button>
 

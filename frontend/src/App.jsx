@@ -28,6 +28,7 @@ function AppContent() {
   const [appVersion, setAppVersion] = useState('1.0.0');
   const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // Clear auth on container restart by checking a session timestamp
     const authTime = localStorage.getItem('authTime');
@@ -68,6 +69,10 @@ function AppContent() {
   useEffect(() => {
     if (authCheck && !isAuthenticated) {
       setShowAuthModal(true);
+    }
+    // Mark initial load as complete once auth check is done
+    if (authCheck !== undefined) {
+      setIsInitialLoad(false);
     }
   }, [authCheck, isAuthenticated]);
 
@@ -162,7 +167,9 @@ function AppContent() {
     refreshLicense();
   };
 
-  if (isLoading || licenseLoading) {
+  // Show splash screen only during initial app startup in desktop mode
+  const isDesktop = window.electronAPI !== undefined;
+  if ((isLoading || licenseLoading) && isInitialLoad && isDesktop) {
     return <SplashScreen />;
   }
 
