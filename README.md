@@ -23,12 +23,7 @@ The desktop installer automatically:
 
 ### Manual Setup
 
-1. Run the migration script:
-```bash
-migrate-to-postgres.bat
-```
-
-2. Or use Docker Compose:
+Use Docker Compose:
 ```bash
 docker-compose up --build
 ```
@@ -47,28 +42,22 @@ The application will be available at http://localhost:3000
 
 To run in development mode:
 
-1. Setup PostgreSQL (first time only):
-```bash
-migrate-to-postgres.bat
-```
-
-2. Start the backend:
+1. Start the backend:
 ```bash
 cd backend
 npm install
 npm run dev
 ```
 
-3. Start the frontend:
+2. Start the frontend:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## Database Migration
+## Database
 
-If you're upgrading from SQLite to PostgreSQL:
-- The installer automatically handles migration
-- Your existing data will be preserved
+- Uses PostgreSQL database
+- The installer automatically sets up the database
 - Database credentials: `postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar`

@@ -43,33 +43,28 @@ async function initializeApp() {
   // Set PostgreSQL URL for Electron
   if (process.env.ELECTRON_APP) {
     console.log('Running in Electron mode');
-    const postgresUrl = 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar';
-    process.env.DATABASE_URL = postgresUrl;
-    databaseUrl = postgresUrl;
-    isPostgreSQL = true;
-    console.log('Using PostgreSQL database');
-  }
-  
-  console.log('Database URL:', process.env.DATABASE_URL);
-  
-  try {
-    prisma = new PrismaClient();
-  } catch (error) {
-    console.error('Failed to initialize Prisma client:', error);
-    process.exit(1);
-  }
-  
-  // Run database checks and migration
-  try {
-    const result = await ensureDatabaseExists();
-    console.log('Using PostgreSQL database');
-    await checkAndMigrate();
-  } catch (error) {
-    console.error('Database startup failed:', error);
-    if (!process.env.ELECTRON_APP) {
-      process.exit(1);
+    const postgresUrl = process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+    
+    // Try PostgreSQL first
+    try {
+      process.env.DATABASE_URL = postgresUrl;
+      prisma = new PrismaClient();
+      await prisma.$connect();
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('PostgreSQL connection successful');
+      isPostgreSQL = true;
+    } catch (error) {
+      console.error('PostgreSQL connection failed:', error);
+      throw error;
     }
+  } else {
+    prisma = new PrismaClient();
   }
+  
+  console.log('Final Database URL:', process.env.DATABASE_URL);
+  console.log('Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
+  
+  await checkAndMigrate();
 }
 
 // Start initialization
@@ -87,11 +82,11 @@ async function ensureDatabaseExists() {
   try {
     await prisma.$connect();
     await prisma.$queryRaw`SELECT 1`;
-    console.log('PostgreSQL connection successful');
-    return { success: true, isPostgreSQL: true };
+    console.log('Database connection successful');
+    return { success: true, isPostgreSQL };
   } catch (error) {
-    console.log('PostgreSQL connection failed - will be set up by installer');
-    return { success: false, isPostgreSQL: true };
+    console.log('Database connection failed:', error.message);
+    return { success: false, isPostgreSQL };
   }
 }
 

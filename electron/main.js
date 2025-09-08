@@ -229,8 +229,20 @@ function startServer() {
     console.log('Is dev:', isDev);
     console.log('Is packaged:', app.isPackaged);
     
-    // Set environment variables for the server
-    const postgresUrl = 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar';
+    // Load .env file
+    const envPath = path.join(cwd, '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = {};
+      envContent.split('\n').forEach(line => {
+        const [key, value] = line.split('=');
+        if (key && value) {
+          envVars[key] = value.replace(/"/g, '');
+        }
+      });
+      Object.assign(process.env, envVars);
+    }
+    
     const sqliteUrl = `file:${dbPath}`;
     
     const env = {
@@ -238,12 +250,12 @@ function startServer() {
       PORT: serverPort,
       NODE_ENV: isDev ? 'development' : undefined,
       ELECTRON_APP: 'true',
-      DATABASE_URL: postgresUrl, // Try PostgreSQL first
-      FALLBACK_DATABASE_URL: sqliteUrl // Fallback to SQLite if PostgreSQL fails
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true'
     };
 
     serverProcess = spawn('node', [serverPath], {
       env: {
+        ...process.env,
         ...env,
         ELECTRON_CWD: process.cwd()
       },
@@ -328,11 +340,23 @@ async function setupDatabase() {
         ? path.join(__dirname, '../backend')
         : path.join(process.resourcesPath, 'backend');
       
-      // Set environment for migration
+      // Load .env file for migration
+      const envPath = path.join(backendPath, '.env');
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const envVars = {};
+        envContent.split('\n').forEach(line => {
+          const [key, value] = line.split('=');
+          if (key && value) {
+            envVars[key] = value.replace(/"/g, '');
+          }
+        });
+        Object.assign(process.env, envVars);
+      }
+      
       const env = {
         ...process.env,
-        ELECTRON_USER_DATA: userDataPath,
-        DATABASE_URL: 'postgresql://hisabghar:hisabghar123@localhost:5432/hisabghar'
+        ELECTRON_USER_DATA: userDataPath
       };
       
       execSync(`node "${migrationScript}"`, {

@@ -1,6 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),

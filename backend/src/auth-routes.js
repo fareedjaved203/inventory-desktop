@@ -1,6 +1,7 @@
 import { validateRequest } from './middleware.js';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -71,7 +72,6 @@ export function setupAuthRoutes(app, prisma) {
         return res.status(400).json({ error: 'User with this email already exists' });
       }
 
-      const bcrypt = await import('bcrypt');
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Create user with 7-day trial
@@ -124,7 +124,6 @@ export function setupAuthRoutes(app, prisma) {
       });
 
       if (user) {
-        const bcrypt = await import('bcrypt');
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (isValidPassword) {
           const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
@@ -135,7 +134,6 @@ export function setupAuthRoutes(app, prisma) {
 
       // Then check employees if admin login failed
       if (prisma.employee) {
-        const bcrypt = await import('bcrypt');
         const employee = await prisma.employee.findFirst({
           where: { email },
           include: { branch: true }
@@ -229,7 +227,6 @@ export function setupAuthRoutes(app, prisma) {
         return res.status(400).json({ error: 'OTP has expired' });
       }
 
-      const bcrypt = await import('bcrypt');
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
       await prisma.user.update({
@@ -256,7 +253,6 @@ export function setupAuthRoutes(app, prisma) {
         where: { email: currentEmail }
       });
 
-      const bcrypt = await import('bcrypt');
       const isValidPassword = await bcrypt.compare(password, user.password);
       
       if (!user || !isValidPassword) {

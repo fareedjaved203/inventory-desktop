@@ -1,5 +1,6 @@
 import { authenticateToken } from './middleware.js';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -90,7 +91,6 @@ export function setupSuperAdminRoutes(app, prisma) {
         return res.status(400).json({ error: 'User with this email already exists' });
       }
 
-      const bcrypt = await import('bcrypt');
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const trialEndDate = new Date();
