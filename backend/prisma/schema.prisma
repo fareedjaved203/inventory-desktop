@@ -19,6 +19,7 @@ model Product {
   purchasePrice BigInt?  @default(0)
   sku         String?
   quantity    BigInt
+  unit        String     @default("pcs")
   damagedQuantity BigInt @default(0)
   lowStockThreshold BigInt @default(10)
   userId      String
