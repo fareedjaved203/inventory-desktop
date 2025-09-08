@@ -14,6 +14,19 @@ function AuthModal({ onSuccess, queryClient }) {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
+  
+  // Get previously used emails from localStorage
+  const [savedEmails] = useState(() => {
+    const saved = localStorage.getItem('savedEmails');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  // Save email to localStorage on successful login
+  const saveEmail = (emailToSave) => {
+    const existing = savedEmails.filter(e => e !== emailToSave);
+    const updated = [emailToSave, ...existing].slice(0, 5); // Keep last 5 emails
+    localStorage.setItem('savedEmails', JSON.stringify(updated));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +37,9 @@ function AuthModal({ onSuccess, queryClient }) {
       const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
       const data = { email, password };
       const response = await axios.post(`${import.meta.env.VITE_API_URL}${endpoint}`, data);
+      
+      // Save email for autocomplete
+      saveEmail(email);
       
       // Invalidate auth check query to refetch user count
       if (queryClient) {
@@ -109,9 +125,17 @@ function AuthModal({ onSuccess, queryClient }) {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                name="email"
+                id="email"
+                list="email-suggestions"
                 className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter email"
               />
+              <datalist id="email-suggestions">
+                {savedEmails.map((savedEmail, index) => (
+                  <option key={index} value={savedEmail} />
+                ))}
+              </datalist>
             </div>
           </div>
 

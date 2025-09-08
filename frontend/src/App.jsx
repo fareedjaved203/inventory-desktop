@@ -167,11 +167,7 @@ function AppContent() {
     refreshLicense();
   };
 
-  // Show splash screen only during initial app startup in desktop mode
-  const isDesktop = window.electronAPI !== undefined;
-  if ((isLoading || licenseLoading) && isInitialLoad && isDesktop) {
-    return <SplashScreen />;
-  }
+  // Splash screen removed - direct loading
 
   // Don't block app startup with license modal
   // License modal will be shown as overlay instead

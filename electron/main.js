@@ -8,7 +8,7 @@ let mainWindow;
 let serverProcess;
 
 const isDev = process.env.NODE_ENV === 'development';
-const serverPort = 3001;
+const serverPort = 3000;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -61,6 +61,13 @@ function createWindow() {
       label: 'Help',
       submenu: [
         {
+          label: 'Show Logs',
+          click: () => {
+            const logsPath = app.getPath('userData');
+            shell.openPath(logsPath);
+          }
+        },
+        {
           label: 'About',
           click: () => {
             dialog.showMessageBox(mainWindow, {
@@ -86,12 +93,16 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (isDev) {
-      mainWindow.webContents.openDevTools();
-    }
     
     // Don't check for updates automatically
     // Updates will only be checked when user requests
+  });
+
+  // Add F12 key handler for dev tools
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools();
+    }
   });
 
   // Show window immediately when content starts loading to display splash screen
@@ -235,9 +246,19 @@ function startServer() {
       const envContent = fs.readFileSync(envPath, 'utf8');
       const envVars = {};
       envContent.split('\n').forEach(line => {
-        const [key, value] = line.split('=');
-        if (key && value) {
-          envVars[key] = value.replace(/"/g, '');
+        const trimmedLine = line.trim();
+        if (trimmedLine && !trimmedLine.startsWith('#')) {
+          const equalIndex = trimmedLine.indexOf('=');
+          if (equalIndex > 0) {
+            const key = trimmedLine.substring(0, equalIndex).trim();
+            let value = trimmedLine.substring(equalIndex + 1).trim();
+            // Remove surrounding quotes if present
+            if ((value.startsWith('"') && value.endsWith('"')) || 
+                (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1);
+            }
+            envVars[key] = value;
+          }
         }
       });
       Object.assign(process.env, envVars);
@@ -250,8 +271,14 @@ function startServer() {
       PORT: serverPort,
       NODE_ENV: isDev ? 'development' : undefined,
       ELECTRON_APP: 'true',
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true'
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1',
+      DIRECT_URL: process.env.DIRECT_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:5432/postgres'
     };
+    
+    console.log('Environment variables:');
+    console.log('DATABASE_URL:', env.DATABASE_URL);
+    console.log('DIRECT_URL:', env.DIRECT_URL);
+    console.log('PORT:', env.PORT);
 
     serverProcess = spawn('node', [serverPath], {
       env: {
@@ -278,6 +305,15 @@ function startServer() {
     serverProcess.stderr.on('data', (data) => {
       const error = data.toString();
       console.error(`[SERVER ERROR] ${error}`);
+      
+      // Log errors to file for debugging
+      const errorLogPath = path.join(app.getPath('userData'), 'server-errors.log');
+      try {
+        const timestamp = new Date().toISOString();
+        fs.appendFileSync(errorLogPath, `[${timestamp}] ${error}\n`);
+      } catch (e) {
+        console.error('Failed to write error log:', e);
+      }
     });
 
     serverProcess.on('close', (code) => {
