@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,11 +20,17 @@ model Product {
   quantity    BigInt
   damagedQuantity BigInt @default(0)
   lowStockThreshold BigInt @default(10)
+  userId      String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   SaleItem    SaleItem[]
   BulkPurchaseItem BulkPurchaseItem[]
   SaleReturnItem SaleReturnItem[]
+
+  @@index([userId])
+  @@index([userId, name])
+  @@index([userId, quantity])
+  @@index([userId, createdAt])
 }
 
 model Sale {
@@ -39,10 +45,17 @@ model Sale {
   contactId   String?
   employee    Employee?  @relation(fields: [employeeId], references: [id])
   employeeId  String?
+  userId      String
   items       SaleItem[]
   returns     SaleReturn[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([userId, saleDate])
+  @@index([userId, createdAt])
+  @@index([contactId])
+  @@index([employeeId])
 }
 
 model SaleItem {
@@ -63,11 +76,16 @@ model Contact {
   name      String
   address   String?
   phoneNumber     String
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   purchases BulkPurchase[]
   sales     Sale[]
   loanTransactions LoanTransaction[]
+
+  @@index([userId])
+  @@index([userId, name])
+  @@index([phoneNumber])
 }
 
 model BulkPurchase {
@@ -148,8 +166,14 @@ model User {
   password  String
   resetOtp  String?
   otpExpiry DateTime?
+  role      String?  @default("admin")
+  companyName String?
+  trialEndDate DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
 }
 
 model ShopSettings {
@@ -195,7 +219,12 @@ model Employee {
   permissions String   // JSON string of permissions
   branch      Branch   @relation(fields: [branchId], references: [id])
   branchId    String
+  userId      String
   sales       Sale[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([email])
+  @@index([branchId])
 }

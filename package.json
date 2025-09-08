@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "5.2.0",
+  "version": "5.4.0",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
@@ -30,8 +30,7 @@
       "setup-database.bat",
       "installer.nsh",
       "!backend/node_modules/.cache",
-      "!backend/prisma/migrations",
-      "!backend/.env"
+      "!backend/prisma/migrations"
     ],
     "extraResources": [
       {

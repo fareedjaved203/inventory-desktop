@@ -32,7 +32,7 @@ function AuthModal({ onSuccess, queryClient }) {
       
       onSuccess(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Authentication failed');
+      setError(err.response?.data?.error || err);
     } finally {
       setLoading(false);
     }
