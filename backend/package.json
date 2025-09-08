@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node generate-schema.js && nodemon src/index.js",
-    "start": "node generate-schema.js && node src/index.js",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
     "generate-schema": "node generate-schema.js"
   },
   "dependencies": {

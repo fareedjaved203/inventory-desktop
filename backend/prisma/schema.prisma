@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Product {
@@ -96,9 +97,13 @@ model BulkPurchase {
   purchaseDate DateTime   @default(now())
   contact     Contact    @relation(fields: [contactId], references: [id])
   contactId   String
+  userId      String
   items       BulkPurchaseItem[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([contactId])
 }
 
 model BulkPurchaseItem {
@@ -124,9 +129,13 @@ model SaleReturn {
   refundDate  DateTime?
   sale        Sale       @relation(fields: [saleId], references: [id])
   saleId      String
+  userId      String
   items       SaleReturnItem[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([saleId])
 }
 
 model SaleReturnItem {
@@ -149,8 +158,12 @@ model LoanTransaction {
   date        DateTime @default(now())
   contact     Contact  @relation(fields: [contactId], references: [id])
   contactId   String
+  userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([contactId])
 }
 
 model DriveSettings {
@@ -158,6 +171,20 @@ model DriveSettings {
   serviceAccountKey String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+model License {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  licenseKey        String
+  deviceFingerprint String
+  expiry            BigInt
+  activatedAt       DateTime @default(now())
+  isTrial           Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model User {
@@ -195,8 +222,11 @@ model ShopSettings {
   brand3          String?
   brand3Registered Boolean  @default(false)
   logo            String?
+  userId          String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Branch {
@@ -204,9 +234,12 @@ model Branch {
   name      String     @unique
   code      String     @unique
   location  String
+  userId    String
   employees Employee[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@index([userId])
 }
 
 model Employee {

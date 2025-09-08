@@ -323,73 +323,7 @@ async function setupDatabase() {
     writeLog('Created user data directory');
   }
 
-  // Check for automatic migration from SQLite to PostgreSQL
-  try {
-    const isDev = !app.isPackaged;
-    const scriptsPath = isDev 
-      ? path.join(__dirname, '../scripts')
-      : path.join(process.resourcesPath, 'scripts');
-    
-    const migrationScript = path.join(scriptsPath, 'check-and-migrate.js');
-    
-    if (fs.existsSync(migrationScript)) {
-      writeLog('Running automatic migration check...');
-      
-      const { execSync } = require('child_process');
-      const backendPath = isDev 
-        ? path.join(__dirname, '../backend')
-        : path.join(process.resourcesPath, 'backend');
-      
-      // Load .env file for migration
-      const envPath = path.join(backendPath, '.env');
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const envVars = {};
-        envContent.split('\n').forEach(line => {
-          const [key, value] = line.split('=');
-          if (key && value) {
-            envVars[key] = value.replace(/"/g, '');
-          }
-        });
-        Object.assign(process.env, envVars);
-      }
-      
-      const env = {
-        ...process.env,
-        ELECTRON_USER_DATA: userDataPath
-      };
-      
-      execSync(`node "${migrationScript}"`, {
-        cwd: backendPath,
-        env,
-        stdio: 'pipe',
-        timeout: 60000 // 1 minute timeout for migration
-      });
-      
-      writeLog('Migration check completed');
-    }
-  } catch (error) {
-    writeLog(`Migration check failed: ${error.message}`);
-    // Continue with fallback SQLite setup if migration fails
-    
-    const dbPath = path.join(userDataPath, 'inventory.db');
-    const dbExists = fs.existsSync(dbPath);
-    
-    if (!dbExists) {
-      writeLog('Creating SQLite fallback database...');
-      
-      try {
-        const { createDatabaseSchema } = require('./create-schema');
-        await createDatabaseSchema(dbPath);
-        writeLog('SQLite fallback database created');
-      } catch (sqliteError) {
-        writeLog(`SQLite fallback failed: ${sqliteError.message}`);
-        const errorMsg = `Failed to initialize database.\n\nLog file: ${logPath}`;
-        dialog.showErrorBox('Database Setup Error', errorMsg);
-        throw sqliteError;
-      }
-    }
-  }
+  writeLog('Using PostgreSQL database - no migration needed');
 }
 
 app.whenReady().then(async () => {
