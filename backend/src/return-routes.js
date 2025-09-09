@@ -1,5 +1,6 @@
 import { validateRequest } from './middleware.js';
 import { z } from 'zod';
+import { withTransaction } from './db-utils.js';
 
 const returnItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
@@ -22,7 +23,7 @@ export function setupReturnRoutes(app, prisma) {
   // Create a return
   app.post('/api/returns', validateRequest({ body: returnSchema }), async (req, res) => {
     try {
-      const returnData = await prisma.$transaction(async (prisma) => {
+      const returnData = await withTransaction(prisma, async (prisma) => {
         // Generate return number
         const returnNumber = `RET-${Date.now().toString().slice(-6)}`;
         

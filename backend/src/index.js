@@ -20,6 +20,8 @@ import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
+import { safeQuery, createConnectionConfig } from './db-utils.js';
+import { connectionCleanup, requestTimeout } from './connection-middleware.js';
 
 dotenv.config();
 
@@ -38,27 +40,34 @@ const __dirname = path.dirname(__filename);
 const app = express();
 let prisma;
 
-// Initialize application
+// Initialize application with proper connection management
 async function initializeApp() {
-  // Set PostgreSQL URL for Electron
+  // Set PostgreSQL URL for Electron with connection pooling
   if (process.env.ELECTRON_APP) {
     console.log('Running in Electron mode');
-    const postgresUrl = process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+    const postgresUrl = process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=15&pool_timeout=30&statement_timeout=30000&idle_timeout=300';
     
-    // Try PostgreSQL first
+    // Try PostgreSQL first with connection pooling
     try {
       process.env.DATABASE_URL = postgresUrl;
-      prisma = new PrismaClient();
+      prisma = new PrismaClient({
+        ...createConnectionConfig(),
+        datasources: {
+          db: {
+            url: postgresUrl
+          }
+        }
+      });
       await prisma.$connect();
       await prisma.$queryRaw`SELECT 1`;
-      console.log('PostgreSQL connection successful');
+      console.log('PostgreSQL connection successful with pooling');
       isPostgreSQL = true;
     } catch (error) {
       console.error('PostgreSQL connection failed:', error);
       throw error;
     }
   } else {
-    prisma = new PrismaClient();
+    prisma = new PrismaClient(createConnectionConfig());
   }
   
   console.log('Final Database URL:', process.env.DATABASE_URL);
@@ -100,6 +109,16 @@ BigInt.prototype.toJSON = function() {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Add connection management middleware
+app.use(requestTimeout(30000)); // 30 second timeout
+app.use((req, res, next) => {
+  if (prisma) {
+    connectionCleanup(prisma)(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // Serve static files from frontend build
 const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
@@ -578,6 +597,23 @@ app.get('*', (req, res) => {
     ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist/index.html')
     : path.join(__dirname, '../../frontend/dist/index.html');
   res.sendFile(indexPath);
+});
+
+// Graceful shutdown handling
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT, shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM, shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
 });
 
 app.listen(port, () => {

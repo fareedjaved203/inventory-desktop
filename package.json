@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "5.7.0",
+  "version": "5.8.0",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
@@ -76,7 +76,12 @@
       "runAfterFinish": false,
       "include": "installer.nsh",
       "installerLanguages": ["en"],
-      "differentialPackage": false
+      "differentialPackage": false,
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "warningsAsErrors": false,
+      "unicode": true,
+      "perMachine": false
     },
     "publish": {
       "provider": "github",

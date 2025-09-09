@@ -1,5 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { contactSchema, contactUpdateSchema, querySchema } from './schemas.js';
+import { withTransaction } from './db-utils.js';
 
 export function setupContactRoutes(app, prisma) {
   // Get all contacts with search and pagination
@@ -452,7 +453,7 @@ export function setupContactRoutes(app, prisma) {
       }
       
       // Delete loan transactions first, then contact
-      await prisma.$transaction(async (prisma) => {
+      await withTransaction(prisma, async (prisma) => {
         if (loans > 0) {
           await prisma.loanTransaction.deleteMany({
             where: { 

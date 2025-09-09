@@ -1,5 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { bulkPurchaseSchema, querySchema } from './schemas.js';
+import { withTransaction } from './db-utils.js';
 
 export function setupBulkPurchaseRoutes(app, prisma) {
   // Get bulk purchases with pending payments
@@ -152,7 +153,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
     async (req, res) => {
       try {
         // Start a transaction
-        const purchase = await prisma.$transaction(async (prisma) => {
+        const purchase = await withTransaction(prisma, async (prisma) => {
           // Generate a unique invoice number if not provided
           let invoiceNumber = req.body.invoiceNumber;
           if (!invoiceNumber) {
@@ -221,7 +222,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
     validateRequest({ body: bulkPurchaseSchema }),
     async (req, res) => {
       try {
-        const purchase = await prisma.$transaction(async (prisma) => {
+        const purchase = await withTransaction(prisma, async (prisma) => {
           // Get the existing purchase
           const existingPurchase = await prisma.bulkPurchase.findUnique({
             where: { 
@@ -313,7 +314,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   // Delete a bulk purchase
   app.delete('/api/bulk-purchases/:id', authenticateToken, async (req, res) => {
     try {
-      await prisma.$transaction(async (prisma) => {
+      await withTransaction(prisma, async (prisma) => {
         // Get the purchase with its items
         const purchase = await prisma.bulkPurchase.findUnique({
           where: { 

@@ -1,4 +1,5 @@
 import { validateRequest, authenticateToken } from './middleware.js';
+import { safeQuery } from './db-utils.js';
 
 export function setupDashboardRoutes(app, prisma) {
   // Get enhanced dashboard stats
@@ -25,7 +26,7 @@ export function setupDashboardRoutes(app, prisma) {
         profitLast7Days,
         profitLast30Days,
         profitLast365Days
-      ] = await Promise.all([
+      ] = await safeQuery(prisma, async (prisma) => Promise.all([
         // Sales Today
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
@@ -148,7 +149,7 @@ export function setupDashboardRoutes(app, prisma) {
             items: true
           }
         })
-      ]);
+      ]));
 
       // Calculate profit for each period using stored purchase prices
       const calculateProfit = (sales) => {

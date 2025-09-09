@@ -1,6 +1,7 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { Prisma } from '@prisma/client';
 import { saleSchema, querySchema } from './schemas.js';
+import { withTransaction, safeQuery } from './db-utils.js';
 
 // Helper function to get current Pakistan time
 function getCurrentPakistanTime() {
@@ -59,7 +60,7 @@ export function setupSalesRoutes(app, prisma) {
     validateRequest({ body: saleSchema }),
     async (req, res) => {
       try {
-        const sale = await prisma.$transaction(async (prisma) => {
+        const sale = await withTransaction(prisma, async (prisma) => {
           let billNumber;
           let isUnique = false;
           
@@ -626,7 +627,7 @@ export function setupSalesRoutes(app, prisma) {
     validateRequest({ body: saleSchema }),
     async (req, res) => {
       try {
-        const sale = await prisma.$transaction(async (prisma) => {
+        const sale = await withTransaction(prisma, async (prisma) => {
           const existingSale = await prisma.sale.findUnique({
             where: { 
               id: req.params.id,
@@ -739,7 +740,7 @@ export function setupSalesRoutes(app, prisma) {
   // Delete a sale
   app.delete('/api/sales/:id', authenticateToken, async (req, res) => {
     try {
-      await prisma.$transaction(async (prisma) => {
+      await withTransaction(prisma, async (prisma) => {
         const sale = await prisma.sale.findUnique({
           where: { 
             id: req.params.id,

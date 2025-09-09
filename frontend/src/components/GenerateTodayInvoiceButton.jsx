@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 
 function GenerateTodayInvoiceButton({ sales }) {
   const [shopSettings, setShopSettings] = useState(null);
@@ -8,8 +8,7 @@ function GenerateTodayInvoiceButton({ sales }) {
   useEffect(() => {
     const fetchShopSettings = async () => {
       try {
-        const apiUrl = `${import.meta.env.VITE_API_URL}/api/shop-settings`;
-        const response = await axios.get(apiUrl);
+        const response = await api.get('/api/shop-settings');
         // Handle null response from database
         setShopSettings(response.data || {});
       } catch (error) {
@@ -36,9 +35,9 @@ function GenerateTodayInvoiceButton({ sales }) {
       try {
         const [year, month, day] = today.split('-');
         const dateParam = `${day}/${month}/${year}`;
-        const apiUrl = `${import.meta.env.VITE_API_URL}/api/sales?limit=1000&date=${encodeURIComponent(dateParam)}`;
-        
-        const response = await axios.get(apiUrl);
+        console.log('Fetching today sales with:', { today, dateParam });
+        const response = await api.get(`/api/sales?limit=1000&date=${encodeURIComponent(dateParam)}`);
+        console.log('Today sales response:', response.data);
         setTodaySales(response.data.items || []);
       } catch (error) {
         console.error('Failed to fetch today\'s sales:', error);
@@ -70,17 +69,17 @@ function GenerateTodayInvoiceButton({ sales }) {
       const { default: SimpleDateInvoicePDF } = await import('./SimpleDateInvoicePDF');
       
       console.log('Creating PDF document...');
-      // Convert today back to YYYY-MM-DD format for PDF filename
-      const [day, month, year] = today.split('/');
-      const pdfDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      const pdfDoc = <SimpleDateInvoicePDF date={today} sales={todaySales} shopSettings={finalShopSettings} />;
+      // Convert today to DD/MM/YYYY format for PDF display
+      const [year, month, day] = today.split('-');
+      const displayDate = `${day}/${month}/${year}`;
+      const pdfDoc = <SimpleDateInvoicePDF date={displayDate} sales={todaySales} shopSettings={finalShopSettings} />;
       const blob = await pdf(pdfDoc).toBlob();
       
       console.log('PDF blob created, size:', blob.size);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `daily-sales-${today.replace(/\//g, '-')}.pdf`;
+      link.download = `daily-sales-${today}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
