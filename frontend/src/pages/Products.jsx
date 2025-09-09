@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../utils/axios';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse } from 'react-icons/fa';
@@ -15,7 +17,7 @@ const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string(),
   price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores"),
-  purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").optional(),
+  purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
@@ -71,7 +73,7 @@ function Products() {
     debouncedSearch(e.target.value);
   };
 
-  const { data: products, isLoading } = useQuery(
+  const { data: products, isLoading, isFetching } = useQuery(
     ['products', debouncedSearchTerm, currentPage, showLowStock, showDamaged],
     async () => {
       let endpoint = '/api/products';
@@ -109,6 +111,7 @@ function Products() {
         setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
         setIsEditMode(false);
         setValidationErrors({});
+        toast.success('Product updated successfully!');
       },
       onError: (error) => {
         console.error('Update product error:', error);
@@ -134,6 +137,7 @@ function Products() {
         setDeleteError(null);
         setDeleteModalOpen(false);
         setProductToDelete(null);
+        toast.success('Product deleted successfully!');
       },
       onError: (error) => {
         setDeleteError(error.response?.data?.error || 'An error occurred while deleting the product');
@@ -155,6 +159,7 @@ function Products() {
         setIsModalOpen(false);
         setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
         setValidationErrors({});
+        toast.success('Product created successfully!');
       },
       onError: (error) => {
         setValidationErrors({
@@ -178,6 +183,7 @@ function Products() {
         setDamagedModalOpen(false);
         setSelectedProductForDamage(null);
         setDamagedQuantity('');
+        toast.success('Product marked as damaged!');
       }
     }
   );
@@ -197,6 +203,7 @@ function Products() {
         setSelectedProductForDamage(null);
         setDamagedQuantity('');
         setMaxRestoreQuantity(0);
+        toast.success('Product restored successfully!');
       }
     }
   );
@@ -295,7 +302,7 @@ function Products() {
     }
   };
 
-  if (isLoading) return (
+  if (isLoading && !debouncedSearchTerm && !showLowStock && !showDamaged) return (
     <div className="p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
@@ -417,72 +424,82 @@ function Products() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {products?.items?.map((product) => (
-              <tr key={product.id} className="hover:bg-primary-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{product.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-gray-600">{product.sku}</td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">{formatPakistaniCurrency(product.price)}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-blue-800">
-                  {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
+            {isFetching && (debouncedSearchTerm || showLowStock || showDamaged) ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                  <span className={`${
-                    product.quantity <= (product.lowStockThreshold || 10)
-                      ? 'text-orange-700 bg-orange-50 border border-orange-200' 
-                      : 'text-green-700 bg-green-50 border border-green-200'
-                  } px-2 py-1 rounded-full text-xs font-medium`}>
-                    {product.quantity}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex space-x-2">
-                    {showDamaged ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setSelectedProductForDamage(product);
-                            setDamagedQuantity('');
-                            setMaxRestoreQuantity(product.quantity); // For damaged items, quantity field shows damaged amount
-                            setDamagedModalOpen(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                          Restore
-                        </button>
-                        <button
-                          onClick={() => restoreDamaged.mutate({ productId: product.id, quantity: product.quantity })}
-                          className="text-green-600 hover:text-green-900 inline-flex items-center gap-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                          Restore All
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                          </svg>
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedProductForDamage(product);
-                            setMaxRestoreQuantity(product.quantity);
-                            setDamagedModalOpen(true);
-                          }}
-                          className="text-orange-600 hover:text-orange-900 inline-flex items-center gap-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </tr>
+            ) : (
+              products?.items?.map((product) => (
+                <tr key={product.id} className="hover:bg-primary-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{product.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-gray-600">{product.sku}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">{formatPakistaniCurrency(product.price)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-blue-800">
+                    {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                    <span className={`${
+                      product.quantity <= (product.lowStockThreshold || 10)
+                        ? 'text-orange-700 bg-orange-50 border border-orange-200' 
+                        : 'text-green-700 bg-green-50 border border-green-200'
+                    } px-2 py-1 rounded-full text-xs font-medium`}>
+                      {product.quantity}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-2">
+                      {showDamaged ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedProductForDamage(product);
+                              setDamagedQuantity('');
+                              setMaxRestoreQuantity(product.quantity);
+                              setDamagedModalOpen(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => restoreDamaged.mutate({ productId: product.id, quantity: product.quantity })}
+                            className="text-green-600 hover:text-green-900 inline-flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Restore All
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedProductForDamage(product);
+                              setMaxRestoreQuantity(product.quantity);
+                              setDamagedModalOpen(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-900 inline-flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                           </svg>
                           Damage
                         </button>
@@ -500,7 +517,8 @@ function Products() {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -754,8 +772,10 @@ function Products() {
               <button
                 type="submit"
                 form="product-form"
-                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm"
+                disabled={createProduct.isLoading || updateProduct.isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
+                {(createProduct.isLoading || updateProduct.isLoading) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('update') : t('save')}
               </button>
             </div>

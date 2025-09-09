@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '../utils/axios';
+import LoadingSpinner from './LoadingSpinner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -71,8 +73,7 @@ function ShopSettingsForm() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['shop-settings']);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        toast.success('Settings saved successfully!');
       },
       onError: (error) => {
         console.error('Settings save error:', error);
@@ -359,8 +360,9 @@ function ShopSettingsForm() {
         <button
           type="submit"
           disabled={saveSettings.isLoading}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
+          {saveSettings.isLoading && <LoadingSpinner size="w-4 h-4" />}
           {saveSettings.isLoading ? (language === 'ur' ? 'محفوظ ہو رہا ہے...' : 'Saving...') : (language === 'ur' ? 'سیٹنگز محفوظ کریں' : 'Save Settings')}
         </button>
       </form>

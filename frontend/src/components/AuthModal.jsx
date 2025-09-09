@@ -41,6 +41,12 @@ function AuthModal({ onSuccess, queryClient }) {
       // Save email for autocomplete
       saveEmail(email);
       
+      // Store credentials for auto-refresh (only on successful login)
+      if (!isSignup) {
+        localStorage.setItem('userEmail', email);
+        localStorage.setItem('userPassword', password);
+      }
+      
       // Invalidate auth check query to refetch user count
       if (queryClient) {
         queryClient.invalidateQueries(['auth-check']);

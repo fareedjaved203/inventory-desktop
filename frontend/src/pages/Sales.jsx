@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
+import toast from 'react-hot-toast';
 import api from '../utils/axios';
 import { z } from "zod";
 import DeleteModal from "../components/DeleteModal";
 import TableSkeleton from "../components/TableSkeleton";
+import LoadingSpinner from '../components/LoadingSpinner';
 import SaleDetailsModal from "../components/SaleDetailsModal";
 import ReturnModal from "../components/ReturnModal";
 import { debounce } from "lodash";
@@ -101,6 +103,7 @@ function Sales() {
         setSaleDate("");
         setIsEditMode(false);
         setEditingSale(null);
+        toast.success('Sale updated successfully!');
       },
     }
   );
@@ -170,7 +173,7 @@ function Sales() {
   }, [showPendingPayments, showCreditBalance]);
 
   // Fetch sales
-  const { data: sales, isLoading } = useQuery(
+  const { data: sales, isLoading, isFetching } = useQuery(
     [
       "sales",
       selectedDate,
@@ -233,6 +236,7 @@ function Sales() {
         setSelectedContact(null);
         setSaleDate("");
         setTempStockUpdates({});
+        toast.success('Sale created successfully!');
       },
     }
   );
@@ -264,6 +268,7 @@ function Sales() {
         setDeleteError(null);
         setDeleteModalOpen(false);
         setSaleToDelete(null);
+        toast.success('Sale deleted successfully!');
       },
       onError: (error) => {
         setDeleteError(
@@ -533,7 +538,7 @@ function Sales() {
     }
   };
 
-  if (isLoading)
+  if (isLoading && !debouncedSearchTerm && !selectedDate && !showPendingPayments && !showCreditBalance)
     return (
       <div className="p-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -698,7 +703,17 @@ function Sales() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sales?.items?.map((sale) => (
+            {isFetching && (debouncedSearchTerm || selectedDate || showPendingPayments || showCreditBalance) ? (
+              <tr>
+                <td colSpan="7" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              sales?.items?.map((sale) => (
               <tr
                 key={sale.id}
                 className="hover:bg-primary-50 transition-colors"
@@ -936,7 +951,8 @@ function Sales() {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -1326,17 +1342,18 @@ function Sales() {
               <button
                 type="submit"
                 form="sale-form"
-                disabled={Object.values(validationErrors).some(
+                disabled={createSale.isLoading || updateSale.isLoading || Object.values(validationErrors).some(
                   (error) => error !== undefined
                 )}
-                className={`px-4 py-2 text-white rounded shadow-sm ${
-                  Object.values(validationErrors).some(
+                className={`px-4 py-2 text-white rounded shadow-sm flex items-center gap-2 ${
+                  createSale.isLoading || updateSale.isLoading || Object.values(validationErrors).some(
                     (error) => error !== undefined
                   )
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
                 }`}
               >
+                {(createSale.isLoading || updateSale.isLoading) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updateSale') : t('createSale')}
               </button>
             </div>

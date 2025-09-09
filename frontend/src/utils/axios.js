@@ -22,18 +22,42 @@ api.interceptors.request.use(
 // Add response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid - just clear auth data, don't reload
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('authTime');
-      localStorage.removeItem('userPermissions');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('employeeId');
-      localStorage.removeItem('employeeName');
-      // Don't reload to prevent infinite loops
+      // Check if we have login credentials to retry
+      const email = localStorage.getItem('userEmail');
+      const password = localStorage.getItem('userPassword');
+      
+      if (email && password && !error.config._retry) {
+        error.config._retry = true;
+        
+        try {
+          // Try to re-authenticate
+          const loginResponse = await axios.post('/api/auth/login', { email, password });
+          const { token } = loginResponse.data;
+          
+          // Update token
+          localStorage.setItem('authToken', token);
+          
+          // Retry original request with new token
+          error.config.headers.Authorization = `Bearer ${token}`;
+          return api.request(error.config);
+        } catch (loginError) {
+          // Login failed, clear all auth data
+          localStorage.clear();
+          window.location.reload();
+        }
+      } else {
+        // No credentials or retry failed - clear auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('authTime');
+        localStorage.removeItem('userPermissions');
+        localStorage.removeItem('userType');
+        localStorage.removeItem('employeeId');
+        localStorage.removeItem('employeeName');
+      }
     }
     return Promise.reject(error);
   }

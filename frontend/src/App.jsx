@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -158,6 +159,8 @@ function AppContent() {
     localStorage.removeItem('userType');
     localStorage.removeItem('employeeId');
     localStorage.removeItem('employeeName');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userPassword');
     setUserPermissions([]);
     setUserType('admin');
   };
@@ -215,6 +218,18 @@ function AppContent() {
         isOpen={showLicenseModal && isAuthenticated}
         onLicenseValidated={handleLicenseValidated}
         onLogout={handleLogout}
+      />
+      
+      {/* Toast notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
       />
     </Router>
   );

@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from '../utils/axios';
 import { z } from "zod";
+import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
+import DeleteModal from '../components/DeleteModal';
+import { debounce } from 'lodash';
+import toast from 'react-hot-toast';
 
 const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -43,21 +48,43 @@ function Employees() {
   });
   const [validationErrors, setValidationErrors] = useState({});
   const [apiError, setApiError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
-  const { data: employees = [], isLoading, error } = useQuery(
-    ["employees"],
+  const debouncedSearch = useCallback(
+    debounce((term) => {
+      setDebouncedSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    debouncedSearch(e.target.value);
+  };
+
+  const { data: employees, isLoading, isFetching, error } = useQuery(
+    ["employees", debouncedSearchTerm, currentPage],
     async () => {
       try {
-        const response = await api.get('/api/employees', {
+        const response = await api.get(`/api/employees?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`, {
           headers: { 'Cache-Control': 'no-cache' }
         });
         console.log('Employees API response:', response.data);
         setApiError(null);
-        return Array.isArray(response.data) ? response.data : [];
+        // Handle both paginated and non-paginated responses
+        if (Array.isArray(response.data)) {
+          return { items: response.data, total: response.data.length };
+        }
+        return response.data;
       } catch (err) {
         console.error('Employees API error:', err);
         setApiError(err.response?.data?.error || err.message || 'Failed to fetch employees');
-        return [];
+        return { items: [], total: 0 };
       }
     },
     {
@@ -90,9 +117,11 @@ function Employees() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["employees"]);
+        queryClient.refetchQueries(["employees"]);
         setIsModalOpen(false);
         resetForm();
         setApiError(null);
+        toast.success('Employee created successfully!');
       },
       onError: (error) => {
         setApiError(error.response?.data?.error || 'Failed to create employee');
@@ -108,9 +137,11 @@ function Employees() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["employees"]);
+        queryClient.refetchQueries(["employees"]);
         setIsModalOpen(false);
         resetForm();
         setApiError(null);
+        toast.success('Employee updated successfully!');
       },
       onError: (error) => {
         setApiError(error.response?.data?.error || 'Failed to update employee');
@@ -125,6 +156,8 @@ function Employees() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["employees"]);
+        queryClient.refetchQueries(["employees"]);
+        toast.success('Employee deleted successfully!');
       },
     }
   );
@@ -181,8 +214,15 @@ function Employees() {
   };
 
   const handleDelete = (employee) => {
-    if (confirm(`Delete employee "${employee.firstName} ${employee.lastName}"?`)) {
-      deleteEmployee.mutate(employee.id);
+    setEmployeeToDelete(employee);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (employeeToDelete) {
+      deleteEmployee.mutate(employeeToDelete.id);
+      setDeleteModalOpen(false);
+      setEmployeeToDelete(null);
     }
   };
 
@@ -195,7 +235,15 @@ function Employees() {
     }));
   };
 
-  if (isLoading) return <div className="p-4">Loading...</div>;
+  if (isLoading && !debouncedSearchTerm) return (
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-6">
+        <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
+        <div className="h-10 bg-gray-300 rounded w-32 animate-pulse"></div>
+      </div>
+      <TableSkeleton rows={5} columns={6} />
+    </div>
+  );
   
   if (error || apiError) {
     return (
@@ -221,14 +269,30 @@ function Employees() {
 
   return (
     <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary-800">Employees</h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-primary-800"
-        >
-          Add Employee
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full md:w-auto">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full sm:w-64 pl-10 pr-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-primary-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-primary-800 whitespace-nowrap"
+          >
+            Add Employee
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -244,37 +308,71 @@ function Employees() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {Array.isArray(employees) && employees.map((employee) => (
-              <tr key={employee.id} className="hover:bg-primary-50">
-                <td className="px-6 py-4 font-medium text-primary-700">
-                  {employee.firstName} {employee.lastName}
-                </td>
-                <td className="px-6 py-4 text-gray-700">{employee.email}</td>
-                <td className="px-6 py-4 text-gray-700">{employee.phone}</td>
-                <td className="px-6 py-4 text-gray-700">{employee.branch?.name}</td>
-                <td className="px-6 py-4 text-gray-700">
-                  {Array.isArray(employee.permissions) ? employee.permissions.length : 0} permissions
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(employee)}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(employee)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+            {(isFetching && debouncedSearchTerm) || (isLoading && debouncedSearchTerm) ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              employees?.items?.map((employee) => (
+                <tr key={employee.id} className="hover:bg-primary-50">
+                  <td className="px-6 py-4 font-medium text-primary-700">
+                    {employee.firstName} {employee.lastName}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">{employee.email}</td>
+                  <td className="px-6 py-4 text-gray-700">{employee.phone}</td>
+                  <td className="px-6 py-4 text-gray-700">{employee.branch?.name}</td>
+                  <td className="px-6 py-4 text-gray-700">
+                    {Array.isArray(employee.permissions) ? employee.permissions.length : 0} permissions
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(employee)}
+                        className="text-primary-600 hover:text-primary-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(employee)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="mt-4 flex justify-center">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-primary-800">
+            Page {currentPage} of {Math.ceil((employees?.total || 0) / itemsPerPage)}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            disabled={currentPage >= Math.ceil((employees?.total || 0) / itemsPerPage)}
+            className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       {/* Modal */}
@@ -399,8 +497,10 @@ function Employees() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800"
+                  disabled={createEmployee.isLoading || updateEmployee.isLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  {(createEmployee.isLoading || updateEmployee.isLoading) && <LoadingSpinner size="w-4 h-4" />}
                   {editingEmployee ? "Update" : "Create"}
                 </button>
               </div>
@@ -408,6 +508,17 @@ function Employees() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setEmployeeToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        itemName={employeeToDelete ? `employee "${employeeToDelete.firstName} ${employeeToDelete.lastName}"` : ''}
+      />
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import React from 'react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../utils/axios';
 import PurchaseInvoicePDF from './PurchaseInvoicePDF';
 
 function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+    const response = await api.get('/shop-settings');
     return response.data;
   });
 

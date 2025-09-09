@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
 import CustomerStatementPDF from '../components/CustomerStatementPDF';
 import { debounce } from 'lodash';
 import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign, FaFileAlt } from 'react-icons/fa';
@@ -57,7 +59,7 @@ function Contacts() {
   };
 
   // Fetch contacts with React Query
-  const { data: contactsData, isLoading, error } = useQuery(
+  const { data: contactsData, isLoading, isFetching, error } = useQuery(
     ['contacts', page, debouncedSearchTerm],
     async () => {
       const response = await api.get(
@@ -89,6 +91,7 @@ function Contacts() {
         setShowAddModal(false);
         setSelectedContact(null);
         reset();
+        toast.success('Contact created successfully!');
       },
       onError: (error) => {
         return error.response?.data?.error || 'Failed to create contact';
@@ -111,6 +114,7 @@ function Contacts() {
         setShowAddModal(false);
         setSelectedContact(null);
         reset();
+        toast.success('Contact updated successfully!');
       },
       onError: (error) => {
         return error.response?.data?.error || 'Failed to update contact';
@@ -132,6 +136,7 @@ function Contacts() {
         setShowDeleteModal(false);
         setSelectedContact(null);
         setDeleteError(null);
+        toast.success('Contact deleted successfully!');
       },
       onError: (error) => {
         setDeleteError(error.response?.data?.error || 'Failed to delete contact');
@@ -250,7 +255,7 @@ function Contacts() {
     }
   };
 
-  if (isLoading) return (
+  if (isLoading && !debouncedSearchTerm) return (
     <div className="p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
@@ -322,7 +327,17 @@ function Contacts() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {contactsData?.items?.map((contact) => (
+            {isFetching && debouncedSearchTerm ? (
+              <tr>
+                <td colSpan="4" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              contactsData?.items?.map((contact) => (
               <tr key={contact.id} className="hover:bg-primary-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{contact.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
@@ -378,7 +393,8 @@ function Contacts() {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -477,8 +493,10 @@ function Contacts() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm"
+                  disabled={createContact.isLoading || updateContact.isLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  {(createContact.isLoading || updateContact.isLoading) && <LoadingSpinner size="w-4 h-4" />}
                   {selectedContact ? t('update') : t('save')}
                 </button>
               </div>

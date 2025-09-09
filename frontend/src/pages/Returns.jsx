@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { debounce } from 'lodash';
 import { FaSearch } from 'react-icons/fa';
@@ -31,7 +32,7 @@ function Returns() {
   };
 
   // Fetch returns
-  const { data: returns, isLoading } = useQuery(
+  const { data: returns, isLoading, isFetching } = useQuery(
     ['returns', debouncedSearchTerm, currentPage],
     async () => {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/returns?search=${debouncedSearchTerm}&page=${currentPage}&limit=${itemsPerPage}`);
@@ -46,7 +47,7 @@ function Returns() {
     }
   }, [returns]);
 
-  if (isLoading) return (
+  if (isLoading && !debouncedSearchTerm) return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-8">
         <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
@@ -88,7 +89,17 @@ function Returns() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {returns?.items?.map((returnItem) => (
+            {isFetching && debouncedSearchTerm ? (
+              <tr>
+                <td colSpan="7" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              returns?.items?.map((returnItem) => (
               <tr key={returnItem.id} className="hover:bg-red-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-red-700">
                   {returnItem.returnNumber}
@@ -124,7 +135,8 @@ function Returns() {
                   </span>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>

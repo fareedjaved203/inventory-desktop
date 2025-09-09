@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../utils/axios';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
 import PurchaseDetailsModal from '../components/PurchaseDetailsModal';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
@@ -101,7 +103,7 @@ function BulkPurchasing() {
   }, [showPendingPayments]);
 
   // Fetch bulk purchases
-  const { data: purchases, isLoading } = useQuery(
+  const { data: purchases, isLoading, isFetching } = useQuery(
     ['bulk-purchases', debouncedSearchTerm, currentPage, showPendingPayments],
     async () => {
       const endpoint = showPendingPayments ? '/api/bulk-purchases/pending-payments' : '/api/bulk-purchases';
@@ -161,6 +163,7 @@ function BulkPurchasing() {
         queryClient.invalidateQueries(['bulk-purchases']);
         setIsModalOpen(false);
         resetForm();
+        toast.success('Purchase created successfully!');
       },
     }
   );
@@ -179,6 +182,7 @@ function BulkPurchasing() {
         queryClient.invalidateQueries(['bulk-purchases']);
         setIsModalOpen(false);
         resetForm();
+        toast.success('Purchase updated successfully!');
       },
     }
   );
@@ -200,6 +204,7 @@ function BulkPurchasing() {
         setDeleteError(null);
         setDeleteModalOpen(false);
         setPurchaseToDelete(null);
+        toast.success('Purchase deleted successfully!');
       },
       onError: (error) => {
         setDeleteError(error.response?.data?.error || 'An error occurred while deleting the purchase');
@@ -368,7 +373,7 @@ function BulkPurchasing() {
     }
   };
 
-  if (isLoading) return (
+  if (isLoading && !debouncedSearchTerm && !showPendingPayments) return (
     <div className="p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
@@ -448,7 +453,17 @@ function BulkPurchasing() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {purchases?.items?.map((purchase) => (
+            {isFetching && (debouncedSearchTerm || showPendingPayments) ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center">
+                  <div className="flex justify-center items-center">
+                    <LoadingSpinner size="w-6 h-6" />
+                    <span className="ml-2 text-gray-500">Searching...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              purchases?.items?.map((purchase) => (
               <tr key={purchase.id} className={`hover:bg-primary-50 transition-colors ${purchase.totalAmount > purchase.paidAmount ? 'bg-yellow-50' : ''}`}>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
                   {purchase.invoiceNumber || `#${purchase.id.slice(-6)}`}
@@ -510,7 +525,8 @@ function BulkPurchasing() {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -781,8 +797,10 @@ function BulkPurchasing() {
               <button
                 type="submit"
                 form="purchase-form"
-                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded shadow-sm hover:from-primary-700 hover:to-primary-800"
+                disabled={createPurchase.isLoading || updatePurchase.isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded shadow-sm hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
+                {(createPurchase.isLoading || updatePurchase.isLoading) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updatePurchase') : t('createPurchase')}
               </button>
             </div>
