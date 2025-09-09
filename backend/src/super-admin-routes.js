@@ -49,7 +49,7 @@ export function setupSuperAdminRoutes(app, prisma) {
       });
 
       const usersWithStats = await Promise.all(users.map(async (user) => {
-        const [productCount, branchCount, employeeCount, salesCount, totalInventory] = await Promise.all([
+        const [productCount, branchCount, employeeCount, salesCount, totalInventory, license] = await Promise.all([
           prisma.product.count({ where: { userId: user.id } }),
           prisma.branch.count({ where: { userId: user.id } }),
           prisma.employee.count({ where: { userId: user.id } }),
@@ -57,11 +57,15 @@ export function setupSuperAdminRoutes(app, prisma) {
           prisma.product.aggregate({
             where: { userId: user.id },
             _sum: { quantity: true }
-          })
+          }),
+          prisma.license.findUnique({ where: { userId: user.id } })
         ]);
 
         return {
           ...user,
+          licenseDuration: license?.duration,
+          licenseStartDate: license?.activatedAt,
+          licenseEndDate: license?.expiry ? new Date(Number(license.expiry) * 1000) : null,
           stats: {
             products: productCount,
             branches: branchCount,

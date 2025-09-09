@@ -45,7 +45,7 @@ class LicenseManager {
         return { valid: false, error: 'License bound to different device' };
       }
 
-      await this.bindLicenseToUser(userId, licenseKey, deviceFingerprint, decoded.expiry);
+      await this.bindLicenseToUser(userId, licenseKey, deviceFingerprint, decoded.expiry, decoded.duration);
       
       return { 
         valid: true, 
@@ -80,14 +80,17 @@ class LicenseManager {
         const activationDeadline = currentTime + 600; // 10 minutes from now
         const expiry = currentTime + durationSeconds;
         
-        return { activationDeadline, expiry, duration: 'New Format' };
+        // Format duration for display
+        const duration = this.formatDuration(durationSeconds);
+        
+        return { activationDeadline, expiry, duration };
         
       } else if (parts.length === 4) {
         // Old format: ACTIVATION_HIGH-ACTIVATION_LOW-EXPIRY_HIGH-EXPIRY_LOW
         const activationDeadline = (nums[0] << 16) | nums[1];
         const expiry = (nums[2] << 16) | nums[3];
         
-        return { activationDeadline, expiry, duration: 'Old Format' };
+        return { activationDeadline, expiry, duration: 'Legacy License' };
       }
       
       return null;
@@ -97,13 +100,14 @@ class LicenseManager {
     }
   }
 
-  async bindLicenseToUser(userId, licenseKey, deviceFingerprint, expiry) {
+  async bindLicenseToUser(userId, licenseKey, deviceFingerprint, expiry, duration) {
     await prisma.license.upsert({
       where: { userId },
       update: {
         licenseKey,
         deviceFingerprint,
         expiry: BigInt(expiry),
+        duration,
         activatedAt: new Date(),
         isTrial: false
       },
@@ -112,6 +116,7 @@ class LicenseManager {
         licenseKey,
         deviceFingerprint,
         expiry: BigInt(expiry),
+        duration,
         activatedAt: new Date(),
         isTrial: false
       }
@@ -153,6 +158,16 @@ class LicenseManager {
     return isValid;
   }
 
+  formatDuration(seconds) {
+    if (seconds >= 25 * 365 * 24 * 60 * 60) return 'Lifetime';
+    if (seconds >= 365 * 24 * 60 * 60) return `${Math.floor(seconds / (365 * 24 * 60 * 60))} Year${Math.floor(seconds / (365 * 24 * 60 * 60)) > 1 ? 's' : ''}`;
+    if (seconds >= 30 * 24 * 60 * 60) return `${Math.floor(seconds / (30 * 24 * 60 * 60))} Month${Math.floor(seconds / (30 * 24 * 60 * 60)) > 1 ? 's' : ''}`;
+    if (seconds >= 24 * 60 * 60) return `${Math.floor(seconds / (24 * 60 * 60))} Day${Math.floor(seconds / (24 * 60 * 60)) > 1 ? 's' : ''}`;
+    if (seconds >= 60 * 60) return `${Math.floor(seconds / (60 * 60))} Hour${Math.floor(seconds / (60 * 60)) > 1 ? 's' : ''}`;
+    if (seconds >= 60) return `${Math.floor(seconds / 60)} Minute${Math.floor(seconds / 60) > 1 ? 's' : ''}`;
+    return `${seconds} Second${seconds > 1 ? 's' : ''}`;
+  }
+
   generateTrialLicenseKey(durationSeconds) {
     // Generate license key matching license.bat format: RAND1-RAND2-DURATION_HIGH-DURATION_LOW-CHECKSUM
     const rand1 = Math.floor(Math.random() * 65536);
@@ -180,6 +195,7 @@ class LicenseManager {
           licenseKey: trialLicenseKey,
           deviceFingerprint,
           expiry: BigInt(trialExpiry),
+          duration: '7 Days Trial',
           activatedAt: new Date(),
           isTrial: true
         },
@@ -188,6 +204,7 @@ class LicenseManager {
           licenseKey: trialLicenseKey,
           deviceFingerprint,
           expiry: BigInt(trialExpiry),
+          duration: '7 Days Trial',
           activatedAt: new Date(),
           isTrial: true
         }

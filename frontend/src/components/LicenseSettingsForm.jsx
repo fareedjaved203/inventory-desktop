@@ -77,7 +77,7 @@ export default function LicenseSettingsForm() {
         </div>
         {valid && (
           <div className="mt-2 text-sm text-gray-600">
-            {language === 'ur' ? 'باقی وقت' : 'Time Remaining'}: {formatTimeRemaining(timeRemaining)}
+            {language === 'ur' ? 'باقی وقت' : 'Time Remaining'}: {timeRemaining === -1 ? '...' : formatTimeRemaining(timeRemaining)}
             {/* Show trial indicator */}
             {timeRemaining <= (3 * 24 * 60 * 60) && timeRemaining > (2 * 24 * 60 * 60) && (
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{language === 'ur' ? 'آزمائشی' : 'Trial'}</span>

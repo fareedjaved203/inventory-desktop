@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,22 +9,22 @@ datasource db {
 }
 
 model Product {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  description String
-  price       BigInt
-  purchasePrice BigInt?  @default(0)
-  sku         String?
-  quantity    BigInt
-  unit        String     @default("pcs")
-  damagedQuantity BigInt @default(0)
-  lowStockThreshold BigInt @default(10)
-  userId      String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  SaleItem    SaleItem[]
-  BulkPurchaseItem BulkPurchaseItem[]
-  SaleReturnItem SaleReturnItem[]
+  id                String             @id @default(uuid())
+  name              String             @unique
+  description       String
+  price             BigInt
+  purchasePrice     BigInt?            @default(0)
+  sku               String?
+  quantity          BigInt
+  damagedQuantity   BigInt             @default(0)
+  lowStockThreshold BigInt             @default(10)
+  userId            String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  unit              String             @default("pcs")
+  BulkPurchaseItem  BulkPurchaseItem[]
+  SaleItem          SaleItem[]
+  SaleReturnItem    SaleReturnItem[]
 
   @@index([userId])
   @@index([userId, name])
@@ -36,22 +33,22 @@ model Product {
 }
 
 model Sale {
-  id          String     @id @default(uuid())
-  billNumber  String     @unique
-  totalAmount BigInt
+  id                  String       @id @default(uuid())
+  billNumber          String       @unique
+  totalAmount         BigInt
   originalTotalAmount BigInt?
-  discount    BigInt     @default(0)
-  paidAmount  BigInt     @default(0)
-  saleDate    DateTime   @default(now())
-  contact     Contact?   @relation(fields: [contactId], references: [id])
-  contactId   String?
-  employee    Employee?  @relation(fields: [employeeId], references: [id])
-  employeeId  String?
-  userId      String
-  items       SaleItem[]
-  returns     SaleReturn[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  discount            BigInt       @default(0)
+  paidAmount          BigInt       @default(0)
+  saleDate            DateTime     @default(now())
+  contactId           String?
+  employeeId          String?
+  userId              String
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  contact             Contact?     @relation(fields: [contactId], references: [id])
+  employee            Employee?    @relation(fields: [employeeId], references: [id])
+  items               SaleItem[]
+  returns             SaleReturn[]
 
   @@index([userId])
   @@index([userId, saleDate])
@@ -61,29 +58,29 @@ model Sale {
 }
 
 model SaleItem {
-  id        String   @id @default(uuid())
-  quantity  BigInt
-  price     BigInt
-  purchasePrice BigInt @default(0)
-  sale      Sale     @relation(fields: [saleId], references: [id])
-  saleId    String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  quantity      BigInt
+  price         BigInt
+  purchasePrice BigInt   @default(0)
+  saleId        String
+  productId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  product       Product  @relation(fields: [productId], references: [id])
+  sale          Sale     @relation(fields: [saleId], references: [id])
 }
 
 model Contact {
-  id        String   @id @default(uuid())
-  name      String
-  address   String?
-  phoneNumber     String
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  purchases BulkPurchase[]
-  sales     Sale[]
+  id               String            @id @default(uuid())
+  name             String
+  address          String?
+  phoneNumber      String
+  userId           String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  purchases        BulkPurchase[]
   loanTransactions LoanTransaction[]
+  sales            Sale[]
 
   @@index([userId])
   @@index([userId, name])
@@ -91,49 +88,49 @@ model Contact {
 }
 
 model BulkPurchase {
-  id          String     @id @default(uuid())
-  invoiceNumber String?   @unique
-  totalAmount BigInt
-  paidAmount  BigInt
-  purchaseDate DateTime   @default(now())
-  contact     Contact    @relation(fields: [contactId], references: [id])
-  contactId   String
-  userId      String
-  items       BulkPurchaseItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id            String             @id @default(uuid())
+  invoiceNumber String?            @unique
+  totalAmount   BigInt
+  paidAmount    BigInt
+  purchaseDate  DateTime           @default(now())
+  contactId     String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  userId        String
+  contact       Contact            @relation(fields: [contactId], references: [id])
+  items         BulkPurchaseItem[]
 
   @@index([userId])
   @@index([contactId])
 }
 
 model BulkPurchaseItem {
-  id            String       @id @default(uuid())
-  quantity      BigInt
-  purchasePrice BigInt
-  bulkPurchase  BulkPurchase @relation(fields: [bulkPurchaseId], references: [id])
+  id             String       @id @default(uuid())
+  quantity       BigInt
+  purchasePrice  BigInt
   bulkPurchaseId String
-  product       Product      @relation(fields: [productId], references: [id])
-  productId     String
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  productId      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  bulkPurchase   BulkPurchase @relation(fields: [bulkPurchaseId], references: [id])
+  product        Product      @relation(fields: [productId], references: [id])
 }
 
 model SaleReturn {
-  id          String     @id @default(uuid())
-  returnNumber String    @unique
-  totalAmount BigInt
-  returnDate  DateTime   @default(now())
-  reason      String?
-  refundAmount BigInt    @default(0)
-  refundPaid  Boolean    @default(false)
-  refundDate  DateTime?
-  sale        Sale       @relation(fields: [saleId], references: [id])
-  saleId      String
-  userId      String
-  items       SaleReturnItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id           String           @id @default(uuid())
+  returnNumber String           @unique
+  totalAmount  BigInt
+  returnDate   DateTime         @default(now())
+  reason       String?
+  refundAmount BigInt           @default(0)
+  refundPaid   Boolean          @default(false)
+  refundDate   DateTime?
+  saleId       String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  userId       String
+  sale         Sale             @relation(fields: [saleId], references: [id])
+  items        SaleReturnItem[]
 
   @@index([userId])
   @@index([saleId])
@@ -143,25 +140,25 @@ model SaleReturnItem {
   id           String     @id @default(uuid())
   quantity     BigInt
   price        BigInt
-  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id])
   saleReturnId String
-  product      Product    @relation(fields: [productId], references: [id])
   productId    String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  product      Product    @relation(fields: [productId], references: [id])
+  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id])
 }
 
 model LoanTransaction {
   id          String   @id @default(uuid())
   amount      BigInt
-  type        String   // 'GIVEN', 'TAKEN', 'RETURNED_BY_CONTACT', 'RETURNED_TO_CONTACT'
+  type        String
   description String?
   date        DateTime @default(now())
-  contact     Contact  @relation(fields: [contactId], references: [id])
   contactId   String
-  userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  userId      String
+  contact     Contact  @relation(fields: [contactId], references: [id])
 
   @@index([userId])
   @@index([contactId])
@@ -180,6 +177,7 @@ model License {
   licenseKey        String
   deviceFingerprint String
   expiry            BigInt
+  duration          String?  // e.g., "1 Hour", "30 Days", "1 Year", "Lifetime"
   activatedAt       DateTime @default(now())
   isTrial           Boolean  @default(false)
   createdAt         DateTime @default(now())
@@ -189,43 +187,43 @@ model License {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  resetOtp  String?
-  otpExpiry DateTime?
-  role      String?  @default("admin")
-  companyName String?
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  resetOtp     String?
+  otpExpiry    DateTime?
+  role         String?   @default("admin")
+  companyName  String?
   trialEndDate DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([email])
   @@index([role])
 }
 
 model ShopSettings {
-  id              String   @id @default(uuid())
-  email           String
-  shopName        String
-  shopDescription String?
+  id               String   @id @default(uuid())
+  email            String
+  shopName         String
+  shopDescription  String?
   shopDescription2 String?
-  userName1       String
-  userPhone1      String
-  userName2       String?
-  userPhone2      String?
-  userName3       String?
-  userPhone3      String?
-  brand1          String?
+  userName1        String
+  userPhone1       String
+  userName2        String?
+  userPhone2       String?
+  userName3        String?
+  userPhone3       String?
+  brand1           String?
   brand1Registered Boolean  @default(false)
-  brand2          String?
+  brand2           String?
   brand2Registered Boolean  @default(false)
-  brand3          String?
+  brand3           String?
   brand3Registered Boolean  @default(false)
-  logo            String?
-  userId          String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  logo             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  userId           String
 
   @@index([userId])
 }
@@ -235,10 +233,10 @@ model Branch {
   name      String     @unique
   code      String     @unique
   location  String
-  userId    String
-  employees Employee[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  userId    String
+  employees Employee[]
 
   @@index([userId])
 }
@@ -250,13 +248,13 @@ model Employee {
   phone       String
   email       String   @unique
   password    String
-  permissions String   // JSON string of permissions
-  branch      Branch   @relation(fields: [branchId], references: [id])
+  permissions String
   branchId    String
   userId      String
-  sales       Sale[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  sales       Sale[]
 
   @@index([userId])
   @@index([email])

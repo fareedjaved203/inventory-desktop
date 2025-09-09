@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../utils/axios';
+import TableSkeleton from '../components/TableSkeleton';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function SuperAdminDashboard() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -13,22 +15,19 @@ export default function SuperAdminDashboard() {
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    if (loading) { // Prevent multiple simultaneous calls
-      try {
-        const response = await api.get('/api/super-admin/users');
-        setUsers(response.data);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-      } finally {
-        setLoading(false);
-      }
+  const { data: users = [], isLoading, error, refetch, isFetching } = useQuery(
+    ['super-admin-users'],
+    async () => {
+      const response = await api.get('/api/super-admin/users');
+      return response.data;
+    },
+    {
+      retry: 1,
+      staleTime: 0,
+      cacheTime: 0,
+      refetchOnWindowFocus: false
     }
-  };
+  );
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -40,7 +39,7 @@ export default function SuperAdminDashboard() {
       setMessage('User created successfully!');
       setFormData({ email: '', password: '', companyName: '' });
       setShowCreateForm(false);
-      fetchUsers();
+      queryClient.invalidateQueries(['super-admin-users']);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to create user');
     } finally {
@@ -48,13 +47,14 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="h-8 bg-gray-300 rounded w-64 animate-pulse"></div>
+          <div className="h-10 bg-gray-300 rounded w-40 animate-pulse"></div>
         </div>
+        <TableSkeleton rows={5} columns={10} />
       </div>
     );
   }
@@ -63,41 +63,70 @@ export default function SuperAdminDashboard() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
-          Create New User
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isFetching && <LoadingSpinner size="w-4 h-4" />}
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Create New User
+          </button>
+        </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead className="bg-gray-50">
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inventory</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branches</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employees</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trial Expires</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Company</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Products</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Inventory</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Branches</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Employees</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Sales</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License Start</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License End</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200">
             {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">{user.companyName || 'N/A'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.stats.products}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.stats.inventory}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.stats.branches}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.stats.employees}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.stats.sales}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.trialEndDate ? new Date(user.trialEndDate).toLocaleDateString() : 'N/A'}
+              <tr key={user.id} className="hover:bg-primary-50 transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{user.companyName || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.stats.products}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.stats.inventory}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.stats.branches}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.stats.employees}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.stats.sales}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    user.licenseType === 'LIFETIME' ? 'bg-purple-100 text-purple-800' :
+                    user.licenseType === '1_YEAR' ? 'bg-blue-100 text-blue-800' :
+                    user.licenseType === '30_DAYS' ? 'bg-green-100 text-green-800' :
+                    user.licenseDuration ? 'bg-orange-100 text-orange-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.licenseType === 'LIFETIME' ? 'Lifetime' :
+                     user.licenseType === '1_YEAR' ? '1 Year' :
+                     user.licenseType === '30_DAYS' ? '30 Days' :
+                     user.licenseDuration || user.licenseType || 'Trial'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {user.licenseStartDate ? new Date(user.licenseStartDate).toLocaleDateString() : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {user.licenseEndDate ? new Date(user.licenseEndDate).toLocaleDateString() : 'N/A'}
                 </td>
               </tr>
             ))}

@@ -5,7 +5,7 @@ export function useLicense() {
   const [licenseStatus, setLicenseStatus] = useState({
     valid: true,
     expiry: null,
-    timeRemaining: 0,
+    timeRemaining: -1, // Use -1 to indicate loading state
     loading: true
   });
 
@@ -19,7 +19,7 @@ export function useLicense() {
       setLicenseStatus({
         valid: true,
         expiry: null,
-        timeRemaining: 0,
+        timeRemaining: -1,
         loading: false
       });
       return;
@@ -29,7 +29,7 @@ export function useLicense() {
       setLicenseStatus({
         valid: true, // Default to valid when not authenticated
         expiry: null,
-        timeRemaining: 0,
+        timeRemaining: -1,
         loading: false
       });
       return;
@@ -46,7 +46,7 @@ export function useLicense() {
       setLicenseStatus({
         valid: false,
         expiry: null,
-        timeRemaining: 0,
+        timeRemaining: -1,
         loading: false
       });
     }
