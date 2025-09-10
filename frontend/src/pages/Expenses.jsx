@@ -111,7 +111,7 @@ function Expenses() {
     debouncedContactSearch(value);
   };
 
-  const { data: contacts = [] } = useQuery(
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery(
     ['contacts', debouncedContactSearchTerm],
     async () => {
       const searchParam = debouncedContactSearchTerm
@@ -489,36 +489,7 @@ function Expenses() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select
-                  value={formData.paymentMethod}
-                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Select Payment Method</option>
-                  {paymentMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                  <FaReceipt className="text-primary-500" /> Receipt Number
-                </label>
-                <input
-                  type="text"
-                  value={formData.receiptNumber}
-                  onChange={(e) => setFormData({ ...formData, receiptNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Optional receipt number"
-                />
-              </div>
-
-              <div>
+                            <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">Vendor/Supplier</label>
                   <div className="flex items-center gap-2">
@@ -580,27 +551,36 @@ function Expenses() {
                       placeholder="Type to search vendor (optional)"
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
-                    {contactSearchTerm &&
-                      contacts?.length > 0 &&
-                      !formData.contactId && (
+                    {contactSearchTerm && !formData.contactId && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                          {contacts?.map((contact) => (
-                            <div
-                              key={contact.id}
-                              onClick={() => {
-                                setFormData({ ...formData, contactId: contact.id, contactName: contact.name });
-                                setContactSearchTerm(contact.name);
-                              }}
-                              className="px-4 py-2 cursor-pointer hover:bg-primary-50"
-                            >
-                              <div className="font-medium">{contact.name}</div>
-                              {contact.phoneNumber && (
-                                <div className="text-sm text-gray-600">
-                                  {contact.phoneNumber}
-                                </div>
-                              )}
+                          {contactsLoading ? (
+                            <div className="px-4 py-3 flex items-center justify-center">
+                              <LoadingSpinner size="w-4 h-4" />
+                              <span className="ml-2 text-gray-500 text-sm">Searching...</span>
                             </div>
-                          ))}
+                          ) : contacts?.length > 0 ? (
+                            contacts.map((contact) => (
+                              <div
+                                key={contact.id}
+                                onClick={() => {
+                                  setFormData({ ...formData, contactId: contact.id, contactName: contact.name });
+                                  setContactSearchTerm(contact.name);
+                                }}
+                                className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                              >
+                                <div className="font-medium">{contact.name}</div>
+                                {contact.phoneNumber && (
+                                  <div className="text-sm text-gray-600">
+                                    {contact.phoneNumber}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-gray-500 text-sm">
+                              No contacts found
+                            </div>
+                          )}
                         </div>
                       )}
                   </div>
@@ -608,6 +588,35 @@ function Expenses() {
                 {validationErrors.contact && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.contact}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select Payment Method</option>
+                  {paymentMethods.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  <FaReceipt className="text-primary-500" /> Receipt Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.receiptNumber}
+                  onChange={(e) => setFormData({ ...formData, receiptNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Optional receipt number"
+                />
               </div>
 
               </form>

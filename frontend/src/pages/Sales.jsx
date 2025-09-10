@@ -143,7 +143,7 @@ function Sales() {
   };
 
   // Fetch products for dropdown with search
-  const { data: products } = useQuery(
+  const { data: products, isLoading: productsLoading } = useQuery(
     ["products", debouncedProductSearchTerm],
     async () => {
       const searchParam = debouncedProductSearchTerm
@@ -157,7 +157,7 @@ function Sales() {
   );
 
   // Fetch contacts for dropdown with search
-  const { data: contacts } = useQuery(
+  const { data: contacts, isLoading: contactsLoading } = useQuery(
     ["contacts", debouncedContactSearchTerm],
     async () => {
       const searchParam = debouncedContactSearchTerm
@@ -1032,37 +1032,46 @@ function Sales() {
                           placeholder={t('searchProducts')}
                           className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
-                        {!productSelected &&
-                          productSearchTerm &&
-                          filteredProducts.length > 0 && (
+                        {!productSelected && productSearchTerm && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                              {filteredProducts?.map((product) => (
-                                <div
-                                  key={product.id}
-                                  onClick={() => {
-                                    setSelectedProduct(product);
-                                    setProductSearchTerm(product.name);
-                                    isProductSelected(true);
-                                    setValidationErrors({
-                                      ...validationErrors,
-                                      product: undefined,
-                                    });
-                                  }}
-                                  className="px-4 py-2 cursor-pointer hover:bg-primary-50 flex justify-between items-center"
-                                >
-                                  <div>
-                                    <div className="font-medium">
-                                      {product.name}
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                      {product.quantity} in stock
-                                    </div>
-                                  </div>
-                                  <div className="text-primary-600 font-medium">
-                                    Rs.{product.price}
-                                  </div>
+                              {productsLoading ? (
+                                <div className="px-4 py-3 flex items-center justify-center">
+                                  <LoadingSpinner size="w-4 h-4" />
+                                  <span className="ml-2 text-gray-500 text-sm">Searching...</span>
                                 </div>
-                              ))}
+                              ) : filteredProducts?.length > 0 ? (
+                                filteredProducts.map((product) => (
+                                  <div
+                                    key={product.id}
+                                    onClick={() => {
+                                      setSelectedProduct(product);
+                                      setProductSearchTerm(product.name);
+                                      isProductSelected(true);
+                                      setValidationErrors({
+                                        ...validationErrors,
+                                        product: undefined,
+                                      });
+                                    }}
+                                    className="px-4 py-2 cursor-pointer hover:bg-primary-50 flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {product.name}
+                                      </div>
+                                      <div className="text-sm text-gray-600">
+                                        {product.quantity} in stock
+                                      </div>
+                                    </div>
+                                    <div className="text-primary-600 font-medium">
+                                      Rs.{product.price}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="px-4 py-3 text-gray-500 text-sm">
+                                  No products found
+                                </div>
+                              )}
                             </div>
                           )}
                       </div>
@@ -1262,27 +1271,36 @@ function Sales() {
                         placeholder={t('searchContacts')}
                         className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
-                      {contactSearchTerm &&
-                        contacts?.length > 0 &&
-                        !selectedContact && (
+                      {contactSearchTerm && !selectedContact && (
                           <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                            {contacts?.map((contact) => (
-                              <div
-                                key={contact.id}
-                                onClick={() => {
-                                  setSelectedContact(contact);
-                                  setContactSearchTerm(contact.name);
-                                }}
-                                className="px-4 py-2 cursor-pointer hover:bg-primary-50"
-                              >
-                                <div className="font-medium">{contact.name}</div>
-                                {contact.phoneNumber && (
-                                  <div className="text-sm text-gray-600">
-                                    {contact.phoneNumber}
-                                  </div>
-                                )}
+                            {contactsLoading ? (
+                              <div className="px-4 py-3 flex items-center justify-center">
+                                <LoadingSpinner size="w-4 h-4" />
+                                <span className="ml-2 text-gray-500 text-sm">Searching...</span>
                               </div>
-                            ))}
+                            ) : contacts?.length > 0 ? (
+                              contacts.map((contact) => (
+                                <div
+                                  key={contact.id}
+                                  onClick={() => {
+                                    setSelectedContact(contact);
+                                    setContactSearchTerm(contact.name);
+                                  }}
+                                  className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                                >
+                                  <div className="font-medium">{contact.name}</div>
+                                  {contact.phoneNumber && (
+                                    <div className="text-sm text-gray-600">
+                                      {contact.phoneNumber}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-gray-500 text-sm">
+                                No contacts found
+                              </div>
+                            )}
                           </div>
                         )}
                     </div>

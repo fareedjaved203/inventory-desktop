@@ -56,6 +56,9 @@ function BulkPurchasing() {
   const [creatingContact, setCreatingContact] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [debouncedProductSearchTerm, setDebouncedProductSearchTerm] = useState("");
+  const [createNewProduct, setCreateNewProduct] = useState(false);
+  const [newProductData, setNewProductData] = useState({ name: '' });
+  const [creatingProduct, setCreatingProduct] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [showPendingPayments, setShowPendingPayments] = useState(location.state?.showPendingPayments || false);
@@ -118,7 +121,7 @@ function BulkPurchasing() {
   );
 
   // Fetch contacts for dropdown with search
-  const { data: contacts } = useQuery(
+  const { data: contacts, isLoading: contactsLoading } = useQuery(
     ['contacts', debouncedContactSearchTerm],
     async () => {
       const searchParam = debouncedContactSearchTerm ? `&search=${debouncedContactSearchTerm}` : '';
@@ -128,7 +131,7 @@ function BulkPurchasing() {
   );
 
   // Fetch products for dropdown with search
-  const { data: products } = useQuery(
+  const { data: products, isLoading: productsLoading } = useQuery(
     ['products', debouncedProductSearchTerm],
     async () => {
       const searchParam = debouncedProductSearchTerm ? `&search=${debouncedProductSearchTerm}` : '';
@@ -230,21 +233,66 @@ function BulkPurchasing() {
     isProductSelected(false);
     setIsEditMode(false);
     setEditingPurchase(null);
+    setCreateNewContact(false);
+    setNewContactData({ name: '', phoneNumber: '', address: '' });
+    setCreateNewProduct(false);
+    setNewProductData({ name: '' });
   };
 
-  const handleAddItem = () => {
-    if (!selectedProduct || !quantity || !purchasePrice) {
+  const handleAddItem = async () => {
+    // Validate inputs first
+    if (!quantity || !purchasePrice) {
       setValidationErrors({
         ...validationErrors,
-        product: !selectedProduct ? t('productIsRequired') : undefined,
         quantity: !quantity ? t('quantityIsRequired') : undefined,
         purchasePrice: !purchasePrice ? t('purchasePriceIsRequired') : undefined
       });
       return;
     }
     
+    // Validate product selection or new product data
+    if (!createNewProduct && !selectedProduct) {
+      setValidationErrors({
+        ...validationErrors,
+        product: t('productIsRequired')
+      });
+      return;
+    }
+    
+    if (createNewProduct && !newProductData.name) {
+      setValidationErrors({
+        ...validationErrors,
+        product: 'Please fill all required product fields'
+      });
+      return;
+    }
+    
+    let productToAdd = selectedProduct;
+    
+    // Create new product if checkbox is checked
+    if (createNewProduct) {
+      try {
+        setCreatingProduct(true);
+        const productResponse = await api.post('/api/products', {
+          name: newProductData.name,
+          price: parseFloat(purchasePrice),
+          quantity: parseInt(quantity),
+          description: ''
+        });
+        productToAdd = productResponse.data;
+      } catch (error) {
+        const errorMessage = error.response?.data?.error === 'Product name must be unique' 
+          ? 'This product is already added' 
+          : error.response?.data?.error || 'Failed to create product';
+        setValidationErrors({ product: errorMessage });
+        return;
+      } finally {
+        setCreatingProduct(false);
+      }
+    }
+    
     // Check if user typed something but didn't select from dropdown
-    if (productSearchTerm && !selectedProduct) {
+    if (productSearchTerm && !selectedProduct && !createNewProduct) {
       setValidationErrors({
         ...validationErrors,
         product: t('pleaseSelectValidProduct')
@@ -256,8 +304,8 @@ function BulkPurchasing() {
     const priceNum = parseFloat(purchasePrice);
     
     const newItem = {
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
+      productId: productToAdd.id,
+      productName: productToAdd.name,
       quantity: quantityNum,
       purchasePrice: priceNum,
       subtotal: priceNum * quantityNum
@@ -270,6 +318,9 @@ function BulkPurchasing() {
     setProductSearchTerm("");
     setValidationErrors({});
     isProductSelected(false);
+    if (createNewProduct) {
+      setNewProductData({ name: '' });
+    }
   };
 
   const handleRemoveItem = (index) => {
@@ -646,26 +697,37 @@ function BulkPurchasing() {
                       placeholder={t('searchContacts')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    {!contactSelected && contactSearchTerm && contacts?.length > 0 && (
+                    {!contactSelected && contactSearchTerm && (
                       <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                        {contacts?.map((contact) => (
-                          <div
-                            key={contact.id}
-                            onClick={() => {
-                              setSelectedContact(contact);
-                              setContactSearchTerm(contact.name);
-                              isContactSelected(true);
-                              setValidationErrors({
-                                ...validationErrors,
-                                contact: undefined
-                              });
-                            }}
-                            className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                          >
-                            <div className="font-medium">{contact.name}</div>
-                            {contact.address && <div className="text-sm text-gray-600">{contact.address}</div>}
+                        {contactsLoading ? (
+                          <div className="px-4 py-3 flex items-center justify-center">
+                            <LoadingSpinner size="w-4 h-4" />
+                            <span className="ml-2 text-gray-500 text-sm">Searching...</span>
                           </div>
-                        ))}
+                        ) : contacts?.length > 0 ? (
+                          contacts.map((contact) => (
+                            <div
+                              key={contact.id}
+                              onClick={() => {
+                                setSelectedContact(contact);
+                                setContactSearchTerm(contact.name);
+                                isContactSelected(true);
+                                setValidationErrors({
+                                  ...validationErrors,
+                                  contact: undefined
+                                });
+                              }}
+                              className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                            >
+                              <div className="font-medium">{contact.name}</div>
+                              {contact.address && <div className="text-sm text-gray-600">{contact.address}</div>}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-gray-500 text-sm">
+                            No contacts found
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -679,45 +741,91 @@ function BulkPurchasing() {
               <div className="space-y-4 mb-4">
                 <div className="flex flex-col gap-4">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('addProducts')}</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={productSearchTerm}
-                        onChange={(e) => {
-                          handleProductSearchChange(e.target.value);
-                          isProductSelected(false);
-                          setSelectedProduct(null);
-                        }}
-                        placeholder={t('searchProducts')}
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {!productSelected && productSearchTerm && products?.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                          {products?.map((product) => (
-                            <div
-                              key={product.id}
-                              onClick={() => {
-                                setSelectedProduct(product);
-                                setProductSearchTerm(product.name);
-                                isProductSelected(true);
-                                setValidationErrors({
-                                  ...validationErrors,
-                                  product: undefined
-                                });
-                              }}
-                              className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
-                            >
-                              <div>
-                                <div className="font-medium">{product.name}</div>
-                                <div className="text-sm text-gray-600">{product.sku}</div>
-                              </div>
-                              <div className="text-blue-600 font-medium">Rs.{product.price}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">{t('addProducts')}</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="createNewProductPurchase"
+                          checked={createNewProduct}
+                          onChange={(e) => {
+                            setCreateNewProduct(e.target.checked);
+                            if (e.target.checked) {
+                              setSelectedProduct(null);
+                              setProductSearchTerm('');
+                              isProductSelected(false);
+                            } else {
+                              setNewProductData({ name: '' });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <label htmlFor="createNewProductPurchase" className="text-sm text-gray-600">
+                          Add New Product
+                        </label>
+                      </div>
                     </div>
+                    {createNewProduct ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={newProductData.name}
+                          onChange={(e) => setNewProductData({ ...newProductData, name: e.target.value })}
+                          placeholder="Product name *"
+                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={productSearchTerm}
+                          onChange={(e) => {
+                            handleProductSearchChange(e.target.value);
+                            isProductSelected(false);
+                            setSelectedProduct(null);
+                          }}
+                          placeholder={t('searchProducts')}
+                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {!productSelected && productSearchTerm && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {productsLoading ? (
+                              <div className="px-4 py-3 flex items-center justify-center">
+                                <LoadingSpinner size="w-4 h-4" />
+                                <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                              </div>
+                            ) : products?.length > 0 ? (
+                              products.map((product) => (
+                                <div
+                                  key={product.id}
+                                  onClick={() => {
+                                    setSelectedProduct(product);
+                                    setProductSearchTerm(product.name);
+                                    isProductSelected(true);
+                                    setValidationErrors({
+                                      ...validationErrors,
+                                      product: undefined
+                                    });
+                                  }}
+                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
+                                >
+                                  <div>
+                                    <div className="font-medium">{product.name}</div>
+                                    <div className="text-sm text-gray-600">{product.sku}</div>
+                                  </div>
+                                  <div className="text-blue-600 font-medium">Rs.{product.price}</div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-gray-500 text-sm">
+                                No products found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {validationErrors.product && (
                       <p className="text-red-500 text-sm mt-1">{validationErrors.product}</p>
                     )}
@@ -776,8 +884,10 @@ function BulkPurchasing() {
                       <button
                         type="button"
                         onClick={handleAddItem}
-                        className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
+                        disabled={creatingProduct}
+                        className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
+                        {creatingProduct && <LoadingSpinner size="w-4 h-4" />}
                         {t('add')}
                       </button>
                     </div>
@@ -866,10 +976,10 @@ function BulkPurchasing() {
               <button
                 type="submit"
                 form="purchase-form"
-                disabled={createPurchase.isLoading || updatePurchase.isLoading || creatingContact}
+                disabled={createPurchase.isLoading || updatePurchase.isLoading || creatingContact || creatingProduct}
                 className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded shadow-sm hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {(createPurchase.isLoading || updatePurchase.isLoading || creatingContact) && <LoadingSpinner size="w-4 h-4" />}
+                {(createPurchase.isLoading || updatePurchase.isLoading || creatingContact || creatingProduct) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updatePurchase') : t('createPurchase')}
               </button>
             </div>
