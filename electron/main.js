@@ -134,15 +134,35 @@ function createWindow() {
     throw new Error('Updates not available in development mode');
   });
 
-  // Handle manual download
+  // Handle manual download with retry mechanism and timeout
   ipcMain.handle('download-update', async () => {
     if (!isDev) {
-      try {
-        await autoUpdater.downloadUpdate();
-        return true;
-      } catch (error) {
-        console.error('Download failed:', error);
-        throw error;
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          console.log(`Attempting download, retries left: ${retries}`);
+          
+          // Create a timeout promise (5 minutes)
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Download timeout after 5 minutes')), 300000);
+          });
+          
+          // Race between download and timeout
+          await Promise.race([
+            autoUpdater.downloadUpdate(),
+            timeoutPromise
+          ]);
+          
+          return true;
+        } catch (error) {
+          console.error(`Download attempt failed:`, error);
+          retries--;
+          if (retries === 0) {
+            throw new Error(`Download failed after 3 attempts: ${error.message}`);
+          }
+          // Wait 3 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
       }
     }
     return false;
@@ -174,9 +194,19 @@ function createWindow() {
     }
   });
 
-  // Configure auto-updater to never auto-download or auto-install
+  // Configure auto-updater with better settings
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
+  
+  // Set download timeout and retry settings
+  autoUpdater.requestHeaders = {
+    'Cache-Control': 'no-cache'
+  };
+  
+  // Configure updater settings for better reliability
+  if (autoUpdater.httpExecutor) {
+    autoUpdater.httpExecutor.maxRedirects = 10;
+  }
 
   // Auto-updater events
   autoUpdater.on('update-available', (info) => {
@@ -192,13 +222,35 @@ function createWindow() {
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    console.log('Download progress:', Math.round(progress.percent) + '%');
-    mainWindow.webContents.send('download-progress', progress);
+    const percent = Math.round(progress.percent);
+    const speed = Math.round(progress.bytesPerSecond / 1024); // KB/s
+    const transferred = Math.round(progress.transferred / 1024 / 1024); // MB
+    const total = Math.round(progress.total / 1024 / 1024); // MB
+    
+    console.log(`Download progress: ${percent}% (${transferred}/${total} MB) at ${speed} KB/s`);
+    mainWindow.webContents.send('download-progress', {
+      ...progress,
+      percent,
+      speed,
+      transferredMB: transferred,
+      totalMB: total
+    });
   });
 
   autoUpdater.on('error', (error) => {
     console.error('Auto-updater error:', error);
-    mainWindow.webContents.send('update-error', error.message);
+    let errorMessage = error.message;
+    
+    // Provide more user-friendly error messages
+    if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
+      errorMessage = 'Network connection failed. Please check your internet connection and try again.';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'Download timed out. Please check your internet connection and try again.';
+    } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
+      errorMessage = 'Permission denied. Please run the application as administrator and try again.';
+    }
+    
+    mainWindow.webContents.send('update-error', errorMessage);
   });
 
   autoUpdater.on('update-not-available', () => {

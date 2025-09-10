@@ -57,7 +57,7 @@ function BulkPurchasing() {
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [debouncedProductSearchTerm, setDebouncedProductSearchTerm] = useState("");
   const [createNewProduct, setCreateNewProduct] = useState(false);
-  const [newProductData, setNewProductData] = useState({ name: '' });
+  const [newProductData, setNewProductData] = useState({ name: '', isRawMaterial: false });
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
@@ -236,7 +236,7 @@ function BulkPurchasing() {
     setCreateNewContact(false);
     setNewContactData({ name: '', phoneNumber: '', address: '' });
     setCreateNewProduct(false);
-    setNewProductData({ name: '' });
+    setNewProductData({ name: '', isRawMaterial: false });
   };
 
   const handleAddItem = async () => {
@@ -277,7 +277,8 @@ function BulkPurchasing() {
           name: newProductData.name,
           price: parseFloat(purchasePrice),
           quantity: parseInt(quantity),
-          description: ''
+          description: '',
+          isRawMaterial: newProductData.isRawMaterial
         });
         productToAdd = productResponse.data;
       } catch (error) {
@@ -319,7 +320,7 @@ function BulkPurchasing() {
     setValidationErrors({});
     isProductSelected(false);
     if (createNewProduct) {
-      setNewProductData({ name: '' });
+      setNewProductData({ name: '', isRawMaterial: false });
     }
   };
 
@@ -755,7 +756,7 @@ function BulkPurchasing() {
                               setProductSearchTerm('');
                               isProductSelected(false);
                             } else {
-                              setNewProductData({ name: '' });
+                              setNewProductData({ name: '', isRawMaterial: false });
                             }
                           }}
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
@@ -774,6 +775,18 @@ function BulkPurchasing() {
                           placeholder="Product name *"
                           className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="isRawMaterial"
+                            checked={newProductData.isRawMaterial || false}
+                            onChange={(e) => setNewProductData({ ...newProductData, isRawMaterial: e.target.checked })}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <label htmlFor="isRawMaterial" className="text-sm text-gray-600">
+                            Raw Material
+                          </label>
+                        </div>
                       </div>
                     ) : (
                       <div className="relative">
