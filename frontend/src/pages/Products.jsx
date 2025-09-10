@@ -22,6 +22,7 @@ const productSchema = z.object({
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
   lowStockThreshold: z.number().int().min(0, "Low stock threshold must be non-negative"),
+  isRawMaterial: z.boolean().optional(),
 });
 
 function Products() {
@@ -41,6 +42,7 @@ function Products() {
   const [productToDelete, setProductToDelete] = useState(null);
   const [showLowStock, setShowLowStock] = useState(location.state?.showLowStock || false);
   const [showDamaged, setShowDamaged] = useState(false);
+  const [showRawMaterials, setShowRawMaterials] = useState(false);
   const [damagedModalOpen, setDamagedModalOpen] = useState(false);
   const [selectedProductForDamage, setSelectedProductForDamage] = useState(null);
   const [damagedQuantity, setDamagedQuantity] = useState('');
@@ -54,12 +56,13 @@ function Products() {
     quantity: '',
     unit: 'pcs',
     lowStockThreshold: '10',
+    isRawMaterial: false,
   });
 
   // Reset page when switching between filters
   useEffect(() => {
     setCurrentPage(1);
-  }, [showLowStock, showDamaged]);
+  }, [showLowStock, showDamaged, showRawMaterials]);
 
   const debouncedSearch = useCallback(
     debounce((term) => {
@@ -74,11 +77,12 @@ function Products() {
   };
 
   const { data: products, isLoading, isFetching } = useQuery(
-    ['products', debouncedSearchTerm, currentPage, showLowStock, showDamaged],
+    ['products', debouncedSearchTerm, currentPage, showLowStock, showDamaged, showRawMaterials],
     async () => {
       let endpoint = '/api/products';
       if (showLowStock) endpoint = '/api/products/low-stock';
       if (showDamaged) endpoint = '/api/products/damaged';
+      if (showRawMaterials) endpoint = '/api/products/raw-materials';
       
       const searchParam = !showDamaged ? `&search=${debouncedSearchTerm}` : '';
       const response = await api.get(
@@ -108,7 +112,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
+        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10', isRawMaterial: false });
         setIsEditMode(false);
         setValidationErrors({});
         toast.success('Product updated successfully!');
@@ -157,7 +161,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10' });
+        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10', isRawMaterial: false });
         setValidationErrors({});
         toast.success('Product created successfully!');
       },
@@ -234,6 +238,7 @@ function Products() {
       purchasePrice: formData.purchasePrice && formData.purchasePrice.trim() ? parseFloat(formData.purchasePrice) : null,
       quantity: parseInt(formData.quantity),
       lowStockThreshold: parseInt(formData.lowStockThreshold),
+      isRawMaterial: formData.isRawMaterial,
     };
     
     console.log('Form data:', formData);
@@ -286,6 +291,7 @@ function Products() {
       quantity: product.quantity.toString(),
       unit: product.unit || 'pcs',
       lowStockThreshold: (product.lowStockThreshold || 10).toString(),
+      isRawMaterial: product.isRawMaterial || false,
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -302,7 +308,7 @@ function Products() {
     }
   };
 
-  if (isLoading && !debouncedSearchTerm && !showLowStock && !showDamaged) return (
+  if (isLoading && !debouncedSearchTerm && !showLowStock && !showDamaged && !showRawMaterials) return (
     <div className="p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
@@ -330,6 +336,11 @@ function Products() {
               Damaged Items
             </span>
           )}
+          {showRawMaterials && (
+            <span className="bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full">
+              Raw Materials
+            </span>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full md:w-auto">
           {!showDamaged && (
@@ -354,23 +365,25 @@ function Products() {
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            {(showLowStock || showDamaged) && (
+            {(showLowStock || showDamaged || showRawMaterials) && (
               <button
                 onClick={() => {
                   setShowLowStock(false);
                   setShowDamaged(false);
+                  setShowRawMaterials(false);
                 }}
                 className="px-3 py-2 text-sm border border-primary-200 rounded-lg text-primary-700 hover:bg-primary-50"
               >
                 Show All Products
               </button>
             )}
-            {!showLowStock && !showDamaged && (
+            {!showLowStock && !showDamaged && !showRawMaterials && (
               <>
                 <button
                   onClick={() => {
                     setShowLowStock(true);
                     setShowDamaged(false);
+                    setShowRawMaterials(false);
                   }}
                   className="px-3 py-2 text-sm border border-orange-200 rounded-lg text-orange-700 hover:bg-orange-50"
                 >
@@ -380,10 +393,21 @@ function Products() {
                   onClick={() => {
                     setShowDamaged(true);
                     setShowLowStock(false);
+                    setShowRawMaterials(false);
                   }}
                   className="px-3 py-2 text-sm border border-red-200 rounded-lg text-red-700 hover:bg-red-50"
                 >
                   Damaged Items
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRawMaterials(true);
+                    setShowLowStock(false);
+                    setShowDamaged(false);
+                  }}
+                  className="px-3 py-2 text-sm border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50"
+                >
+                  Raw Materials
                 </button>
               </>
             )}
@@ -398,7 +422,8 @@ function Products() {
                   sku: '',
                   quantity: '',
                   unit: 'pcs',
-                  lowStockThreshold: '10'
+                  lowStockThreshold: '10',
+                  isRawMaterial: false
                 });
                 setValidationErrors({});
                 setIsModalOpen(true);
@@ -424,7 +449,7 @@ function Products() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {isFetching && (debouncedSearchTerm || showLowStock || showDamaged) ? (
+            {isFetching && (debouncedSearchTerm || showLowStock || showDamaged || showRawMaterials) ? (
               <tr>
                 <td colSpan="6" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
@@ -754,6 +779,18 @@ function Products() {
                     <p className="text-red-500 text-sm mt-1">{validationErrors.lowStockThreshold}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'جب مقدار اس قیمت سے کم یا برابر ہو تو الرٹ آئے گا' : 'Product will appear in low stock alerts when quantity ≤ this value'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isRawMaterial"
+                    checked={formData.isRawMaterial}
+                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <label htmlFor="isRawMaterial" className="text-sm text-gray-700">
+                    Raw Material
+                  </label>
                 </div>
               </div>
               </form>

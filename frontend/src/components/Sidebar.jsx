@@ -30,6 +30,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
     { path: '/contacts', label: t('contacts'), icon: <FaBuilding />, permission: 'contacts' },
     { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart />, permission: 'bulk-purchases' },
     { path: '/returns', label: t('returns'), icon: <FaUndo />, permission: 'returns' },
+    { path: '/expenses', label: 'Expenses', icon: <FaMoneyBillWave />, permission: 'expenses' },
     { path: '/branches', label: 'Branches', icon: <FaCodeBranch />, permission: 'branches' },
     { path: '/employees', label: 'Employees', icon: <FaUsers />, permission: 'employees' },
     { path: '/settings', label: t('settings'), icon: <FaCog />, permission: 'settings' },
@@ -62,7 +63,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
           {collapsed ? <FaChevronRight /> : <FaChevronLeft />}
         </button>
       </div>
-      <nav className="mt-6 flex-1">
+      <nav className="mt-6 flex-1 overflow-y-auto">
         {menuItems.map((item) => (
           <Link
             key={item.path}

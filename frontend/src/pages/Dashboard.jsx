@@ -188,6 +188,45 @@ function Dashboard() {
         </div>
       </ErrorBoundary>
 
+      {/* Expense Overview */}
+      <ErrorBoundary>
+        <h2 className="text-xl font-semibold mb-4 text-primary-700">Expense Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <DashboardCard
+            title="Expenses Today"
+            value={formatPakistaniCurrency(salesStats?.expensesToday || 0)}
+            icon={<FaCalendarDay className="text-xl" />}
+            color="red"
+            isLoading={isLoadingStats}
+            error={statsError}
+          />
+          <DashboardCard
+            title="Last 7 Days"
+            value={formatPakistaniCurrency(salesStats?.expensesLast7Days || 0)}
+            icon={<FaCalendarWeek className="text-xl" />}
+            color="red"
+            isLoading={isLoadingStats}
+            error={statsError}
+          />
+          <DashboardCard
+            title="Last 30 Days"
+            value={formatPakistaniCurrency(salesStats?.expensesLast30Days || 0)}
+            icon={<FaCalendarAlt className="text-xl" />}
+            color="red"
+            isLoading={isLoadingStats}
+            error={statsError}
+          />
+          <DashboardCard
+            title="Last 365 Days"
+            value={formatPakistaniCurrency(salesStats?.expensesLast365Days || 0)}
+            icon={<FaCalendar className="text-xl" />}
+            color="red"
+            isLoading={isLoadingStats}
+            error={statsError}
+          />
+        </div>
+      </ErrorBoundary>
+
       {/* Financial Overview */}
       <ErrorBoundary>
         <h2 className="text-xl font-semibold mb-4 text-primary-700">{language === 'ur' ? 'مالی جائزہ' : 'Financial Overview'}</h2>

@@ -71,6 +71,9 @@ function Sales() {
   const [contactSearchTerm, setContactSearchTerm] = useState("");
   const [debouncedContactSearchTerm, setDebouncedContactSearchTerm] =
     useState("");
+  const [createNewContact, setCreateNewContact] = useState(false);
+  const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
+  const [creatingContact, setCreatingContact] = useState(false);
 
   const updateSale = useMutation(
     async (updatedSale) => {
@@ -449,11 +452,28 @@ function Sales() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    let contactId = selectedContact?.id;
+    
+    // Create new contact if checkbox is checked
+    if (createNewContact && newContactData.name && newContactData.phoneNumber) {
+      try {
+        setCreatingContact(true);
+        const contactResponse = await api.post('/api/contacts', newContactData);
+        contactId = contactResponse.data.id;
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || 'Failed to create contact';
+        setValidationErrors({ contact: errorMessage });
+        return;
+      } finally {
+        setCreatingContact(false);
+      }
+    }
+
     // Validate contact if something is typed but not selected
-    if (contactSearchTerm && !selectedContact) {
+    if (contactSearchTerm && !selectedContact && !createNewContact) {
       setValidationErrors({
         ...validationErrors,
         contact: t('pleaseSelectValidContact'),
@@ -489,7 +509,7 @@ function Sales() {
       totalAmount: totalAmount,
       discount: parseFloat(discount) || 0,
       paidAmount: parsedPaidAmount,
-      ...(selectedContact && { contactId: selectedContact.id }),
+      ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
       ...(employeeId && { employeeId }),
     };
@@ -1175,50 +1195,98 @@ function Sales() {
 
                 {/* Contact Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('contact')} ({t('optional')})
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={contactSearchTerm}
-                      onChange={(e) => {
-                        handleContactSearchChange(e.target.value);
-                        if (!e.target.value) {
-                          setSelectedContact(null);
-                          setValidationErrors({
-                            ...validationErrors,
-                            contact: undefined,
-                          });
-                        }
-                      }}
-                      placeholder={t('searchContacts')}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    {contactSearchTerm &&
-                      contacts?.length > 0 &&
-                      !selectedContact && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                          {contacts?.map((contact) => (
-                            <div
-                              key={contact.id}
-                              onClick={() => {
-                                setSelectedContact(contact);
-                                setContactSearchTerm(contact.name);
-                              }}
-                              className="px-4 py-2 cursor-pointer hover:bg-primary-50"
-                            >
-                              <div className="font-medium">{contact.name}</div>
-                              {contact.phoneNumber && (
-                                <div className="text-sm text-gray-600">
-                                  {contact.phoneNumber}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {t('contact')} ({t('optional')})
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="createNewContactSale"
+                        checked={createNewContact}
+                        onChange={(e) => {
+                          setCreateNewContact(e.target.checked);
+                          if (e.target.checked) {
+                            setSelectedContact(null);
+                            setContactSearchTerm('');
+                          } else {
+                            setNewContactData({ name: '', phoneNumber: '', address: '' });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <label htmlFor="createNewContactSale" className="text-sm text-gray-600">
+                        Add New Contact
+                      </label>
+                    </div>
                   </div>
+                  {createNewContact ? (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={newContactData.name}
+                        onChange={(e) => setNewContactData({ ...newContactData, name: e.target.value })}
+                        placeholder="Contact name *"
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        value={newContactData.phoneNumber}
+                        onChange={(e) => setNewContactData({ ...newContactData, phoneNumber: e.target.value })}
+                        placeholder="Phone number *"
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        value={newContactData.address}
+                        onChange={(e) => setNewContactData({ ...newContactData, address: e.target.value })}
+                        placeholder="Address (optional)"
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={contactSearchTerm}
+                        onChange={(e) => {
+                          handleContactSearchChange(e.target.value);
+                          if (!e.target.value) {
+                            setSelectedContact(null);
+                            setValidationErrors({
+                              ...validationErrors,
+                              contact: undefined,
+                            });
+                          }
+                        }}
+                        placeholder={t('searchContacts')}
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {contactSearchTerm &&
+                        contacts?.length > 0 &&
+                        !selectedContact && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {contacts?.map((contact) => (
+                              <div
+                                key={contact.id}
+                                onClick={() => {
+                                  setSelectedContact(contact);
+                                  setContactSearchTerm(contact.name);
+                                }}
+                                className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                              >
+                                <div className="font-medium">{contact.name}</div>
+                                {contact.phoneNumber && (
+                                  <div className="text-sm text-gray-600">
+                                    {contact.phoneNumber}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  )}
                   {validationErrors.contact && (
                     <p className="text-red-500 text-sm mt-1">
                       {validationErrors.contact}
@@ -1342,18 +1410,14 @@ function Sales() {
               <button
                 type="submit"
                 form="sale-form"
-                disabled={createSale.isLoading || updateSale.isLoading || Object.values(validationErrors).some(
-                  (error) => error !== undefined
-                )}
+                disabled={createSale.isLoading || updateSale.isLoading || creatingContact}
                 className={`px-4 py-2 text-white rounded shadow-sm flex items-center gap-2 ${
-                  createSale.isLoading || updateSale.isLoading || Object.values(validationErrors).some(
-                    (error) => error !== undefined
-                  )
+                  createSale.isLoading || updateSale.isLoading || creatingContact
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
                 }`}
               >
-                {(createSale.isLoading || updateSale.isLoading) && <LoadingSpinner size="w-4 h-4" />}
+                {(createSale.isLoading || updateSale.isLoading || creatingContact) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updateSale') : t('createSale')}
               </button>
             </div>

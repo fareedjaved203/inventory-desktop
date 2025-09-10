@@ -20,6 +20,7 @@ import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
+import expenseRoutes from './expense-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
 
@@ -145,6 +146,9 @@ setupSuperAdminRoutes(app, prisma);
 // License routes
 app.use('/api/license', licenseRoutes);
 
+// Expense routes
+app.use('/api/expenses', expenseRoutes);
+
 // Get all products with search and pagination
 app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
@@ -221,6 +225,49 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
         price: Number(item.price),
         quantity: Number(item.quantity),
         lowStockThreshold: Number(item.lowStockThreshold || 10)
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get raw material products
+app.get('/api/products/raw-materials', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+
+    const where = {
+      userId: req.userId,
+      isRawMaterial: true,
+      ...(search ? {
+        OR: [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { sku: { contains: search } },
+        ],
+      } : {})
+    };
+
+    const [total, items] = await Promise.all([
+      prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    res.json({
+      items: items.map(item => ({
+        ...item,
+        id: item.id.toString(),
+        price: Number(item.price),
+        quantity: Number(item.quantity)
       })),
       total,
       page,

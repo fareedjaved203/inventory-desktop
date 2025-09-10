@@ -51,6 +51,9 @@ function BulkPurchasing() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [contactSearchTerm, setContactSearchTerm] = useState("");
   const [debouncedContactSearchTerm, setDebouncedContactSearchTerm] = useState("");
+  const [createNewContact, setCreateNewContact] = useState(false);
+  const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
+  const [creatingContact, setCreatingContact] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [debouncedProductSearchTerm, setDebouncedProductSearchTerm] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
@@ -273,10 +276,27 @@ function BulkPurchasing() {
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!selectedContact) {
+    let contactId = selectedContact?.id;
+    
+    // Create new contact if checkbox is checked
+    if (createNewContact && newContactData.name && newContactData.phoneNumber) {
+      try {
+        setCreatingContact(true);
+        const contactResponse = await api.post('/api/contacts', newContactData);
+        contactId = contactResponse.data.id;
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || 'Failed to create contact';
+        setValidationErrors({ contact: errorMessage });
+        return;
+      } finally {
+        setCreatingContact(false);
+      }
+    }
+    
+    if (!contactId && !createNewContact) {
       setValidationErrors({
         ...validationErrors,
         contact: t('contactIsRequired')
@@ -311,7 +331,7 @@ function BulkPurchasing() {
     }
 
     const purchaseData = {
-      contactId: selectedContact.id,
+      contactId: contactId,
       items: purchaseItems.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -565,42 +585,91 @@ function BulkPurchasing() {
               <form id="purchase-form" onSubmit={handleSubmit} className="space-y-4">
               {/* Contact Selection */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('contact')}</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={contactSearchTerm}
-                    onChange={(e) => {
-                      handleContactSearchChange(e.target.value);
-                      isContactSelected(false);
-                      setSelectedContact(null);
-                    }}
-                    placeholder={t('searchContacts')}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {!contactSelected && contactSearchTerm && contacts?.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                      {contacts?.map((contact) => (
-                        <div
-                          key={contact.id}
-                          onClick={() => {
-                            setSelectedContact(contact);
-                            setContactSearchTerm(contact.name);
-                            isContactSelected(true);
-                            setValidationErrors({
-                              ...validationErrors,
-                              contact: undefined
-                            });
-                          }}
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                        >
-                          <div className="font-medium">{contact.name}</div>
-                          {contact.address && <div className="text-sm text-gray-600">{contact.address}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">{t('contact')}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="createNewContactPurchase"
+                      checked={createNewContact}
+                      onChange={(e) => {
+                        setCreateNewContact(e.target.checked);
+                        if (e.target.checked) {
+                          setSelectedContact(null);
+                          setContactSearchTerm('');
+                          isContactSelected(false);
+                        } else {
+                          setNewContactData({ name: '', phoneNumber: '', address: '' });
+                        }
+                      }}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <label htmlFor="createNewContactPurchase" className="text-sm text-gray-600">
+                      Add New Contact
+                    </label>
+                  </div>
                 </div>
+                {createNewContact ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newContactData.name}
+                      onChange={(e) => setNewContactData({ ...newContactData, name: e.target.value })}
+                      placeholder="Contact name *"
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="text"
+                      value={newContactData.phoneNumber}
+                      onChange={(e) => setNewContactData({ ...newContactData, phoneNumber: e.target.value })}
+                      placeholder="Phone number *"
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="text"
+                      value={newContactData.address}
+                      onChange={(e) => setNewContactData({ ...newContactData, address: e.target.value })}
+                      placeholder="Address (optional)"
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={contactSearchTerm}
+                      onChange={(e) => {
+                        handleContactSearchChange(e.target.value);
+                        isContactSelected(false);
+                        setSelectedContact(null);
+                      }}
+                      placeholder={t('searchContacts')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {!contactSelected && contactSearchTerm && contacts?.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                        {contacts?.map((contact) => (
+                          <div
+                            key={contact.id}
+                            onClick={() => {
+                              setSelectedContact(contact);
+                              setContactSearchTerm(contact.name);
+                              isContactSelected(true);
+                              setValidationErrors({
+                                ...validationErrors,
+                                contact: undefined
+                              });
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                          >
+                            <div className="font-medium">{contact.name}</div>
+                            {contact.address && <div className="text-sm text-gray-600">{contact.address}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {validationErrors.contact && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.contact}</p>
                 )}
@@ -797,10 +866,10 @@ function BulkPurchasing() {
               <button
                 type="submit"
                 form="purchase-form"
-                disabled={createPurchase.isLoading || updatePurchase.isLoading}
+                disabled={createPurchase.isLoading || updatePurchase.isLoading || creatingContact}
                 className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded shadow-sm hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {(createPurchase.isLoading || updatePurchase.isLoading) && <LoadingSpinner size="w-4 h-4" />}
+                {(createPurchase.isLoading || updatePurchase.isLoading || creatingContact) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updatePurchase') : t('createPurchase')}
               </button>
             </div>

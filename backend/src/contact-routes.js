@@ -12,9 +12,9 @@ export function setupContactRoutes(app, prisma) {
         userId: req.userId,
         ...(search ? {
           OR: [
-            { name: { contains: search } },
-            { address: { contains: search } },
-            { phoneNumber: { contains: search } },
+            { name: { contains: search, mode: 'insensitive' } },
+            { address: { contains: search, mode: 'insensitive' } },
+            { phoneNumber: { contains: search, mode: 'insensitive' } },
           ],
         } : {})
       };
