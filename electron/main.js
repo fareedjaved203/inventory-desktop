@@ -85,8 +85,23 @@ function createWindow() {
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 
-  // Handle external links
+  // Handle external links - allow new windows for receipts
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // Allow about:blank and data URLs for receipts
+    if (url === 'about:blank' || url.startsWith('data:') || url.startsWith('blob:')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 400,
+          height: 600,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+          }
+        }
+      };
+    }
+    // Open external URLs in default browser
     shell.openExternal(url);
     return { action: 'deny' };
   });

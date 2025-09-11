@@ -65,7 +65,25 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
           {collapsed ? <FaChevronRight /> : <FaChevronLeft />}
         </button>
       </div>
-      <nav className="mt-6 flex-1 overflow-y-auto">
+      <nav className="mt-6 flex-1 overflow-y-auto sidebar-nav" style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#358FD4 transparent'
+      }}>
+        <style>{`
+          .sidebar-nav::-webkit-scrollbar {
+            width: 6px;
+          }
+          .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .sidebar-nav::-webkit-scrollbar-thumb {
+            background: #044A80;
+            border-radius: 3px;
+          }
+          .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: #0369a1;
+          }
+        `}</style>
         {menuItems.map((item) => (
           <Link
             key={item.path}

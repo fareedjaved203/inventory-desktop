@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '../utils/axios';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes } from 'react-icons/fa';
+import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
 
@@ -16,8 +16,11 @@ function POS() {
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [debouncedCustomerSearchTerm, setDebouncedCustomerSearchTerm] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [barcodeLoading, setBarcodeLoading] = useState(false);
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -34,6 +37,19 @@ function POS() {
     debouncedSearch(e.target.value);
   };
 
+  // Debounced customer search
+  const debouncedCustomerSearch = useCallback(
+    debounce((term) => {
+      setDebouncedCustomerSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleCustomerSearchChange = (value) => {
+    setCustomerSearchTerm(value);
+    debouncedCustomerSearch(value);
+  };
+
   // Fetch products for search
   const { data: products = [], isLoading: productsLoading } = useQuery(
     ['pos-products', debouncedSearchTerm],
@@ -44,11 +60,28 @@ function POS() {
     }
   );
 
+  // Fetch customers for search
+  const { data: customers = [], isLoading: customersLoading } = useQuery(
+    ['pos-customers', debouncedCustomerSearchTerm],
+    async () => {
+      const searchParam = debouncedCustomerSearchTerm ? `&search=${debouncedCustomerSearchTerm}` : '';
+      const response = await api.get(`/api/contacts?limit=100${searchParam}`);
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    }
+  );
+
+  // Fetch shop settings
+  const { data: shopSettings } = useQuery(['shop-settings'], async () => {
+    const response = await api.get('/api/shop-settings');
+    return response.data;
+  });
+
   // Handle barcode scan/input
   const handleBarcodeSubmit = async (e) => {
     e.preventDefault();
     if (!barcodeInput.trim()) return;
 
+    setBarcodeLoading(true);
     try {
       const response = await api.get(`/api/products?sku=${barcodeInput.trim().toUpperCase()}`);
       const products = Array.isArray(response.data) ? response.data : response.data?.items || [];
@@ -62,6 +95,8 @@ function POS() {
       }
     } catch (error) {
       toast.error('Error searching for product');
+    } finally {
+      setBarcodeLoading(false);
     }
   };
 
@@ -128,7 +163,8 @@ function POS() {
     setDiscount(0);
     setPaidAmount(0);
     setCustomerName('');
-    setCustomerPhone('');
+    setCustomerId('');
+    setCustomerSearchTerm('');
   };
 
   // Calculate totals
@@ -169,7 +205,7 @@ function POS() {
       return;
     }
 
-    setIsProcessing(true);
+    if (createSale.isLoading) return;
 
     const saleData = {
       items: cart.map(item => ({
@@ -181,26 +217,43 @@ function POS() {
       paidAmount: paidAmount,
       discount: discountAmount,
       customerName: customerName || undefined,
-      customerPhone: customerPhone || undefined
+      contactId: customerId || undefined
     };
 
     createSale.mutate(saleData);
-    setIsProcessing(false);
   };
 
   // Print receipt function
   const printReceipt = (saleData) => {
-    const printWindow = window.open('', '_blank');
     const receiptHtml = generateReceiptHtml(saleData);
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
     
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
+  };
+
+  // Preview receipt function
+  const previewReceipt = () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
     
-    // Auto print after a short delay
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    const mockSaleData = { billNumber: 'PREVIEW' };
+    const receiptHtml = generateReceiptHtml(mockSaleData);
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+    }
   };
 
   // Generate receipt HTML for thermal printer
@@ -294,7 +347,7 @@ function POS() {
       </head>
       <body>
         <div class="header">
-          <div class="shop-name">HISAB GHAR</div>
+          <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
           <div class="shop-info">Point of Sale System</div>
           <div class="shop-info">Thank you for your business!</div>
         </div>
@@ -304,7 +357,6 @@ function POS() {
           <div>Date: ${now.toLocaleDateString()}</div>
           <div>Time: ${now.toLocaleTimeString()}</div>
           ${customerName ? `<div>Customer: ${customerName}</div>` : ''}
-          ${customerPhone ? `<div>Phone: ${customerPhone}</div>` : ''}
         </div>
         
         <div class="items">
@@ -386,9 +438,10 @@ function POS() {
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-r-md hover:bg-primary-700"
+                  disabled={barcodeLoading}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-r-md hover:bg-primary-700 disabled:opacity-50"
                 >
-                  <FaSearch />
+                  {barcodeLoading ? <LoadingSpinner size="w-4 h-4" /> : <FaSearch />}
                 </button>
               </div>
             </form>
@@ -417,6 +470,10 @@ function POS() {
           {productsLoading ? (
             <div className="flex justify-center items-center h-32">
               <LoadingSpinner size="w-8 h-8" />
+            </div>
+          ) : products.length === 0 && debouncedSearchTerm ? (
+            <div className="text-center text-gray-500 py-8">
+              <p>No products found</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -513,21 +570,55 @@ function POS() {
         {cart.length > 0 && (
           <div className="border-t border-gray-200 p-4">
             {/* Customer Info */}
-            <div className="mb-4 space-y-2">
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Customer Name (Optional)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <input
-                type="text"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="Customer Phone (Optional)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={customerSearchTerm}
+                  onChange={(e) => {
+                    handleCustomerSearchChange(e.target.value);
+                    if (!e.target.value) {
+                      setCustomerId('');
+                      setCustomerName('');
+                    }
+                  }}
+                  placeholder="Search Customer (Optional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                {customerSearchTerm && !customerId && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {customersLoading ? (
+                      <div className="px-4 py-3 flex items-center justify-center">
+                        <LoadingSpinner size="w-4 h-4" />
+                        <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                      </div>
+                    ) : customers?.length > 0 ? (
+                      customers.map((customer) => (
+                        <div
+                          key={customer.id}
+                          onClick={() => {
+                            setCustomerId(customer.id);
+                            setCustomerName(customer.name);
+                            setCustomerSearchTerm(customer.name);
+                          }}
+                          className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                        >
+                          <div className="font-medium">{customer.name}</div>
+                          {customer.phoneNumber && (
+                            <div className="text-sm text-gray-600">
+                              {customer.phoneNumber}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-gray-500 text-sm">
+                        No customers found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Discount */}
@@ -584,7 +675,7 @@ function POS() {
             </div>
 
             {/* Quick Payment Buttons */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-3 gap-2 mb-4">
               <button
                 onClick={() => setPaidAmount(total)}
                 className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
@@ -597,15 +688,22 @@ function POS() {
               >
                 Round Up
               </button>
+              <button
+                onClick={previewReceipt}
+                className="px-3 py-2 bg-blue-200 text-blue-700 rounded-md text-sm hover:bg-blue-300 flex items-center justify-center"
+                title="Preview Receipt"
+              >
+                <FaEye />
+              </button>
             </div>
 
             {/* Process Sale Button */}
             <button
               onClick={processSale}
-              disabled={isProcessing || paidAmount < total}
+              disabled={createSale.isLoading || paidAmount < total}
               className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {isProcessing ? (
+              {createSale.isLoading ? (
                 <LoadingSpinner size="w-5 h-5" />
               ) : (
                 <>
