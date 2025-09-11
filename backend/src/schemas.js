@@ -28,7 +28,9 @@ export const saleSchema = z.object({
   employeeId: z.string().optional(),
   billNumber: z.string().optional(), // Optional because it will be auto-generated
   saleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
-  discount: z.number().min(0)
+  discount: z.number().min(0),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional()
 });
 
 export const bulkPurchaseItemSchema = z.object({
@@ -64,6 +66,7 @@ export const querySchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),
   search: z.string().optional(),
+  sku: z.string().optional(),
   startDate: z.string().regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "Start date must be in DD/MM/YYYY format").optional(),
   endDate: z.string().regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "End date must be in DD/MM/YYYY format").optional(),
   vendorId: z.string().optional(),

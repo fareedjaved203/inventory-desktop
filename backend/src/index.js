@@ -149,21 +149,57 @@ app.use('/api/license', licenseRoutes);
 // Expense routes
 app.use('/api/expenses', expenseRoutes);
 
+// Get next barcode for user (optimized for performance)
+app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
+  try {
+    // Use aggregation to get max barcode number efficiently
+    const result = await prisma.product.findFirst({
+      where: {
+        userId: req.userId,
+        sku: {
+          startsWith: 'H',
+          not: null
+        }
+      },
+      select: { sku: true },
+      orderBy: { sku: 'desc' }
+    });
+
+    let nextNumber = 1;
+    if (result?.sku) {
+      // Extract number from the highest barcode (H00001 -> 1)
+      const currentNumber = parseInt(result.sku.substring(1));
+      nextNumber = currentNumber + 1;
+    }
+
+    const barcode = `H${nextNumber.toString().padStart(5, '0')}`;
+    res.json({ barcode });
+  } catch (error) {
+    console.error('Barcode generation error:', error);
+    res.status(500).json({ error: 'Failed to generate barcode' });
+  }
+});
+
 // Get all products with search and pagination
 app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 10, search = '', sku = '' } = req.query;
 
-    const where = {
-      userId: req.userId,
-      ...(search ? {
-        OR: [
-          { name: { contains: search } },
-          { description: { contains: search } },
-          { sku: { contains: search } },
-        ],
-      } : {})
+    let where = {
+      userId: req.userId
     };
+
+    // If SKU is provided, search by exact SKU match
+    if (sku) {
+      where.sku = sku;
+    } else if (search) {
+      // Regular search by name, description, or SKU
+      where.OR = [
+        { name: { contains: search } },
+        { description: { contains: search } },
+        { sku: { contains: search } },
+      ];
+    }
 
     const [total, items] = await Promise.all([
       prisma.product.count({ where }),

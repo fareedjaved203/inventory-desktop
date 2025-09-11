@@ -17,7 +17,7 @@ const expenseSchema = z.object({
   description: z.string().optional(),
   paymentMethod: z.string().optional(),
   receiptNumber: z.string().optional(),
-  contactId: z.string().optional(),
+  contactId: z.union([z.string(), z.null(), z.undefined()]).optional(),
 });
 
 const expenseCategories = [
@@ -209,7 +209,7 @@ function Expenses() {
     
     let contactId = formData.contactId;
     
-    // Create new contact if checkbox is checked
+    // Create new contact if checkbox is checked AND contact data is complete
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
       try {
         setCreatingContact(true);
@@ -223,6 +223,7 @@ function Expenses() {
         setCreatingContact(false);
       }
     }
+    // If createNewContact is checked but data is incomplete, proceed without contact
     
     const expenseData = {
       ...formData,

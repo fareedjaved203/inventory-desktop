@@ -9,7 +9,9 @@ import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse } from 'react-icons/fa';
+import { generateUserBarcode } from '../utils/barcodeGenerator';
+import { generatePrintBarcodeHTML } from '../utils/barcodeRenderer';
+import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse, FaBarcode, FaPrint } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -58,6 +60,7 @@ function Products() {
     lowStockThreshold: '10',
     isRawMaterial: false,
   });
+  const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
 
   // Reset page when switching between filters
   useEffect(() => {
@@ -412,7 +415,7 @@ function Products() {
               </>
             )}
             <button
-              onClick={() => {
+              onClick={async () => {
                 setIsEditMode(false);
                 setFormData({
                   name: '',
@@ -427,6 +430,17 @@ function Products() {
                 });
                 setValidationErrors({});
                 setIsModalOpen(true);
+                
+                // Auto-generate barcode for new products
+                setIsGeneratingBarcode(true);
+                try {
+                  const barcode = await generateUserBarcode();
+                  setFormData(prev => ({ ...prev, sku: barcode }));
+                } catch (error) {
+                  console.error('Failed to generate barcode:', error);
+                } finally {
+                  setIsGeneratingBarcode(false);
+                }
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap"
             >
@@ -514,6 +528,47 @@ function Products() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                             </svg>
                             Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              const printWindow = window.open('', '_blank');
+                              const labelHtml = `
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                  <meta charset="utf-8">
+                                  <title>Product Label</title>
+                                  <style>
+                                    @media print { @page { size: 2.25in 1.25in; margin: 0.1in; } }
+                                    body { font-family: Arial, sans-serif; font-size: 8px; margin: 0; padding: 2px; width: 2.05in; height: 1.05in; border: 1px solid #000; }
+                                    .label { display: flex; flex-direction: column; height: 100%; justify-content: space-between; text-align: center; }
+                                    .name { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+                                    .price { font-size: 12px; font-weight: bold; margin: 2px 0; }
+
+                                    .shop { font-size: 6px; color: #666; margin-top: 1px; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="label">
+                                    <div class="name">${product.name}</div>
+                                    <div class="price">${formatPakistaniCurrency(product.price)}</div>
+                                    <div>
+                                      ${product.sku ? generatePrintBarcodeHTML(product.sku) : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
+                                    </div>
+                                    <div class="shop">HISAB GHAR</div>
+                                  </div>
+                                </body>
+                                </html>
+                              `;
+                              printWindow.document.write(labelHtml);
+                              printWindow.document.close();
+                              setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
+                            title="Print Label"
+                          >
+                            <FaPrint className="w-4 h-4" />
+                            Label
                           </button>
                           <button
                             onClick={() => {
@@ -623,18 +678,53 @@ function Products() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaTag className="text-primary-500" /> {language === 'ur' ? 'ایس کے یو (اختیاری)' : 'SKU (Optional)'}
+                    <FaBarcode className="text-primary-500" /> {language === 'ur' ? 'بارکوڈ/ایس کے یو (اختیاری)' : 'Barcode/SKU (Optional)'}
                   </label>
-                  <input
-                    type="text"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={language === 'ur' ? 'پروڈکٹ کوڈ' : 'Product code'}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      readOnly={!isEditMode || isGeneratingBarcode}
+                      className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                        !isEditMode || isGeneratingBarcode
+                          ? 'border-gray-300 bg-gray-50 text-gray-700 cursor-not-allowed'
+                          : 'border-primary-200 focus:ring-primary-500'
+                      }`}
+                      placeholder={isGeneratingBarcode ? 'Generating barcode...' : (language === 'ur' ? 'پروڈکٹ کوڈ/بارکوڈ' : 'Product code/barcode')}
+                    />
+                    {/* Show generate button only for existing products without barcodes */}
+                    {isEditMode && !formData.sku && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIsGeneratingBarcode(true);
+                          try {
+                            const barcode = await generateUserBarcode();
+                            setFormData({ ...formData, sku: barcode });
+                          } catch (error) {
+                            console.error('Failed to generate barcode:', error);
+                          } finally {
+                            setIsGeneratingBarcode(false);
+                          }
+                        }}
+                        disabled={isGeneratingBarcode}
+                        className="px-3 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 flex items-center gap-1 disabled:opacity-50"
+                        title="Generate barcode"
+                      >
+                        {isGeneratingBarcode ? <LoadingSpinner size="w-4 h-4" /> : <FaBarcode />}
+                      </button>
+                    )}
+                  </div>
                   {validationErrors.sku && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.sku}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {!isEditMode 
+                      ? (language === 'ur' ? 'نئے پروڈکٹس کے لیے خودکار بارکوڈ' : 'Auto-generated for new products')
+                      : (language === 'ur' ? 'POS میں اسکین کے لیے استعمال ہوتا ہے' : 'Used for scanning in POS system')
+                    }
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">

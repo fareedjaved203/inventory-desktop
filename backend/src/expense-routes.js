@@ -13,7 +13,7 @@ const expenseSchema = z.object({
   description: z.string().optional(),
   paymentMethod: z.string().optional(),
   receiptNumber: z.string().optional(),
-  contactId: z.string().optional(),
+  contactId: z.union([z.string(), z.null(), z.undefined()]).optional(),
 });
 
 // Get expenses with pagination and search

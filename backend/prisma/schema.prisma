@@ -10,7 +10,7 @@ datasource db {
 
 model Product {
   id                String             @id @default(uuid())
-  name              String             @unique
+  name              String
   description       String
   price             BigInt
   purchasePrice     BigInt?            @default(0)
@@ -27,6 +27,7 @@ model Product {
   SaleItem          SaleItem[]
   SaleReturnItem    SaleReturnItem[]
 
+  @@unique([userId, name])
   @@index([userId])
   @@index([userId, name])
   @@index([userId, quantity])

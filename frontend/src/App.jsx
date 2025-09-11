@@ -6,7 +6,9 @@ import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import POS from './pages/POS';
 import Products from './pages/Products';
+import ProductLabels from './pages/ProductLabels';
 import Sales from './pages/Sales';
 import Contacts from './pages/Contacts';
 import BulkPurchasing from './pages/BulkPurchasing';
@@ -193,8 +195,10 @@ function AppContent() {
           <div className="flex-1 p-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/pos" element={<POS />} />
               <Route path="/employee-stats" element={<EmployeeStats />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/product-labels" element={<ProductLabels />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/bulk" element={<BulkPurchasing />} />
