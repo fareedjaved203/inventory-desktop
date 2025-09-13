@@ -10,10 +10,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { generateUserBarcode } from '../utils/barcodeGenerator';
-import { generatePrintBarcodeHTML } from '../utils/barcodeRenderer';
 import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse, FaBarcode, FaPrint } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -61,6 +61,8 @@ function Products() {
     isRawMaterial: false,
   });
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [selectedProductForLabel, setSelectedProductForLabel] = useState(null);
 
   // Reset page when switching between filters
   useEffect(() => {
@@ -414,6 +416,7 @@ function Products() {
                 </button>
               </>
             )}
+
             <button
               onClick={async () => {
                 setIsEditMode(false);
@@ -531,7 +534,7 @@ function Products() {
                           </button>
                           <button
                             onClick={() => {
-                              const printWindow = window.open('', '_blank');
+                              const printWindow = window.open('', '_blank', 'width=400,height=600');
                               const labelHtml = `
                                 <!DOCTYPE html>
                                 <html>
@@ -544,7 +547,6 @@ function Products() {
                                     .label { display: flex; flex-direction: column; height: 100%; justify-content: space-between; text-align: center; }
                                     .name { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
                                     .price { font-size: 12px; font-weight: bold; margin: 2px 0; }
-
                                     .shop { font-size: 6px; color: #666; margin-top: 1px; }
                                   </style>
                                 </head>
@@ -553,7 +555,7 @@ function Products() {
                                     <div class="name">${product.name}</div>
                                     <div class="price">${formatPakistaniCurrency(product.price)}</div>
                                     <div>
-                                      ${product.sku ? generatePrintBarcodeHTML(product.sku) : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
+                                      ${product.sku ? '<div style="font-size:8px;">[BARCODE: ' + product.sku + ']</div>' : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
                                     </div>
                                     <div class="shop">HISAB GHAR</div>
                                   </div>
@@ -1006,6 +1008,8 @@ function Products() {
           </div>
         </div>
       )}
+
+
 
       {/* Delete Confirmation Modal */}
       <DeleteModal

@@ -1,17 +1,17 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../utils/axios';
-import ProductLabel from '../components/ProductLabel';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProductLabel from '../components/ProductLabel';
 import { debounce } from 'lodash';
 import { FaSearch, FaPrint, FaTag } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { generatePrintBarcodeHTML } from '../utils/barcodeRenderer';
 
 function ProductLabels() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
   const searchInputRef = useRef(null);
 
   const debouncedSearch = useCallback(
@@ -46,93 +46,7 @@ function ProductLabels() {
     });
   };
 
-  const printAllLabels = () => {
-    if (selectedProducts.length === 0) return;
 
-    const printWindow = window.open('', '_blank');
-    
-    const labelsHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Product Labels</title>
-        <style>
-          @media print {
-            @page { 
-              size: A4; 
-              margin: 0.5in; 
-            }
-            body { margin: 0; }
-          }
-          body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
-          }
-          .labels-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 2.25in);
-            gap: 0.25in;
-            justify-content: center;
-          }
-          .label {
-            width: 2.25in;
-            height: 1.25in;
-            border: 1px solid #000;
-            padding: 2px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            text-align: center;
-            page-break-inside: avoid;
-          }
-          .product-name {
-            font-size: 9px;
-            font-weight: bold;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .price {
-            font-size: 12px;
-            font-weight: bold;
-            margin: 2px 0;
-          }
-
-          .shop-name {
-            font-size: 6px;
-            color: #666;
-            margin-top: 1px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="labels-grid">
-          ${selectedProducts.map(product => `
-            <div class="label">
-              <div class="product-name">${product.name}</div>
-              <div class="price">${formatPakistaniCurrency(product.price)}</div>
-              <div>
-                ${product.sku ? generatePrintBarcodeHTML(product.sku) : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
-              </div>
-              <div class="shop-name">HISAB GHAR</div>
-            </div>
-          `).join('')}
-        </div>
-      </body>
-      </html>
-    `;
-    
-    printWindow.document.write(labelsHtml);
-    printWindow.document.close();
-    
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
-  };
 
   return (
     <div className="p-4">
@@ -156,7 +70,7 @@ function ProductLabels() {
             </div>
           </div>
           <button
-            onClick={printAllLabels}
+            onClick={() => setModalOpen(true)}
             disabled={selectedProducts.length === 0}
             className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
@@ -191,7 +105,7 @@ function ProductLabels() {
                       type="checkbox"
                       checked={!!selectedProducts.find(p => p.id === product.id)}
                       onChange={() => {}}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 pointer-events-none"
                     />
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{product.name}</h4>
@@ -206,23 +120,16 @@ function ProductLabels() {
             </div>
           </div>
 
-          {/* Label Preview */}
-          {selectedProducts.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold mb-4">Label Preview</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {selectedProducts.slice(0, 8).map((product) => (
-                  <ProductLabel key={product.id} product={product} />
-                ))}
-              </div>
-              {selectedProducts.length > 8 && (
-                <p className="text-sm text-gray-500 mt-4">
-                  Showing first 8 labels. Total selected: {selectedProducts.length}
-                </p>
-              )}
-            </div>
-          )}
+
         </>
+      )}
+      
+      {/* Product Label Modal */}
+      {modalOpen && (
+        <ProductLabel
+          products={selectedProducts}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -1,118 +1,408 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import JsBarcode from 'jsbarcode';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { generateBarcodeHTML } from '../utils/barcodeRenderer';
 
-function ProductLabel({ product, onPrint }) {
-  const generateLabelHtml = () => {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Product Label - ${product.name}</title>
-        <style>
-          @media print {
-            @page { 
-              size: 2.25in 1.25in; 
-              margin: 0.1in; 
-            }
-            body { margin: 0; }
-          }
-          body {
-            font-family: Arial, sans-serif;
-            font-size: 8px;
-            line-height: 1.2;
-            margin: 0;
-            padding: 2px;
-            width: 2.05in;
-            height: 1.05in;
-            border: 1px solid #000;
-            box-sizing: border-box;
-          }
-          .label-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            justify-content: space-between;
-          }
-          .product-name {
-            font-size: 9px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .price {
-            font-size: 12px;
-            font-weight: bold;
-            text-align: center;
-            margin: 2px 0;
-          }
-          .barcode-section {
-            text-align: center;
-            margin-top: auto;
-          }
-          .no-barcode {
-            font-size: 8px;
-            color: #666;
-            margin: 2px 0;
-          }
-          .shop-name {
-            font-size: 6px;
-            text-align: center;
-            color: #666;
-            margin-top: 1px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="label-container">
-          <div class="product-name">${product.name}</div>
-          <div class="price">${formatPakistaniCurrency(product.price)}</div>
-          <div class="barcode-section">
-            ${product.sku ? generateBarcodeHTML(product.sku) : '<div class="no-barcode">NO BARCODE</div>'}
-          </div>
-          <div class="shop-name">HISAB GHAR</div>
-        </div>
-      </body>
-      </html>
-    `;
+const LABEL_SIZES = {
+  'extra-small': {
+    name: 'Extra Small (1" × 0.5")',
+    width: '1in',
+    height: '0.5in',
+    barcodeWidth: 1,
+    barcodeHeight: 20,
+    fontSize: '6px',
+    nameSize: '7px',
+    priceSize: '8px'
+  },
+  'small': {
+    name: 'Small (1.5" × 1")',
+    width: '1.5in',
+    height: '1in',
+    barcodeWidth: 1.5,
+    barcodeHeight: 30,
+    fontSize: '8px',
+    nameSize: '9px',
+    priceSize: '10px'
+  },
+  'medium': {
+    name: 'Medium (2.25" × 1.25")',
+    width: '2.25in',
+    height: '1.25in',
+    barcodeWidth: 2,
+    barcodeHeight: 40,
+    fontSize: '10px',
+    nameSize: '11px',
+    priceSize: '12px'
+  },
+  'large': {
+    name: 'Large (3" × 2")',
+    width: '3in',
+    height: '2in',
+    barcodeWidth: 2.5,
+    barcodeHeight: 50,
+    fontSize: '12px',
+    nameSize: '14px',
+    priceSize: '16px'
+  },
+  'extra-large': {
+    name: 'Extra Large (4" × 3")',
+    width: '4in',
+    height: '3in',
+    barcodeWidth: 3,
+    barcodeHeight: 60,
+    fontSize: '14px',
+    nameSize: '16px',
+    priceSize: '18px'
+  }
+};
+
+function ProductLabel({ product, products, onClose }) {
+  // Create a ref to store the onClose function
+  const onCloseRef = useRef(onClose);
+  
+  // Update ref when onClose changes
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  
+  // Safety check for onClose
+  const handleClose = useCallback(() => {
+    console.log('handleClose called, onClose type:', typeof onCloseRef.current);
+    if (typeof onCloseRef.current === 'function') {
+      onCloseRef.current();
+    } else {
+      console.error('onClose is not a function, trying to close modal manually');
+      // Try to find and remove the modal from DOM
+      const modal = document.querySelector('[data-modal="product-label"]');
+      if (modal) {
+        modal.remove();
+      }
+    }
+  }, []);
+  const [selectedSize, setSelectedSize] = useState('medium');
+  const [quantity, setQuantity] = useState(1);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  
+  const isMultiProduct = Array.isArray(products) && products.length > 0;
+  const displayProducts = isMultiProduct ? products : (product ? [product] : []);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('ProductLabel rendered with:', {
+      product: product?.name,
+      productsCount: products?.length,
+      isMultiProduct,
+      onCloseType: typeof onClose
+    });
+  }, [product, products, isMultiProduct, onClose]);
+  
+  // Add escape key handler
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        console.log('Escape key pressed');
+        handleClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+  
+
+
+  const generateBarcode = (text, size) => {
+    const canvas = document.createElement('canvas');
+    const sizeConfig = LABEL_SIZES[size];
+    
+    try {
+      JsBarcode(canvas, text, {
+        format: "CODE128",
+        width: sizeConfig.barcodeWidth,
+        height: sizeConfig.barcodeHeight,
+        displayValue: false,
+        background: "#ffffff",
+        lineColor: "#000000",
+        margin: 2
+      });
+      return canvas.toDataURL();
+    } catch (error) {
+      console.error('Barcode generation error:', error);
+      return null;
+    }
   };
 
-  const printLabel = () => {
-    const printWindow = window.open('', '_blank');
-    const labelHtml = generateLabelHtml();
+  const printLabels = () => {
+    const sizeConfig = LABEL_SIZES[selectedSize];
+    const productsToProcess = isMultiProduct ? products : [product];
     
-    printWindow.document.write(labelHtml);
-    printWindow.document.close();
+    const labelsHTML = productsToProcess.flatMap(prod => 
+      Array.from({ length: quantity }, () => {
+        const barcodeDataURL = generateBarcode(prod.sku, selectedSize);
+        return `
+          <div class="label" style="
+            width: ${sizeConfig.width};
+            height: ${sizeConfig.height};
+            border: 1px solid #000;
+            display: inline-block;
+            margin: 2px;
+            padding: 2px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            page-break-inside: avoid;
+            vertical-align: top;
+            box-sizing: border-box;
+            position: relative;
+          ">
+            <div style="
+              font-size: ${sizeConfig.nameSize};
+              font-weight: bold;
+              margin-bottom: 1px;
+              line-height: 1;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            ">${prod.name}</div>
+            
+            <div style="
+              font-size: ${sizeConfig.priceSize};
+              font-weight: bold;
+              margin: 1px 0;
+              color: #000;
+            ">${formatPakistaniCurrency(prod.price)}</div>
+            
+            ${barcodeDataURL ? `
+              <div style="margin: 1px 0;">
+                <img src="${barcodeDataURL}" style="max-width: 90%; height: auto;" />
+              </div>
+              <div style="
+                font-size: ${sizeConfig.fontSize};
+                font-weight: bold;
+                margin-top: 1px;
+              ">${prod.sku}</div>
+            ` : `
+              <div style="
+                font-size: ${sizeConfig.fontSize};
+                color: #666;
+                margin: 2px 0;
+              ">NO BARCODE</div>
+            `}
+            
+            <div style="
+              font-size: ${sizeConfig.fontSize};
+              color: #666;
+              position: absolute;
+              bottom: 1px;
+              left: 50%;
+              transform: translateX(-50%);
+            ">HISAB GHAR</div>
+          </div>
+        `;
+      })
+    ).join('');
+
+    // Use EXACT same method as POS system - no about:blank, no blob URLs
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
     
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Product Labels</title>
+          <style>
+            /* Label Printer Settings */
+            @page {
+              size: ${sizeConfig.width} ${sizeConfig.height};
+              margin: 0;
+            }
+            
+            /* A4 Paper Settings (fallback) */
+            @media print and (min-width: 8in) {
+              @page {
+                size: A4;
+                margin: 0.5in;
+              }
+              .labels-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 2mm;
+              }
+            }
+            
+            @media print {
+              body { margin: 0; padding: 0; }
+              .no-print { display: none; }
+              .label { 
+                break-inside: avoid;
+                margin: 0 !important;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 0;
+            }
+            
+            .labels-container {
+              display: block;
+            }
+            .print-info {
+              margin-bottom: 10px;
+              padding: 10px;
+              background: #f0f0f0;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-info no-print">
+            <h3>Print Settings</h3>
+            <p><strong>Products:</strong> ${productsToProcess.length}</p>
+            <p><strong>Size:</strong> ${sizeConfig.name}</p>
+<p><strong>Total Labels:</strong> ${productsToProcess.length * quantity}</p>
+            <p><strong>For Label Printers:</strong> Set paper size to ${sizeConfig.width} × ${sizeConfig.height}</p>
+            <p><strong>Instructions:</strong> Print at 100% scale, no margins adjustment</p>
+          </div>
+          
+          <div class="labels-container">
+            ${labelsHTML}
+          </div>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg p-3 bg-white shadow-sm" style={{ width: '2.25in', height: '1.25in' }}>
-      <div className="flex flex-col h-full justify-between text-center">
-        <div className="text-xs font-bold truncate">{product.name}</div>
-        <div className="text-lg font-bold">{formatPakistaniCurrency(product.price)}</div>
-        <div>
-          {product.sku ? (
-            <div dangerouslySetInnerHTML={{ __html: generateBarcodeHTML(product.sku) }} />
-          ) : (
-            <div className="text-xs text-gray-500">NO BARCODE</div>
-          )}
-        </div>
-        <div className="text-xs text-gray-500">HISAB GHAR</div>
-      </div>
-      <button
-        onClick={printLabel}
-        className="mt-2 w-full bg-primary-600 text-white py-1 px-2 rounded text-xs hover:bg-primary-700"
+    <div 
+      data-modal="product-label"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          console.log('Backdrop clicked, closing modal');
+          handleClose();
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg w-full max-w-4xl shadow-xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
       >
-        Print Label
-      </button>
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-bold text-gray-800">
+            Print {isMultiProduct ? 'Multiple Product' : 'Product'} Labels
+          </h2>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-6">
+          {isMultiProduct ? (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-700 mb-2">Products to Print</h3>
+              <div className="max-h-32 overflow-y-auto">
+                {products.map((prod) => (
+                  <div key={prod.id} className="text-sm py-1">
+                    {prod.name} - {prod.sku || 'No SKU'}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                {products.length} products will be printed
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-700 mb-1">Product</h3>
+              <p className="text-sm"><strong>Name:</strong> {product?.name}</p>
+              <p className="text-sm"><strong>Price:</strong> {product ? formatPakistaniCurrency(product.price) : ''}</p>
+              <p className="text-sm"><strong>SKU:</strong> {product?.sku || 'No SKU'}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Label Size
+              </label>
+              <select
+                value={selectedSize}
+                onChange={(e) => setSelectedSize(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Object.entries(LABEL_SIZES).map(([key, config]) => (
+                  <option key={key} value={key}>
+                    {config.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {isMultiProduct ? 'Copies per Product' : 'Quantity'}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                onWheel={(e) => e.target.blur()}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {isMultiProduct 
+                  ? `Print ${quantity} copies of each selected product's label`
+                  : `Print ${quantity} copies of this product's label`
+                }
+              </p>
+            </div>
+          </div>
+
+
+
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h4 className="font-semibold text-yellow-800 mb-1">Print Instructions</h4>
+            <ul className="text-xs text-yellow-700 space-y-1">
+              <li>• Print at 100% scale (no fit to page)</li>
+              <li>• Use high quality (300+ DPI) for best barcode scanning</li>
+              <li>• For barcode printers: Use exact size settings</li>
+              <li>• For A4 paper: Multiple labels will fit automatically</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-6 border-t bg-gray-50 flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleClose();
+            }}
+            className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              printLabels();
+            }}
+            disabled={isMultiProduct ? products?.length === 0 : !product?.sku}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Print {isMultiProduct ? `${products?.length || 0} Products (${quantity} each)` : `${quantity} Label${quantity > 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

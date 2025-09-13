@@ -1,51 +1,51 @@
-// Canvas-based barcode renderer
+import JsBarcode from 'jsbarcode';
+
+// Generate scannable barcode using JsBarcode library
 export const generatePrintBarcodeHTML = (text) => {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  
-  const barWidth = 2;
-  const barHeight = 50;
-  const width = text.length * 24;
-  canvas.width = width;
-  canvas.height = barHeight;
-  
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, width, barHeight);
-  
-  ctx.fillStyle = 'black';
-  let x = 0;
-  
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const code = char.charCodeAt(0);
-    
-    // Create multiple bars per character
-    for (let j = 0; j < 4; j++) {
-      if ((code + j) % 2 === 0) {
-        ctx.fillRect(x, 0, 2, barHeight);
-      }
-      x += 3;
-      
-      if ((code + j) % 3 === 0) {
-        ctx.fillRect(x, 0, 1, barHeight);
-      }
-      x += 2;
-      
-      if ((code + j) % 5 === 0) {
-        ctx.fillRect(x, 0, 1, barHeight);
-      }
-      x += 1;
-    }
+  if (!text) {
+    return `
+      <div style="text-align: center; margin: 10px 0;">
+        <div style="font-size: 10px; color: #666;">NO BARCODE</div>
+      </div>
+    `;
   }
-  
-  const dataURL = canvas.toDataURL();
-  
-  return `
-    <div style="text-align: center; margin: 10px 0;">
-      <img src="${dataURL}" style="display: block; margin: 0 auto;" />
-      <div style="font-size: 10px; margin-top: 3px; font-weight: bold;">${text}</div>
-    </div>
-  `;
+
+  try {
+    const canvas = document.createElement('canvas');
+    
+    // Generate Code 128 barcode
+    JsBarcode(canvas, text, {
+      format: "CODE128",
+      width: 2,
+      height: 50,
+      displayValue: true,
+      fontSize: 12,
+      textAlign: "center",
+      textPosition: "bottom",
+      textMargin: 2,
+      fontOptions: "bold",
+      font: "Arial",
+      background: "#ffffff",
+      lineColor: "#000000",
+      margin: 10
+    });
+    
+    const dataURL = canvas.toDataURL();
+    
+    return `
+      <div style="text-align: center; margin: 10px 0;">
+        <img src="${dataURL}" style="display: block; margin: 0 auto;" />
+      </div>
+    `;
+  } catch (error) {
+    console.error('Barcode generation error:', error);
+    return `
+      <div style="text-align: center; margin: 10px 0;">
+        <div style="font-size: 10px; color: #666;">BARCODE ERROR</div>
+        <div style="font-size: 8px; color: #999;">${text}</div>
+      </div>
+    `;
+  }
 };
 
 export const generateBarcodeHTML = generatePrintBarcodeHTML;
