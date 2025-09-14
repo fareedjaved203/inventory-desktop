@@ -1,2 +1,2 @@
 // Auto-generated version file
-export const VERSION = '5.9.4';
+export const VERSION = '5.9.7';

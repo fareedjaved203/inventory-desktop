@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "5.9.5",
+  "version": "5.9.7",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {

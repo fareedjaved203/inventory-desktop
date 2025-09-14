@@ -131,6 +131,117 @@ function ProductLabel({ product, products, onClose }) {
     }
   };
 
+  const saveToPDF = () => {
+    const sizeConfig = LABEL_SIZES[selectedSize];
+    const productsToProcess = isMultiProduct ? products : [product];
+    
+    const labelsHTML = productsToProcess.flatMap(prod => 
+      Array.from({ length: quantity }, () => {
+        const barcodeDataURL = generateBarcode(prod.sku, selectedSize);
+        return `
+          <div class="label" style="
+            width: ${sizeConfig.width};
+            height: ${sizeConfig.height};
+            border: 1px solid #000;
+            display: block;
+            margin: 0 0 5mm 0;
+            padding: 2px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+            position: relative;
+          ">
+            <div style="
+              font-size: ${sizeConfig.nameSize};
+              font-weight: bold;
+              margin-bottom: 1px;
+              line-height: 1;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            ">${prod.name}</div>
+            
+            <div style="
+              font-size: ${sizeConfig.priceSize};
+              font-weight: bold;
+              margin: 1px 0;
+              color: #000;
+            ">${formatPakistaniCurrency(prod.price)}</div>
+            
+            ${barcodeDataURL ? `
+              <div style="margin: 1px 0;">
+                <img src="${barcodeDataURL}" style="max-width: 90%; height: auto;" />
+              </div>
+              <div style="
+                font-size: ${sizeConfig.fontSize};
+                font-weight: bold;
+                margin-top: 1px;
+              ">${prod.sku}</div>
+            ` : `
+              <div style="
+                font-size: ${sizeConfig.fontSize};
+                color: #666;
+                margin: 2px 0;
+              ">NO BARCODE</div>
+            `}
+            
+            <div style="
+              font-size: ${sizeConfig.fontSize};
+              color: #666;
+              position: absolute;
+              bottom: 1px;
+              left: 50%;
+              transform: translateX(-50%);
+            ">HISAB GHAR</div>
+          </div>
+        `;
+      })
+    ).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Product Labels PDF</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+          }
+          .labels-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5mm;
+            justify-content: flex-start;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="labels-container">
+          ${labelsHTML}
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create blob and download
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `product-labels-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const printLabels = () => {
     const sizeConfig = LABEL_SIZES[selectedSize];
     const productsToProcess = isMultiProduct ? products : [product];
@@ -143,13 +254,11 @@ function ProductLabel({ product, products, onClose }) {
             width: ${sizeConfig.width};
             height: ${sizeConfig.height};
             border: 1px solid #000;
-            display: inline-block;
-            margin: 2px;
+            display: block;
+            margin: 0;
             padding: 2px;
             text-align: center;
             font-family: Arial, sans-serif;
-            page-break-inside: avoid;
-            vertical-align: top;
             box-sizing: border-box;
             position: relative;
           ">
@@ -234,8 +343,14 @@ function ProductLabel({ product, products, onClose }) {
               body { margin: 0; padding: 0; }
               .no-print { display: none; }
               .label { 
-                break-inside: avoid;
+                page-break-after: always;
                 margin: 0 !important;
+                display: block;
+                width: 100%;
+                height: 100%;
+              }
+              .label:last-child {
+                page-break-after: avoid;
               }
             }
             body {
@@ -375,6 +490,7 @@ function ProductLabel({ product, products, onClose }) {
               <li>• Use high quality (300+ DPI) for best barcode scanning</li>
               <li>• For barcode printers: Use exact size settings</li>
               <li>• For A4 paper: Multiple labels will fit automatically</li>
+              <li>• To save as PDF: Use "Save as PDF" button below</li>
             </ul>
           </div>
         </div>
@@ -390,6 +506,16 @@ function ProductLabel({ product, products, onClose }) {
             className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              saveToPDF();
+            }}
+            disabled={isMultiProduct ? products?.length === 0 : !product?.sku}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Save as PDF
           </button>
           <button
             type="button"
