@@ -193,11 +193,11 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
     if (sku) {
       where.sku = sku;
     } else if (search) {
-      // Regular search by name, description, or SKU
+      // Regular search by name, description, or SKU (case-insensitive)
       where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } },
-        { sku: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -281,9 +281,9 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
       isRawMaterial: true,
       ...(search ? {
         OR: [
-          { name: { contains: search } },
-          { description: { contains: search } },
-          { sku: { contains: search } },
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
         ],
       } : {})
     };
