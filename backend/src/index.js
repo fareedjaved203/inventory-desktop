@@ -514,6 +514,24 @@ app.post(
           userId: req.userId
         },
       });
+      
+      // Auto-create expense entry for raw materials with purchase cost
+      if (req.body.isRawMaterial && req.body.purchasePrice && req.body.quantity > 0) {
+        const expenseAmount = Number(req.body.purchasePrice) * Number(req.body.quantity);
+        if (expenseAmount > 0) {
+          await prisma.expense.create({
+            data: {
+              amount: expenseAmount,
+              date: new Date(),
+              category: 'Raw Materials',
+              description: `Direct addition of raw material: ${req.body.name}`,
+              userId: req.userId,
+              productId: product.id
+            }
+          });
+        }
+      }
+      
       res.status(201).json({
         ...product,
         id: product.id.toString(),
@@ -560,6 +578,11 @@ app.put(
         }
       }
       
+      // Get original product data
+      const originalProduct = await prisma.product.findUnique({
+        where: { id: req.params.id, userId: req.userId }
+      });
+      
       const product = await prisma.product.update({
         where: { 
           id: req.params.id,
@@ -567,6 +590,41 @@ app.put(
         },
         data: req.body,
       });
+      
+      // Auto-create expense entry if converting to raw material or updating raw material cost
+      if (req.body.isRawMaterial && req.body.purchasePrice && req.body.quantity) {
+        const wasRawMaterial = originalProduct?.isRawMaterial;
+        const oldCost = Number(originalProduct?.purchasePrice || 0) * Number(originalProduct?.quantity || 0);
+        const newCost = Number(req.body.purchasePrice) * Number(req.body.quantity);
+        const costDifference = newCost - oldCost;
+        
+        if (!wasRawMaterial && newCost > 0) {
+          // Converting to raw material - create new expense
+          await prisma.expense.create({
+            data: {
+              amount: newCost,
+              date: new Date(),
+              category: 'Raw Materials',
+              description: `Converted to raw material: ${product.name}`,
+              userId: req.userId,
+              productId: product.id
+            }
+          });
+        } else if (wasRawMaterial && costDifference > 0) {
+          // Raw material cost increased - create expense for difference
+          await prisma.expense.create({
+            data: {
+              amount: costDifference,
+              date: new Date(),
+              category: 'Raw Materials',
+              description: `Raw material cost adjustment: ${product.name}`,
+              userId: req.userId,
+              productId: product.id
+            }
+          });
+        }
+      }
+      
       res.json({
         ...product,
         id: product.id.toString(),
