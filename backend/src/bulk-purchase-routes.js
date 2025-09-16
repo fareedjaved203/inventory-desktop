@@ -165,6 +165,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             data: {
               invoiceNumber,
               totalAmount: req.body.totalAmount,
+              discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
               userId: req.userId,
@@ -263,6 +264,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             },
             data: {
               totalAmount: req.body.totalAmount,
+              discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
               contact: {

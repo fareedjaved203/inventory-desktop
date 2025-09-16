@@ -6,10 +6,11 @@ export function setupContactRoutes(app, prisma) {
   // Get all contacts with search and pagination
   app.get('/api/contacts', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '' } = req.query;
+      const { page = 1, limit = 10, search = '', contactType = '' } = req.query;
 
       const where = {
         userId: req.userId,
+        ...(contactType && { contactType }),
         ...(search ? {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },

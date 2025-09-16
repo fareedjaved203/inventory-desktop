@@ -60,6 +60,7 @@ function BulkPurchasing() {
   const [newProductData, setNewProductData] = useState({ name: '', isRawMaterial: false });
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [showPendingPayments, setShowPendingPayments] = useState(location.state?.showPendingPayments || false);
 
@@ -149,11 +150,16 @@ function BulkPurchasing() {
     }
   }, [purchases]);
 
-  // Calculate total amount
+  const calculateSubtotal = () => {
+    return purchaseItems.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
+  };
+
+  // Update total amount when purchase items or discount change
   useEffect(() => {
-    const total = purchaseItems.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
-    setTotalAmount(total);
-  }, [purchaseItems]);
+    const subtotal = calculateSubtotal();
+    const discountAmount = parseFloat(discount) || 0;
+    setTotalAmount(subtotal - discountAmount);
+  }, [purchaseItems, discount]);
 
   // Create bulk purchase mutation
   const createPurchase = useMutation(
@@ -227,6 +233,7 @@ function BulkPurchasing() {
     setContactSearchTerm("");
     setProductSearchTerm("");
     setTotalAmount(0);
+    setDiscount(0);
     setPaidAmount(0);
     setValidationErrors({});
     isContactSelected(false);
@@ -275,8 +282,7 @@ function BulkPurchasing() {
         setCreatingProduct(true);
         const productResponse = await api.post('/api/products', {
           name: newProductData.name,
-          price: parseFloat(purchasePrice),
-          quantity: parseInt(quantity),
+          quantity: 0,
           description: '',
           isRawMaterial: newProductData.isRawMaterial
         });
@@ -337,7 +343,10 @@ function BulkPurchasing() {
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
       try {
         setCreatingContact(true);
-        const contactResponse = await api.post('/api/contacts', newContactData);
+        const contactResponse = await api.post('/api/contacts', {
+          ...newContactData,
+          contactType: 'supplier'
+        });
         contactId = contactResponse.data.id;
       } catch (error) {
         const errorMessage = error.response?.data?.error || 'Failed to create contact';
@@ -390,6 +399,7 @@ function BulkPurchasing() {
         purchasePrice: item.purchasePrice
       })),
       totalAmount: totalAmount,
+      discount: parseFloat(discount) || 0,
       paidAmount: parsedPaidAmount,
       purchaseDate: new Date().toISOString()
     };
@@ -429,6 +439,7 @@ function BulkPurchasing() {
     })));
     
     setTotalAmount(purchase.totalAmount);
+    setDiscount(purchase.discount || 0);
     setPaidAmount(purchase.paidAmount);
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -937,10 +948,48 @@ function BulkPurchasing() {
                 )}
               </div>
 
+              {/* Subtotal and Discount */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('subtotal')}
+                  </label>
+                  <input
+                    type="text"
+                    value={`Rs.${calculateSubtotal().toFixed(2)}`}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-primary-800 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('discount')}
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max={calculateSubtotal()}
+                    value={discount}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      if (value <= calculateSubtotal()) {
+                        setDiscount(e.target.value);
+                        setTotalAmount(calculateSubtotal() - value);
+                      }
+                    }}
+                    onWheel={(e) => e.target.blur()}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
               {/* Total and Paid Amount */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('totalAmount')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('totalAmount')}
+                  </label>
                   <input
                     type="text"
                     value={`Rs.${totalAmount.toFixed(2)}`}
@@ -956,13 +1005,19 @@ function BulkPurchasing() {
                     min="0"
                     value={paidAmount}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (value > totalAmount) {
-                        setValidationErrors({...validationErrors, paidAmount: t('paidAmountCannotExceedTotal')});
-                      } else {
-                        setValidationErrors({...validationErrors, paidAmount: undefined});
-                      }
+                      const value = parseFloat(e.target.value) || 0;
                       setPaidAmount(e.target.value);
+
+                      // Clear validation error if paid amount is now valid
+                      if (
+                        value <= totalAmount &&
+                        validationErrors.paidAmount
+                      ) {
+                        setValidationErrors({
+                          ...validationErrors,
+                          paidAmount: undefined,
+                        });
+                      }
                     }}
                     onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"

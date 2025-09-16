@@ -12,18 +12,19 @@ model Product {
   id                String             @id @default(uuid())
   name              String
   description       String
-  price             BigInt
+  price             BigInt?
   purchasePrice     BigInt?            @default(0)
   sku               String?
   quantity          BigInt
   damagedQuantity   BigInt             @default(0)
   lowStockThreshold BigInt             @default(10)
-  isRawMaterial     Boolean            @default(false)
-  userId            String
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   unit              String             @default("pcs")
+  userId            String
+  isRawMaterial     Boolean            @default(false)
   BulkPurchaseItem  BulkPurchaseItem[]
+  expenses          Expense[]
   SaleItem          SaleItem[]
   SaleReturnItem    SaleReturnItem[]
 
@@ -44,9 +45,9 @@ model Sale {
   saleDate            DateTime     @default(now())
   contactId           String?
   employeeId          String?
-  userId              String
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
+  userId              String
   contact             Contact?     @relation(fields: [contactId], references: [id])
   employee            Employee?    @relation(fields: [employeeId], references: [id])
   items               SaleItem[]
@@ -77,17 +78,19 @@ model Contact {
   name             String
   address          String?
   phoneNumber      String
-  userId           String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  userId           String
+  contactType      String            @default("customer")
   purchases        BulkPurchase[]
+  expenses         Expense[]
   loanTransactions LoanTransaction[]
   sales            Sale[]
-  expenses         Expense[]
 
   @@index([userId])
   @@index([userId, name])
   @@index([phoneNumber])
+  @@index([userId, contactType])
 }
 
 model BulkPurchase {
@@ -100,6 +103,7 @@ model BulkPurchase {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   userId        String
+  discount      BigInt             @default(0)
   contact       Contact            @relation(fields: [contactId], references: [id])
   items         BulkPurchaseItem[]
 
@@ -180,7 +184,7 @@ model License {
   licenseKey        String
   deviceFingerprint String
   expiry            BigInt
-  duration          String?  // e.g., "1 Hour", "30 Days", "1 Year", "Lifetime"
+  duration          String?
   activatedAt       DateTime @default(now())
   isTrial           Boolean  @default(false)
   createdAt         DateTime @default(now())
@@ -195,11 +199,11 @@ model User {
   password     String
   resetOtp     String?
   otpExpiry    DateTime?
-  role         String?   @default("admin")
-  companyName  String?
-  trialEndDate DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  companyName  String?
+  role         String?   @default("admin")
+  trialEndDate DateTime?
 
   @@index([email])
   @@index([role])
@@ -253,9 +257,9 @@ model Employee {
   password    String
   permissions String
   branchId    String
-  userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  userId      String
   branch      Branch   @relation(fields: [branchId], references: [id])
   sales       Sale[]
 
@@ -276,9 +280,12 @@ model Expense {
   userId        String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  productId     String?
   contact       Contact? @relation(fields: [contactId], references: [id])
+  product       Product? @relation(fields: [productId], references: [id])
 
   @@index([userId])
   @@index([userId, date])
   @@index([contactId])
+  @@index([productId])
 }

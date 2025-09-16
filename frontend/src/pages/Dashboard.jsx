@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import api from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -13,12 +14,14 @@ import { MdOutlinePayments } from "react-icons/md";
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+import DashboardReportModal from '../components/DashboardReportModal';
 
 function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { language } = useLanguage();
   const t = useTranslation(language);
+  const [showReportModal, setShowReportModal] = useState(false);
   
   // Fetch basic dashboard data
   const { data, isLoading, error } = useQuery(['dashboard'], async () => {
@@ -63,18 +66,29 @@ function Dashboard() {
     <div>
       <div className={`flex justify-between items-center mb-8 ${language === 'ur' ? 'font-urdu' : ''}`}>
         <h1 className="text-3xl font-bold text-primary-800">{t('dashboard')}</h1>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-          disabled={isLoading || isLoadingStats}
-        >
-          {isLoading || isLoadingStats ? (
-            <AWSSpinner size="sm" className="text-white" />
-          ) : (
-            <FaSync />
-          )}
-          {language === 'ur' ? 'ریفریش' : 'Refresh'}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v14a4 4 0 01-4 4z" />
+            </svg>
+            Generate Report
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            disabled={isLoading || isLoadingStats}
+          >
+            {isLoading || isLoadingStats ? (
+              <AWSSpinner size="sm" className="text-white" />
+            ) : (
+              <FaSync />
+            )}
+            {language === 'ur' ? 'ریفریش' : 'Refresh'}
+          </button>
+        </div>
       </div>
       
       {/* Inventory Stats */}
@@ -151,7 +165,7 @@ function Dashboard() {
 
       {/* Profit Overview */}
       <ErrorBoundary>
-        <h2 className="text-xl font-semibold mb-4 text-primary-700">{language === 'ur' ? 'منافع کا جائزہ' : 'Profit Overview'}</h2>
+        <h2 className="text-xl font-semibold mb-4 text-primary-700">{language === 'ur' ? 'منافع کا جائزہ' : 'Gross Profit Overview (Sales Only)'}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <DashboardCard
             title="Profit Today"
@@ -289,6 +303,11 @@ function Dashboard() {
           <BranchEmployeeSalesChart />
         </div>
       </ErrorBoundary>
+      
+      <DashboardReportModal 
+        isOpen={showReportModal} 
+        onClose={() => setShowReportModal(false)} 
+      />
     </div>
   );
 }

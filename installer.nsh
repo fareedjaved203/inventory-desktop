@@ -17,13 +17,19 @@
     ; Use Node.js 16.20.2 for Windows 7/8 compatibility
     StrCpy $R1 "https://nodejs.org/dist/v16.20.2/node-v16.20.2-x64.msi"
     
-    ; Try PowerShell first (Windows 8.1+)
-    nsExec::ExecToLog 'powershell -Command "try { (New-Object Net.WebClient).DownloadFile('$R1', '$TEMP\nodejs-installer.msi'); exit 0 } catch { exit 1 }"'
+    ; Try PowerShell with SSL bypass first
+    nsExec::ExecToLog 'powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { (New-Object Net.WebClient).DownloadFile('$R1', '$TEMP\nodejs-installer.msi'); exit 0 } catch { exit 1 }"'
     Pop $0
     
-    ; If PowerShell fails, try certutil (available on all Windows versions)
+    ; If PowerShell fails, try certutil
     ${If} $0 != 0
       nsExec::ExecToLog 'certutil -urlcache -split -f "$R1" "$TEMP\nodejs-installer.msi"'
+      Pop $0
+    ${EndIf}
+    
+    ; If both fail, try PowerShell with additional SSL bypass
+    ${If} $0 != 0
+      nsExec::ExecToLog 'powershell -Command "[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { (New-Object Net.WebClient).DownloadFile('$R1', '$TEMP\nodejs-installer.msi'); exit 0 } catch { exit 1 }"'
       Pop $0
     ${EndIf}
     

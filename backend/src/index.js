@@ -215,7 +215,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
       items: items.map(item => ({
         ...item,
         id: item.id.toString(),
-        price: Number(item.price),
+        price: item.price ? Number(item.price) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -258,7 +258,7 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
     res.json({
       items: items.map(item => ({
         ...item,
-        price: Number(item.price),
+        price: item.price ? Number(item.price) : null,
         quantity: Number(item.quantity),
         lowStockThreshold: Number(item.lowStockThreshold || 10)
       })),
@@ -302,7 +302,7 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
       items: items.map(item => ({
         ...item,
         id: item.id.toString(),
-        price: Number(item.price),
+        price: item.price ? Number(item.price) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -617,61 +617,7 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get dashboard stats
-app.get('/api/dashboard', authenticateToken, async (req, res) => {
-  try {
-    const [totalProducts, totalInventory, lowStock, totalSales, recentSales, pendingPayments] = await Promise.all([
-      prisma.product.count({ where: { userId: req.userId } }),
-      prisma.product.aggregate({
-        where: { userId: req.userId },
-        _sum: {
-          quantity: true,
-        },
-      }),
-      prisma.product.findMany({ where: { userId: req.userId } }).then(products => 
-        products.filter(product => 
-          Number(product.quantity) <= Number(product.lowStockThreshold || 10)
-        ).length
-      ),
-      prisma.sale.aggregate({
-        where: { userId: req.userId },
-        _sum: {
-          totalAmount: true,
-        },
-      }),
-      prisma.sale.findMany({
-        where: { userId: req.userId },
-        take: 5,
-        orderBy: { saleDate: 'desc' },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      }),
-      prisma.bulkPurchase.findMany({
-        where: { userId: req.userId },
-        select: {
-          totalAmount: true,
-          paidAmount: true
-        }
-      }).then(purchases => purchases.filter(p => Number(p.totalAmount) > Number(p.paidAmount)).length),
-    ]);
 
-    res.json({
-      totalProducts,
-      totalInventory: totalInventory._sum.quantity || 0,
-      lowStock,
-      totalSales: Number(totalSales._sum.totalAmount || 0),
-      recentSales,
-      pendingPayments,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Catch-all handler for React Router (must be last)
 app.get('*', (req, res) => {

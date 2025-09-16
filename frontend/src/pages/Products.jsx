@@ -18,7 +18,7 @@ import { useTranslation } from '../utils/translations';
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string(),
-  price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores"),
+  price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
@@ -225,9 +225,6 @@ function Products() {
     if (!formData.name.trim()) {
       errors.name = t('nameIsRequired');
     }
-    if (!formData.price.trim()) {
-      errors.price = t('priceIsRequired');
-    }
     if (!formData.quantity.trim()) {
       errors.quantity = t('quantityIsRequired');
     }
@@ -239,7 +236,7 @@ function Products() {
 
     const productData = {
       ...formData,
-      price: parseFloat(formData.price),
+      price: formData.price && formData.price.trim() ? parseFloat(formData.price) : null,
       purchasePrice: formData.purchasePrice && formData.purchasePrice.trim() ? parseFloat(formData.purchasePrice) : null,
       quantity: parseInt(formData.quantity),
       lowStockThreshold: parseInt(formData.lowStockThreshold),
@@ -480,7 +477,9 @@ function Products() {
                 <tr key={product.id} className="hover:bg-primary-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{product.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-gray-600">{product.sku}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">{formatPakistaniCurrency(product.price)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
+                    {product.price ? formatPakistaniCurrency(product.price) : '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-blue-800">
                     {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
                   </td>
@@ -553,7 +552,7 @@ function Products() {
                                 <body>
                                   <div class="label">
                                     <div class="name">${product.name}</div>
-                                    <div class="price">${formatPakistaniCurrency(product.price)}</div>
+                                    <div class="price">${product.price ? formatPakistaniCurrency(product.price) : 'No Price Set'}</div>
                                     <div>
                                       ${product.sku ? '<div style="font-size:8px;">[BARCODE: ' + product.sku + ']</div>' : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
                                     </div>
@@ -730,7 +729,7 @@ function Products() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'فروخت کی قیمت *' : 'Sell Price *'}
+                    <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'فروخت کی قیمت (اختیاری)' : 'Sell Price (Optional)'}
                   </label>
                   <input
                     type="number"
@@ -749,12 +748,12 @@ function Products() {
                     }}
                     onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={language === 'ur' ? 'قیمت روپے میں' : 'Price in rupees'}
+                    placeholder={language === 'ur' ? 'قیمت روپے میں (اختیاری)' : 'Price in rupees (optional)'}
                   />
                   {validationErrors.price && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں' : 'Enter whole numbers only, no decimals'}</p>
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں (خام مال کے لیے اختیاری)' : 'Enter whole numbers only, no decimals (optional for raw materials)'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">

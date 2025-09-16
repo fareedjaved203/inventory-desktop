@@ -1,8 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import SaleInvoicePDF from './SaleInvoicePDF';
+
+function formatPakistaniCurrency(amount, showCurrency = true) {
+  if (amount === null || amount === undefined) return showCurrency ? 'Rs.0.00' : '0.00';
+  
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return showCurrency ? 'Rs.0.00' : '0.00';
+  
+  const parts = num.toFixed(2).split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+  
+  let formattedInteger = '';
+  const length = integerPart.length;
+  
+  if (length <= 3) {
+    formattedInteger = integerPart;
+  } else {
+    formattedInteger = integerPart.substring(length - 3);
+    let remaining = integerPart.substring(0, length - 3);
+    while (remaining.length > 0) {
+      const chunk = remaining.substring(Math.max(0, remaining.length - 2));
+      formattedInteger = chunk + ',' + formattedInteger;
+      remaining = remaining.substring(0, Math.max(0, remaining.length - 2));
+    }
+  }
+  
+  return (showCurrency ? 'Rs.' : '') + formattedInteger + '.' + decimalPart;
+}
 
 function SaleDetailsModal({ sale, isOpen, onClose }) {
   const [creditPayment, setCreditPayment] = useState({});
@@ -165,19 +193,38 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                 No items available to return
               </div>
             )}
-            <PDFDownloadLink
-              document={<SaleInvoicePDF sale={sale} shopSettings={shopSettings} />}
-              fileName={sale.contact ? `invoice-${sale.contact.name.replace(/[^a-zA-Z0-9]/g, '_')}-${sale.billNumber}.pdf` : `invoice-${sale.billNumber}.pdf`}
+            <button
+              onClick={() => {
+                // Create print content
+                const printContent = createPrintableInvoice(sale, shopSettings);
+                
+                // Create a new window for printing
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(printContent);
+                printWindow.document.close();
+                
+                // Wait for content to load then print
+                printWindow.onload = () => {
+                  printWindow.print();
+                  printWindow.close();
+                };
+              }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm flex items-center gap-2"
             >
-              {({ loading }) => (loading ? 'Loading...' : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                  </svg>
-                  Print Invoice
-                </>
-              ))}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 711.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+              </svg>
+              Print Invoice
+            </button>
+            <PDFDownloadLink
+              document={<SaleInvoicePDF sale={sale} shopSettings={shopSettings} />}
+              fileName={`invoice-${sale.billNumber}.pdf`}
+              className="bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 shadow-sm flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download PDF
             </PDFDownloadLink>
             <button
               onClick={onClose}
@@ -416,72 +463,6 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                             </span>
                           </td>
                         </tr>
-                        {/* Commented out Refund Credit input field to prevent issues
-                        {!allCreditRefunded && (
-                          <tr>
-                            <td colSpan="3" className="px-6 py-4 text-right font-medium">
-                              Refund Credit
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {creditPayment.saleRefund?.completed ? (
-                                  <div className="text-sm text-green-600 font-medium">
-                                    Refund of Rs.{creditPayment.saleRefund.amount} processed
-                                  </div>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={Math.abs(balance)}
-                                    step="0.01"
-                                    placeholder="Amount"
-                                    value={creditPayment.saleRefund?.amount || ''}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value) || 0;
-                                      if (value <= Math.abs(balance)) {
-                                        setCreditPayment(prev => ({
-                                          ...prev,
-                                          saleRefund: {
-                                            ...prev.saleRefund,
-                                            amount: e.target.value
-                                          }
-                                        }));
-                                      }
-                                    }}
-                                    disabled={creditPayment.saleRefund?.processing || hasIndividualRefunds}
-                                    className="w-24 py-1 px-2 border border-gray-300 rounded text-sm disabled:bg-gray-100"
-                                  />
-                                )}
-                                {!creditPayment.saleRefund?.completed && (
-                                  <>
-                                  {hasIndividualRefunds && (
-                                    <div className="text-xs text-orange-600 mb-1">
-                                      Individual returns already refunded
-                                    </div>
-                                  )}
-                                  <button
-                                    onClick={() => {
-                                      const refundAmount = parseFloat(creditPayment.saleRefund?.amount) || Math.abs(balance);
-                                      if (refundAmount <= Math.abs(balance)) {
-                                        // Create a dummy return for refund
-                                        payCredit.mutate({
-                                          saleId: sale.id,
-                                          amount: refundAmount
-                                        });
-                                      }
-                                    }}
-                                    disabled={creditPayment.saleRefund?.processing || hasIndividualRefunds}
-                                    className="px-2 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-400"
-                                  >
-                                    {creditPayment.saleRefund?.processing ? 'Processing...' : 'Pay Refund'}
-                                  </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                        */}
                       </>
                     ) : (
                       <tr>
@@ -548,77 +529,6 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                               {returnRecord.refundPaid ? 'Paid' : (returnRecord.refundAmount > 0 ? 'Pending' : 'No Refund')}
                             </div>
                           </div>
-                          
-                          {(() => {
-                            const netAmount = (sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0);
-                            const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0) || 0);
-                            // Include local state refunds that haven't been persisted yet
-                            const localRefunds = Object.keys(creditPayment)
-                              .filter(key => key !== 'saleRefund' && creditPayment[key]?.completed)
-                              .reduce((sum, key) => sum + parseFloat(creditPayment[key]?.amount || 0), 0);
-                            const balance = netAmount - sale.paidAmount + totalRefunded + localRefunds;
-                            const hasOverpaid = balance < 0;
-                            const isSettled = balance === 0;
-                            
-                            return !returnRecord.refundPaid && hasOverpaid && !isSettled && (
-                              <div className="mt-2 flex items-center gap-1">
-                                {creditPayment[returnRecord.id]?.completed ? (
-                                  <div className="text-xs text-green-600 font-medium">
-                                    Refund of Rs.{creditPayment[returnRecord.id].amount} processed
-                                  </div>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={Math.min(returnRecord.totalAmount, sale.paidAmount)}
-                                    step="0.01"
-                                    placeholder="Amount"
-                                    value={creditPayment[returnRecord.id]?.amount || ''}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value) || 0;
-                                      const maxRefund = Math.min(returnRecord.totalAmount, sale.paidAmount);
-                                      if (value <= maxRefund) {
-                                        setCreditPayment(prev => ({
-                                          ...prev,
-                                          [returnRecord.id]: {
-                                            ...prev[returnRecord.id],
-                                            amount: e.target.value
-                                          }
-                                        }));
-                                      }
-                                    }}
-                                    disabled={creditPayment[returnRecord.id]?.processing || hasFullRefund}
-                                    className="w-20 text-xs py-1 px-2 border border-gray-300 rounded disabled:bg-gray-100"
-                                  />
-                                )}
-                                {!creditPayment[returnRecord.id]?.completed && (
-                                  <>
-                                  {hasFullRefund && (
-                                    <div className="text-xs text-orange-600">
-                                      Full credit already refunded
-                                    </div>
-                                  )}
-                                  <button
-                                    onClick={() => {
-                                      const maxRefund = Math.min(returnRecord.totalAmount, sale.paidAmount);
-                                      const refundAmount = parseFloat(creditPayment[returnRecord.id]?.amount) || maxRefund;
-                                      if (refundAmount <= maxRefund) {
-                                        payCredit.mutate({
-                                          returnId: returnRecord.id,
-                                          amount: refundAmount
-                                        });
-                                      }
-                                    }}
-                                    disabled={creditPayment[returnRecord.id]?.processing || hasFullRefund}
-                                    className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
-                                  >
-                                    {creditPayment[returnRecord.id]?.processing ? 'Processing...' : 'Pay'}
-                                  </button>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })()}
                         </td>
                       </tr>
                     ))}
@@ -632,6 +542,385 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
       </div>
     </div>
   );
+}
+
+function createPrintableInvoice(sale, shopSettings) {
+  // Create brand array with registered trademark symbols
+  const brands = [];
+  
+  if (shopSettings?.brand1) {
+    brands.push(shopSettings.brand1 + (shopSettings.brand1Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand2) {
+    brands.push(shopSettings.brand2 + (shopSettings.brand2Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand3) {
+    brands.push(shopSettings.brand3 + (shopSettings.brand3Registered ? '®' : ''));
+  }
+
+  // Calculate payment status
+  const netAmount = (sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0);
+  const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0) || 0);
+  const balance = netAmount - sale.paidAmount + totalRefunded;
+  
+  // Determine status
+  let status = '';
+  let statusColor = '';
+  
+  if (balance > 0) {
+    status = 'PAYMENT DUE';
+    statusColor = '#92400e';
+  } else if (balance < 0) {
+    const allRefundsPaid = sale.returns?.every(ret => ret.refundPaid) || false;
+    if (allRefundsPaid && totalRefunded > 0) {
+      status = 'REFUNDED';
+      statusColor = '#0369a1';
+    } else {
+      status = 'CREDIT BALANCE';
+      statusColor = '#1e40af';
+    }
+  } else {
+    status = 'FULLY PAID';
+    statusColor = '#065f46';
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Invoice #${sale.billNumber}</title>
+      <style>
+        @media print {
+          @page {
+            margin: 0.5in;
+            size: A4;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+        
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 11px;
+          color: #333;
+          margin: 0;
+          padding: 20px;
+          line-height: 1.4;
+        }
+        
+        .header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #2563eb;
+          padding-bottom: 10px;
+        }
+        
+        .logo {
+          max-width: 100px;
+          max-height: 100px;
+        }
+        
+        .company-info {
+          text-align: right;
+          font-size: 10px;
+        }
+        
+        .shop-name {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 4px;
+        }
+        
+        .brands {
+          font-size: 10px;
+          color: #666;
+          margin-bottom: 2px;
+        }
+        
+        .recipient-box {
+          margin: 20px 0 15px 0;
+        }
+        
+        .recipient-title {
+          font-size: 10px;
+          font-weight: bold;
+          margin-bottom: 2px;
+        }
+        
+        .recipient-name {
+          font-size: 12px;
+          font-weight: bold;
+        }
+        
+        .invoice-box {
+          background: white;
+          color: black;
+          padding: 12px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          width: 200px;
+          margin-left: auto;
+          margin-bottom: 20px;
+        }
+        
+        .invoice-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 10px;
+          margin-bottom: 4px;
+        }
+        
+        .invoice-total {
+          font-size: 14px;
+          font-weight: bold;
+          text-align: right;
+          margin-top: 4px;
+        }
+        
+        .status-tag {
+          padding: 3px 6px;
+          border-radius: 4px;
+          font-size: 10px;
+          color: white;
+        }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        
+        th, td {
+          padding: 6px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+        }
+        
+        th {
+          background-color: #f3f4f6;
+          font-weight: bold;
+          border-bottom: 1px solid #ccc;
+        }
+        
+        .text-right {
+          text-align: right;
+        }
+        
+        .summary {
+          margin-top: 15px;
+          margin-left: auto;
+          width: 200px;
+        }
+        
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 4px;
+        }
+        
+        .summary-total {
+          font-weight: bold;
+          font-size: 12px;
+          border-top: 1px solid #000;
+          margin-top: 6px;
+          padding-top: 6px;
+        }
+        
+        .returns-section {
+          margin: 20px 0 15px 0;
+        }
+        
+        .returns-title {
+          font-size: 12px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          background-color: #fef2f2;
+          padding: 6px;
+        }
+        
+        .footer {
+          position: fixed;
+          bottom: 30px;
+          left: 40px;
+          right: 40px;
+          display: flex;
+          justify-content: space-between;
+          font-size: 9px;
+          color: #666;
+        }
+        
+        .terms-box {
+          border: 1px solid #666;
+          padding: 5px;
+          border-radius: 3px;
+        }
+      </style>
+    </head>
+    <body>
+      <!-- Header -->
+      <div class="header">
+        ${shopSettings?.logo ? `<img src="${shopSettings.logo}" class="logo" />` : '<div></div>'}
+        <div class="company-info">
+          <div class="shop-name">${shopSettings?.shopName || 'INVOICE'}</div>
+          ${brands.length > 0 ? `<div class="brands">${brands.join(' • ')}</div>` : ''}
+          ${shopSettings?.shopDescription ? `<div>${shopSettings.shopDescription}</div>` : ''}
+          ${shopSettings?.shopDescription2 ? `<div>${shopSettings.shopDescription2}</div>` : ''}
+          <div>&nbsp;</div>
+          ${shopSettings?.userName1 ? `<div>${shopSettings.userName1}: ${shopSettings.userPhone1}</div>` : ''}
+          ${shopSettings?.userName2 ? `<div>${shopSettings.userName2}: ${shopSettings.userPhone2}</div>` : ''}
+          ${shopSettings?.userName3 ? `<div>${shopSettings.userName3}: ${shopSettings.userPhone3}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- Recipient -->
+      <div class="recipient-box">
+        <div class="recipient-title">RECIPIENT:</div>
+        <div class="recipient-name">${sale.contact?.name || 'Walk-in Customer'}</div>
+        ${sale.contact?.phoneNumber ? `<div>Phone: ${sale.contact.phoneNumber}</div>` : ''}
+        ${sale.contact?.address ? `<div>${sale.contact.address}</div>` : ''}
+      </div>
+
+      <!-- Invoice Box -->
+      <div class="invoice-box">
+        <div>Invoice #${sale.billNumber}</div>
+        <div class="invoice-row">
+          <span>Issued</span>
+          <span>${new Date(sale.saleDate).toLocaleDateString()}</span>
+        </div>
+        <div class="invoice-row">
+          <span>Time</span>
+          <span>${new Date(sale.saleDate).toLocaleTimeString()}</span>
+        </div>
+        <div class="invoice-row">
+          <span>Status</span>
+          <span class="status-tag" style="background-color: ${statusColor}; color: white;">${status}</span>
+        </div>
+        <div class="invoice-total">${formatPakistaniCurrency(sale.totalAmount)}</div>
+      </div>
+
+      <!-- Items Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>PRODUCT</th>
+            <th class="text-right">UNIT PRICE</th>
+            <th class="text-right">QTY</th>
+            <th class="text-right">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sale.items.map(item => `
+            <tr>
+              <td>${item.product.name}</td>
+              <td class="text-right">${formatPakistaniCurrency(item.price)}</td>
+              <td class="text-right">${item.quantity}</td>
+              <td class="text-right">${formatPakistaniCurrency(item.price * item.quantity)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      ${sale.returns && sale.returns.length > 0 ? `
+        <!-- Returns Section -->
+        <div class="returns-section">
+          <div class="returns-title">RETURNED ITEMS</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Return #</th>
+                <th>Date</th>
+                <th>Items</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sale.returns.map(returnRecord => `
+                <tr>
+                  <td>${returnRecord.returnNumber}</td>
+                  <td>${new Date(returnRecord.returnDate).toLocaleDateString()}</td>
+                  <td>${returnRecord.items.map(item => `${item.product?.name || 'Unknown Product'} x${item.quantity}`).join(', ')}</td>
+                  <td class="text-right">${formatPakistaniCurrency(returnRecord.totalAmount)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
+
+      <!-- Summary -->
+      <div class="summary">
+        ${Number(sale.discount) > 0 ? `
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>${formatPakistaniCurrency(sale.totalAmount + (sale.discount || 0))}</span>
+          </div>
+          <div class="summary-row">
+            <span>Discount</span>
+            <span>-${formatPakistaniCurrency(sale.discount || 0)}</span>
+          </div>
+        ` : ''}
+        <div class="summary-row">
+          <span>Total Amount</span>
+          <span>${formatPakistaniCurrency(sale.totalAmount)}</span>
+        </div>
+        <div class="summary-row">
+          <span>Paid Amount</span>
+          <span>${formatPakistaniCurrency(sale.paidAmount)}</span>
+        </div>
+        ${sale.returns && sale.returns.length > 0 ? `
+          <div class="summary-row">
+            <span>Total Returned</span>
+            <span>${formatPakistaniCurrency(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0))}</span>
+          </div>
+          ${totalRefunded > 0 ? `
+            <div class="summary-row">
+              <span>Total Refunded</span>
+              <span>${formatPakistaniCurrency(totalRefunded)}</span>
+            </div>
+          ` : ''}
+          <div class="summary-row">
+            <span>Net Total After Returns</span>
+            <span>${formatPakistaniCurrency(netAmount > 0 ? netAmount : 0)}</span>
+          </div>
+        ` : ''}
+        ${balance > 0 ? `
+          <div class="summary-row summary-total">
+            <span>Balance Due</span>
+            <span>${formatPakistaniCurrency(balance)}</span>
+          </div>
+        ` : balance < 0 ? `
+          <div class="summary-row summary-total">
+            <span>Credit Balance</span>
+            <span>${formatPakistaniCurrency(Math.abs(balance) <= sale.paidAmount ? Math.abs(balance) : 0)}</span>
+          </div>
+        ` : `
+          <div class="summary-row summary-total">
+            <span>Status</span>
+            <span>Fully Paid</span>
+          </div>
+        `}
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div style="font-size: 8px;">
+          Need system like this? Contact: 03145292649
+        </div>
+        <div class="terms-box">
+          <div style="font-size: 8px;">
+            Goods will not be returned or exchanged after use.
+          </div>
+          <div style="font-size: 8px;">
+            No Return / Exchange after use.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 }
 
 export default SaleDetailsModal;

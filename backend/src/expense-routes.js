@@ -14,6 +14,7 @@ const expenseSchema = z.object({
   paymentMethod: z.string().optional(),
   receiptNumber: z.string().optional(),
   contactId: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  productId: z.union([z.string(), z.null(), z.undefined()]).optional(),
 });
 
 // Get expenses with pagination and search
@@ -35,29 +36,39 @@ router.get('/', authenticateToken, async (req, res) => {
       })
     };
 
-    const [expenses, total] = await Promise.all([
-      prisma.expense.findMany({
-        where,
-        include: {
-          contact: {
-            select: { id: true, name: true }
-          }
+    const expenses = await prisma.expense.findMany({
+      where,
+      include: {
+        contact: {
+          select: { id: true, name: true }
         },
-        orderBy: { date: 'desc' },
-        skip,
-        take: parseInt(limit),
-      }),
-      prisma.expense.count({ where })
-    ]);
+        product: {
+          select: { id: true, name: true, isRawMaterial: true }
+        }
+      },
+      orderBy: { date: 'desc' },
+    });
 
-    // Convert BigInt amounts to numbers for JSON serialization
-    const serializedExpenses = expenses.map(expense => ({
+    // Only show manual expenses, not raw material purchases
+    const allExpenses = expenses.map(expense => ({
       ...expense,
       amount: Number(expense.amount)
-    }));
+    })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Apply search filter to combined results
+    const filteredExpenses = search ? allExpenses.filter(expense => 
+      expense.category.toLowerCase().includes(search.toLowerCase()) ||
+      (expense.description && expense.description.toLowerCase().includes(search.toLowerCase())) ||
+      (expense.receiptNumber && expense.receiptNumber.toLowerCase().includes(search.toLowerCase())) ||
+      (expense.paymentMethod && expense.paymentMethod.toLowerCase().includes(search.toLowerCase()))
+    ) : allExpenses;
+
+    // Apply pagination
+    const total = filteredExpenses.length;
+    const paginatedExpenses = filteredExpenses.slice(skip, skip + parseInt(limit));
 
     res.json({
-      items: serializedExpenses,
+      items: paginatedExpenses,
       total,
       page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit))
@@ -80,11 +91,15 @@ router.post('/', authenticateToken, async (req, res) => {
         amount: validatedData.amount,
         date: new Date(validatedData.date),
         contactId: validatedData.contactId || null,
+        productId: validatedData.productId || null,
         userId,
       },
       include: {
         contact: {
           select: { id: true, name: true }
+        },
+        product: {
+          select: { id: true, name: true, isRawMaterial: true }
         }
       }
     });
@@ -119,10 +134,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
         amount: validatedData.amount,
         date: new Date(validatedData.date),
         contactId: validatedData.contactId || null,
+        productId: validatedData.productId || null,
       },
       include: {
         contact: {
           select: { id: true, name: true }
+        },
+        product: {
+          select: { id: true, name: true, isRawMaterial: true }
         }
       }
     });

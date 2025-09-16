@@ -37,6 +37,7 @@ function Contacts() {
   const [statementEndDate, setStatementEndDate] = useState('');
   const [statementData, setStatementData] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
+  const [contactTypeFilter, setContactTypeFilter] = useState('');
 
   const {
     register,
@@ -60,11 +61,14 @@ function Contacts() {
 
   // Fetch contacts with React Query
   const { data: contactsData, isLoading, isFetching, error } = useQuery(
-    ['contacts', page, debouncedSearchTerm],
+    ['contacts', page, debouncedSearchTerm, contactTypeFilter],
     async () => {
-      const response = await api.get(
-        `/api/contacts?page=${page}&search=${debouncedSearchTerm}`
-      );
+      const params = new URLSearchParams({
+        page: page.toString(),
+        search: debouncedSearchTerm,
+        ...(contactTypeFilter && { contactType: contactTypeFilter })
+      });
+      const response = await api.get(`/api/contacts?${params.toString()}`);
       return response.data;
     }
   );
@@ -230,6 +234,7 @@ function Contacts() {
     setValue('name', contact.name);
     setValue('address', contact.address);
     setValue('phoneNumber', contact.phoneNumber);
+    setValue('contactType', contact.contactType || 'customer');
     setShowAddModal(true);
   };
 
@@ -294,6 +299,15 @@ function Contacts() {
               <FaSearch />
             </div>
           </div>
+          <select
+            value={contactTypeFilter}
+            onChange={(e) => setContactTypeFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">All Contacts</option>
+            <option value="customer">Customers</option>
+            <option value="supplier">Suppliers</option>
+          </select>
           <button
             onClick={() => {
               setShowAddModal(true);
@@ -316,6 +330,9 @@ function Contacts() {
                 {t('name')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                 {t('address')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
@@ -329,7 +346,7 @@ function Contacts() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && debouncedSearchTerm ? (
               <tr>
-                <td colSpan="4" className="px-6 py-8 text-center">
+                <td colSpan="5" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -340,6 +357,15 @@ function Contacts() {
               contactsData?.items?.map((contact) => (
               <tr key={contact.id} className="hover:bg-primary-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{contact.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    (contact.contactType || 'customer') === 'customer' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : 'Supplier'}
+                  </span>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.phoneNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -438,6 +464,22 @@ function Contacts() {
                   />
                   {errors.name && (
                     <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Type
+                  </label>
+                  <select
+                    {...register('contactType')}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="customer">Customer</option>
+                    <option value="supplier">Supplier</option>
+                  </select>
+                  {errors.contactType && (
+                    <p className="text-red-500 text-sm mt-1">{errors.contactType.message}</p>
                   )}
                 </div>
 

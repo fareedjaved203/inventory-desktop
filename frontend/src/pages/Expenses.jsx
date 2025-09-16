@@ -18,6 +18,7 @@ const expenseSchema = z.object({
   paymentMethod: z.string().optional(),
   receiptNumber: z.string().optional(),
   contactId: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  productId: z.union([z.string(), z.null(), z.undefined()]).optional(),
 });
 
 const expenseCategories = [
@@ -69,12 +70,16 @@ function Expenses() {
     receiptNumber: '',
     contactId: '',
     contactName: '',
+    productId: '',
+    productName: '',
   });
   const [contactSearchTerm, setContactSearchTerm] = useState('');
   const [debouncedContactSearchTerm, setDebouncedContactSearchTerm] = useState('');
   const [createNewContact, setCreateNewContact] = useState(false);
   const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
   const [creatingContact, setCreatingContact] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [debouncedProductSearchTerm, setDebouncedProductSearchTerm] = useState('');
 
   const debouncedSearch = useCallback(
     debounce((term) => {
@@ -119,6 +124,33 @@ function Expenses() {
         : '';
       const response = await api.get(`/api/contacts?limit=100${searchParam}`);
       return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    }
+  );
+
+  // Debounced product search
+  const debouncedProductSearch = useCallback(
+    debounce((term) => {
+      setDebouncedProductSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleProductSearchChange = (value) => {
+    setProductSearchTerm(value);
+    debouncedProductSearch(value);
+  };
+
+  const { data: rawMaterials = [], isLoading: rawMaterialsLoading } = useQuery(
+    ['raw-materials', debouncedProductSearchTerm],
+    async () => {
+      const searchParam = debouncedProductSearchTerm
+        ? `&search=${debouncedProductSearchTerm}`
+        : '';
+      const response = await api.get(`/api/products/raw-materials?limit=100${searchParam}`);
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    },
+    {
+      enabled: formData.category === 'Raw Materials'
     }
   );
 
@@ -196,10 +228,13 @@ function Expenses() {
       receiptNumber: '',
       contactId: '',
       contactName: '',
+      productId: '',
+      productName: '',
     });
     setEditingExpense(null);
     setValidationErrors({});
     setContactSearchTerm('');
+    setProductSearchTerm('');
     setCreateNewContact(false);
     setNewContactData({ name: '', phoneNumber: '', address: '' });
   };
@@ -229,6 +264,7 @@ function Expenses() {
       ...formData,
       amount: parseFloat(formData.amount),
       contactId: contactId || null,
+      productId: formData.productId || null,
     };
 
     try {
@@ -262,8 +298,11 @@ function Expenses() {
       receiptNumber: expense.receiptNumber || '',
       contactId: expense.contactId || '',
       contactName: expense.contact?.name || '',
+      productId: expense.productId || '',
+      productName: expense.product?.name || '',
     });
     setContactSearchTerm(expense.contact?.name || '');
+    setProductSearchTerm(expense.product?.name || '');
     setIsModalOpen(true);
   };
 
@@ -329,7 +368,6 @@ function Expenses() {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Amount</th>
-              {/* <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden md:table-cell">Description</th> */}
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">Payment Method</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
             </tr>
@@ -350,7 +388,12 @@ function Expenses() {
                   <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                     {new Date(expense.date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{expense.category}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium text-primary-700">{expense.category}</div>
+                    {expense.product?.name && (
+                      <div className="text-sm text-gray-600">{expense.product.name}</div>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-red-600">
                     {formatPakistaniCurrency(expense.amount)}
                   </td>
@@ -464,7 +507,10 @@ function Expenses() {
                 </label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, category: e.target.value, productId: '', productName: '' });
+                    setProductSearchTerm('');
+                  }}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select Category</option>
@@ -478,6 +524,8 @@ function Expenses() {
                   <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
                 )}
               </div>
+
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

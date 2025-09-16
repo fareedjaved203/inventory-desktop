@@ -461,7 +461,10 @@ function Sales() {
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
       try {
         setCreatingContact(true);
-        const contactResponse = await api.post('/api/contacts', newContactData);
+        const contactResponse = await api.post('/api/contacts', {
+          ...newContactData,
+          contactType: 'customer'
+        });
         contactId = contactResponse.data.id;
       } catch (error) {
         const errorMessage = error.response?.data?.error || 'Failed to create contact';
