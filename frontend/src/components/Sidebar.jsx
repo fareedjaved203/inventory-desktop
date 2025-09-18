@@ -24,17 +24,17 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
 
   const allMenuItems = [
     { path: '/', label: t('dashboard'), icon: <FaChartLine />, permission: 'dashboard' },
-    { path: '/pos', label: 'POS', icon: <FaCashRegister />, permission: 'pos' },
-    { path: '/employee-stats', label: 'Employee Stats', icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
+    { path: '/pos', label: t('pos'), icon: <FaCashRegister />, permission: 'pos' },
+    { path: '/employee-stats', label: t('employeeStats'), icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
     { path: '/products', label: t('products'), icon: <FaBoxOpen />, permission: 'products' },
-    { path: '/product-labels', label: 'Product Labels', icon: <FaTag />, permission: 'products' },
+    { path: '/product-labels', label: t('productLabels'), icon: <FaTag />, permission: 'products' },
     { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave />, permission: 'sales' },
     { path: '/contacts', label: t('contacts'), icon: <FaBuilding />, permission: 'contacts' },
     { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart />, permission: 'bulk-purchases' },
     { path: '/returns', label: t('returns'), icon: <FaUndo />, permission: 'returns' },
-    { path: '/expenses', label: 'Expenses', icon: <FaMoneyBillWave />, permission: 'expenses' },
-    { path: '/branches', label: 'Branches', icon: <FaCodeBranch />, permission: 'branches' },
-    { path: '/employees', label: 'Employees', icon: <FaUsers />, permission: 'employees' },
+    { path: '/expenses', label: t('expenses'), icon: <FaMoneyBillWave />, permission: 'expenses' },
+    { path: '/branches', label: t('branches'), icon: <FaCodeBranch />, permission: 'branches' },
+    { path: '/employees', label: t('employees'), icon: <FaUsers />, permission: 'employees' },
     { path: '/settings', label: t('settings'), icon: <FaCog />, permission: 'settings' },
   ];
 
@@ -109,7 +109,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin' }) {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
           </svg>
-          {!collapsed && <span className="ml-3 text-sm font-medium">{language === 'ur' ? 'لاگ آؤٹ' : 'Logout'}</span>}
+          {!collapsed && <span className="ml-3 text-sm font-medium">{t('logout')}</span>}
         </button>
       </div>
       

@@ -106,6 +106,7 @@ export function setupSalesRoutes(app, prisma) {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
                   price: item.price,
+                  priceType: item.priceType || "retail",
                   purchasePrice: productDetails[index]?.purchasePrice || 0,
                   product: {
                     connect: { id: item.productId }
@@ -687,6 +688,7 @@ export function setupSalesRoutes(app, prisma) {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
                   price: item.price,
+                  priceType: item.priceType || "retail",
                   purchasePrice: productDetails[index]?.purchasePrice || 0,
                   product: {
                     connect: { id: item.productId }

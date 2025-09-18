@@ -216,6 +216,9 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         ...item,
         id: item.id.toString(),
         price: item.price ? Number(item.price) : null,
+        retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
+        wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
+        purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -259,6 +262,9 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
       items: items.map(item => ({
         ...item,
         price: item.price ? Number(item.price) : null,
+        retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
+        wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
+        purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
         quantity: Number(item.quantity),
         lowStockThreshold: Number(item.lowStockThreshold || 10)
       })),
@@ -303,6 +309,9 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
         ...item,
         id: item.id.toString(),
         price: item.price ? Number(item.price) : null,
+        retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
+        wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
+        purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -481,7 +490,10 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
     res.json({
       ...product,
       id: product.id.toString(),
-      price: Number(product.price),
+      price: product.price ? Number(product.price) : null,
+      retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+      wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+      purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
       quantity: Number(product.quantity)
     });
   } catch (error) {
@@ -535,7 +547,10 @@ app.post(
       res.status(201).json({
         ...product,
         id: product.id.toString(),
-        price: Number(product.price),
+        price: product.price ? Number(product.price) : null,
+        retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+        purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
         quantity: Number(product.quantity)
       });
     } catch (error) {
@@ -628,7 +643,10 @@ app.put(
       res.json({
         ...product,
         id: product.id.toString(),
-        price: Number(product.price),
+        price: product.price ? Number(product.price) : null,
+        retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+        purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
         quantity: Number(product.quantity)
       });
     } catch (error) {

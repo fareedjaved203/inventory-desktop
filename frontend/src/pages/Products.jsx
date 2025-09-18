@@ -18,11 +18,13 @@ import { useTranslation } from '../utils/translations';
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string(),
-  price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores").nullable().optional(),
+  retailPrice: z.number().positive("Retail price must be positive").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
+  wholesalePrice: z.number().positive("Wholesale price must be positive").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
+  unitValue: z.number().positive("Unit value must be positive").optional(),
   lowStockThreshold: z.number().int().min(0, "Low stock threshold must be non-negative"),
   isRawMaterial: z.boolean().optional(),
 });
@@ -57,6 +59,7 @@ function Products() {
     sku: '',
     quantity: '',
     unit: 'pcs',
+    unitValue: '',
     lowStockThreshold: '10',
     isRawMaterial: false,
   });
@@ -117,7 +120,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10', isRawMaterial: false });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false });
         setIsEditMode(false);
         setValidationErrors({});
         toast.success('Product updated successfully!');
@@ -166,7 +169,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', price: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', lowStockThreshold: '10', isRawMaterial: false });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false });
         setValidationErrors({});
         toast.success('Product created successfully!');
       },
@@ -236,7 +239,9 @@ function Products() {
 
     const productData = {
       ...formData,
-      price: formData.price && formData.price.trim() ? parseFloat(formData.price) : null,
+      retailPrice: formData.retailPrice && formData.retailPrice.trim() ? parseFloat(formData.retailPrice) : null,
+      wholesalePrice: formData.wholesalePrice && formData.wholesalePrice.trim() ? parseFloat(formData.wholesalePrice) : null,
+      unitValue: formData.unitValue && formData.unitValue.trim() ? parseFloat(formData.unitValue) : null,
       purchasePrice: formData.purchasePrice && formData.purchasePrice.trim() ? parseFloat(formData.purchasePrice) : null,
       quantity: parseInt(formData.quantity),
       lowStockThreshold: parseInt(formData.lowStockThreshold),
@@ -265,7 +270,7 @@ function Products() {
           const path = err.path[0];
           if (path === 'name' && err.code === 'too_small') {
             errors[path] = t('nameIsRequired');
-          } else if (path === 'price' && err.code === 'too_small') {
+          } else if ((path === 'retailPrice' || path === 'wholesalePrice') && err.code === 'too_small') {
             errors[path] = t('priceMustBePositive');
           } else if (path === 'quantity' && err.code === 'too_small') {
             errors[path] = t('quantityMustBePositive');
@@ -287,11 +292,13 @@ function Products() {
       id: product.id,
       name: product.name,
       description: product.description,
-      price: product.price.toString(),
+      retailPrice: product.retailPrice ? product.retailPrice.toString() : (product.price ? product.price.toString() : ''),
+      wholesalePrice: product.wholesalePrice ? product.wholesalePrice.toString() : '',
       purchasePrice: product.purchasePrice ? product.purchasePrice.toString() : '',
       sku: product.sku,
       quantity: product.quantity.toString(),
       unit: product.unit || 'pcs',
+      unitValue: product.unitValue ? product.unitValue.toString() : '',
       lowStockThreshold: (product.lowStockThreshold || 10).toString(),
       isRawMaterial: product.isRawMaterial || false,
     });
@@ -420,11 +427,13 @@ function Products() {
                 setFormData({
                   name: '',
                   description: '',
-                  price: '',
+                  retailPrice: '',
+                  wholesalePrice: '',
                   purchasePrice: '',
                   sku: '',
                   quantity: '',
                   unit: 'pcs',
+                  unitValue: '',
                   lowStockThreshold: '10',
                   isRawMaterial: false
                 });
@@ -456,7 +465,8 @@ function Products() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'نام' : 'Name'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden md:table-cell">{t('sku')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'فروخت کی قیمت' : 'Sell Price'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'ریٹیل قیمت' : 'Retail Price'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden xl:table-cell">{language === 'ur' ? 'ہول سیل قیمت' : 'Wholesale Price'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden sm:table-cell">{t('quantity')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
@@ -465,7 +475,7 @@ function Products() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && (debouncedSearchTerm || showLowStock || showDamaged || showRawMaterials) ? (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center">
+                <td colSpan="7" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -478,7 +488,10 @@ function Products() {
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">{product.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-gray-600">{product.sku}</td>
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
-                    {product.price ? formatPakistaniCurrency(product.price) : '-'}
+                    {product.retailPrice ? formatPakistaniCurrency(product.retailPrice) : (product.price ? formatPakistaniCurrency(product.price) : '-')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden xl:table-cell font-medium text-green-800">
+                    {product.wholesalePrice ? formatPakistaniCurrency(product.wholesalePrice) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-blue-800">
                     {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
@@ -534,6 +547,7 @@ function Products() {
                           <button
                             onClick={() => {
                               const printWindow = window.open('', '_blank', 'width=400,height=600');
+                              const displayPrice = product.retailPrice || product.price;
                               const labelHtml = `
                                 <!DOCTYPE html>
                                 <html>
@@ -552,7 +566,7 @@ function Products() {
                                 <body>
                                   <div class="label">
                                     <div class="name">${product.name}</div>
-                                    <div class="price">${product.price ? formatPakistaniCurrency(product.price) : 'No Price Set'}</div>
+                                    <div class="price">${displayPrice ? formatPakistaniCurrency(displayPrice) : 'No Price Set'}</div>
                                     <div>
                                       ${product.sku ? '<div style="font-size:8px;">[BARCODE: ' + product.sku + ']</div>' : '<div style="font-size:8px;color:#666;">NO BARCODE</div>'}
                                     </div>
@@ -686,75 +700,98 @@ function Products() {
                       type="text"
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      readOnly={!isEditMode || isGeneratingBarcode}
+                      disabled={isGeneratingBarcode}
                       className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        !isEditMode || isGeneratingBarcode
+                        isGeneratingBarcode
                           ? 'border-gray-300 bg-gray-50 text-gray-700 cursor-not-allowed'
                           : 'border-primary-200 focus:ring-primary-500'
                       }`}
-                      placeholder={isGeneratingBarcode ? 'Generating barcode...' : (language === 'ur' ? 'پروڈکٹ کوڈ/بارکوڈ' : 'Product code/barcode')}
+                      placeholder={isGeneratingBarcode ? 'Generating barcode...' : (language === 'ur' ? 'پروڈکٹ کوڈ/بارکوڈ یا اپنا کوڈ درج کریں' : 'Enter barcode/SKU or use generate button')}
                     />
-                    {/* Show generate button only for existing products without barcodes */}
-                    {isEditMode && !formData.sku && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setIsGeneratingBarcode(true);
-                          try {
-                            const barcode = await generateUserBarcode();
-                            setFormData({ ...formData, sku: barcode });
-                          } catch (error) {
-                            console.error('Failed to generate barcode:', error);
-                          } finally {
-                            setIsGeneratingBarcode(false);
-                          }
-                        }}
-                        disabled={isGeneratingBarcode}
-                        className="px-3 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 flex items-center gap-1 disabled:opacity-50"
-                        title="Generate barcode"
-                      >
-                        {isGeneratingBarcode ? <LoadingSpinner size="w-4 h-4" /> : <FaBarcode />}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsGeneratingBarcode(true);
+                        try {
+                          const barcode = await generateUserBarcode();
+                          setFormData({ ...formData, sku: barcode });
+                        } catch (error) {
+                          console.error('Failed to generate barcode:', error);
+                        } finally {
+                          setIsGeneratingBarcode(false);
+                        }
+                      }}
+                      disabled={isGeneratingBarcode}
+                      className="px-3 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 flex items-center gap-1 disabled:opacity-50"
+                      title="Generate new barcode"
+                    >
+                      {isGeneratingBarcode ? <LoadingSpinner size="w-4 h-4" /> : <FaBarcode />}
+                    </button>
                   </div>
                   {validationErrors.sku && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.sku}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    {!isEditMode 
-                      ? (language === 'ur' ? 'نئے پروڈکٹس کے لیے خودکار بارکوڈ' : 'Auto-generated for new products')
-                      : (language === 'ur' ? 'POS میں اسکین کے لیے استعمال ہوتا ہے' : 'Used for scanning in POS system')
-                    }
+                    {language === 'ur' ? 'خودکار بارکوڈ یا اپنا کوڈ استعمال کریں۔ POS میں اسکین کے لیے' : 'Auto-generated or enter your own. Used for scanning in POS system'}
                   </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'فروخت کی قیمت (اختیاری)' : 'Sell Price (Optional)'}
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100000000"
-                    value={formData.price}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (value > 100000000) {
-                        setValidationErrors({...validationErrors, price: t('priceCannotExceed')});
-                      } else {
-                        setValidationErrors({...validationErrors, price: undefined});
-                      }
-                      setFormData({ ...formData, price: e.target.value });
-                    }}
-                    onWheel={(e) => e.target.blur()}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={language === 'ur' ? 'قیمت روپے میں (اختیاری)' : 'Price in rupees (optional)'}
-                  />
-                  {validationErrors.price && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں (خام مال کے لیے اختیاری)' : 'Enter whole numbers only, no decimals (optional for raw materials)'}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'ریٹیل قیمت (اختیاری)' : 'Retail Price (Optional)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100000000"
+                      value={formData.retailPrice}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (value > 100000000) {
+                          setValidationErrors({...validationErrors, retailPrice: t('priceCannotExceed')});
+                        } else {
+                          setValidationErrors({...validationErrors, retailPrice: undefined});
+                        }
+                        setFormData({ ...formData, retailPrice: e.target.value });
+                      }}
+                      onWheel={(e) => e.target.blur()}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder={language === 'ur' ? 'ریٹیل قیمت' : 'Retail price'}
+                    />
+                    {validationErrors.retailPrice && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.retailPrice}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <FaDollarSign className="text-green-500" /> {language === 'ur' ? 'ہول سیل قیمت (اختیاری)' : 'Wholesale Price (Optional)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100000000"
+                      value={formData.wholesalePrice}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (value > 100000000) {
+                          setValidationErrors({...validationErrors, wholesalePrice: t('priceCannotExceed')});
+                        } else {
+                          setValidationErrors({...validationErrors, wholesalePrice: undefined});
+                        }
+                        setFormData({ ...formData, wholesalePrice: e.target.value });
+                      }}
+                      onWheel={(e) => e.target.blur()}
+                      className="w-full px-3 py-2 border border-green-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder={language === 'ur' ? 'ہول سیل قیمت' : 'Wholesale price'}
+                    />
+                    {validationErrors.wholesalePrice && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.wholesalePrice}</p>
+                    )}
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں' : 'Enter whole numbers only, no decimals. Retail price is used by default in sales.'}</p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <FaDollarSign className="text-blue-500" /> {language === 'ur' ? 'خریداری کی قیمت (اختیاری)' : 'Purchase Price (Optional)'}
@@ -840,6 +877,29 @@ function Products() {
                     </select>
                   </div>
                 </div>
+                {(formData.unit === 'ft' || formData.unit === 'metre' || formData.unit === 'kg' || formData.unit === 'ltr') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {formData.unit === 'ft' ? 'Length (feet)' : 
+                       formData.unit === 'metre' ? 'Length (meters)' :
+                       formData.unit === 'kg' ? 'Weight (kg)' :
+                       formData.unit === 'ltr' ? 'Volume (liters)' : 'Value'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.unitValue}
+                      onChange={(e) => setFormData({ ...formData, unitValue: e.target.value })}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder={`Enter ${formData.unit === 'ft' ? 'feet' : formData.unit === 'metre' ? 'meters' : formData.unit === 'kg' ? 'weight' : 'volume'}`}
+                    />
+                    {validationErrors.unitValue && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.unitValue}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">Specify the measurement for this unit</p>
+                  </div>
+                )}
                 <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">

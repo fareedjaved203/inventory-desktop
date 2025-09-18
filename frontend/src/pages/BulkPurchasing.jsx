@@ -157,7 +157,8 @@ function BulkPurchasing() {
   // Update total amount when purchase items or discount change
   useEffect(() => {
     const subtotal = calculateSubtotal();
-    const discountAmount = parseFloat(discount) || 0;
+    const discountPercentage = parseFloat(discount) || 0;
+    const discountAmount = (subtotal * discountPercentage) / 100;
     setTotalAmount(subtotal - discountAmount);
   }, [purchaseItems, discount]);
 
@@ -391,6 +392,9 @@ function BulkPurchasing() {
       return;
     }
 
+    const discountPercentage = parseFloat(discount) || 0;
+    const discountAmount = (calculateSubtotal() * discountPercentage) / 100;
+    
     const purchaseData = {
       contactId: contactId,
       items: purchaseItems.map(item => ({
@@ -399,7 +403,7 @@ function BulkPurchasing() {
         purchasePrice: item.purchasePrice
       })),
       totalAmount: totalAmount,
-      discount: parseFloat(discount) || 0,
+      discount: discountAmount,
       paidAmount: parsedPaidAmount,
       purchaseDate: new Date().toISOString()
     };
@@ -439,7 +443,9 @@ function BulkPurchasing() {
     })));
     
     setTotalAmount(purchase.totalAmount);
-    setDiscount(purchase.discount || 0);
+    const subtotal = purchase.items?.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0) || 0;
+    const discountPercentage = subtotal > 0 ? ((purchase.discount || 0) / subtotal) * 100 : 0;
+    setDiscount(discountPercentage.toFixed(1));
     setPaidAmount(purchase.paidAmount);
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -963,23 +969,25 @@ function BulkPurchasing() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('discount')}
+                    {t('discount')} (%)
                   </label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.1"
                     min="0"
-                    max={calculateSubtotal()}
+                    max="100"
                     value={discount}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      if (value <= calculateSubtotal()) {
+                      const percentage = parseFloat(e.target.value) || 0;
+                      if (percentage <= 100) {
                         setDiscount(e.target.value);
-                        setTotalAmount(calculateSubtotal() - value);
+                        const discountAmount = (calculateSubtotal() * percentage) / 100;
+                        setTotalAmount(calculateSubtotal() - discountAmount);
                       }
                     }}
                     onWheel={(e) => e.target.blur()}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="0"
                   />
                 </div>
               </div>

@@ -166,7 +166,7 @@ function ProductLabel({ product, products, onClose }) {
               font-weight: bold;
               margin: 1px 0;
               color: #000;
-            ">${formatPakistaniCurrency(prod.price)}</div>
+            ">${formatPakistaniCurrency(prod.retailPrice || prod.price)}</div>
             
             ${barcodeDataURL ? `
               <div style="margin: 1px 0;">
@@ -277,7 +277,7 @@ function ProductLabel({ product, products, onClose }) {
               font-weight: bold;
               margin: 1px 0;
               color: #000;
-            ">${formatPakistaniCurrency(prod.price)}</div>
+            ">${formatPakistaniCurrency(prod.retailPrice || prod.price)}</div>
             
             ${barcodeDataURL ? `
               <div style="margin: 1px 0;">
@@ -436,7 +436,7 @@ function ProductLabel({ product, products, onClose }) {
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-1">Product</h3>
               <p className="text-sm"><strong>Name:</strong> {product?.name}</p>
-              <p className="text-sm"><strong>Price:</strong> {product ? formatPakistaniCurrency(product.price) : ''}</p>
+              <p className="text-sm"><strong>Price:</strong> {product ? formatPakistaniCurrency(product.retailPrice || product.price) : ''}</p>
               <p className="text-sm"><strong>SKU:</strong> {product?.sku || 'No SKU'}</p>
             </div>
           )}

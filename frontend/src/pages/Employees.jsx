@@ -28,12 +28,13 @@ const employeeUpdateSchema = z.object({
 
 const SIDEBAR_PERMISSIONS = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'pos', label: 'POS' },
   { key: 'products', label: 'Products' },
   { key: 'sales', label: 'Sales' },
   { key: 'contacts', label: 'Contacts' },
   { key: 'bulk-purchases', label: 'Bulk Purchases' },
   { key: 'returns', label: 'Returns' },
-  { key: 'loans', label: 'Loans' },
+  { key: 'expenses', label: 'Expenses' },
   { key: 'branches', label: 'Branches' },
   { key: 'employees', label: 'Employees' },
   { key: 'settings', label: 'Settings' },

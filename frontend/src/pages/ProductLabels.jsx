@@ -109,7 +109,7 @@ function ProductLabels() {
                     />
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{product.name}</h4>
-                      <p className="text-primary-600 font-semibold">{formatPakistaniCurrency(product.price)}</p>
+                      <p className="text-primary-600 font-semibold">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                       <p className="text-xs text-gray-500">
                         {product.sku ? `Barcode: ${product.sku}` : 'No barcode'}
                       </p>

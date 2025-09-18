@@ -44,6 +44,7 @@ function Sales() {
   const [saleItems, setSaleItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState("");
+  const [priceType, setPriceType] = useState("retail");
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -102,6 +103,7 @@ function Sales() {
         setSaleItems([]);
         setSelectedProduct(null);
         setQuantity("");
+        setPriceType("retail");
         setSelectedContact(null);
         setSaleDate("");
         setIsEditMode(false);
@@ -236,6 +238,7 @@ function Sales() {
         setSaleItems([]);
         setSelectedProduct(null);
         setQuantity("");
+        setPriceType("retail");
         setSelectedContact(null);
         setSaleDate("");
         setTempStockUpdates({});
@@ -355,12 +358,17 @@ function Sales() {
       setSaleItems(updatedItems);
     } else {
       // Add new item
+      const selectedPrice = priceType === "wholesale" && selectedProduct.wholesalePrice 
+        ? selectedProduct.wholesalePrice 
+        : (selectedProduct.retailPrice || selectedProduct.price || 0);
+      
       const newItem = {
         productId: selectedProduct.id,
         productName: selectedProduct.name,
         quantity: quantityNum,
-        price: selectedProduct.price,
-        subtotal: selectedProduct.price * quantityNum,
+        price: selectedPrice,
+        priceType: priceType,
+        subtotal: selectedPrice * quantityNum,
       };
       setSaleItems([...saleItems, newItem]);
     }
@@ -374,6 +382,7 @@ function Sales() {
     setSelectedProduct(null);
     setQuantity("");
     setProductSearchTerm("");
+    setPriceType("retail");
     setValidationErrors({});
     isProductSelected(false);
   };
@@ -416,7 +425,8 @@ function Sales() {
   // Update total amount when sale items or discount change
   useEffect(() => {
     const subtotal = calculateTotal();
-    const discountAmount = parseFloat(discount) || 0;
+    const discountPercentage = parseFloat(discount) || 0;
+    const discountAmount = (subtotal * discountPercentage) / 100;
     setTotalAmount(subtotal - discountAmount);
   }, [saleItems, discount]);
 
@@ -440,11 +450,14 @@ function Sales() {
         productName: item.product.name,
         quantity: item.quantity,
         price: item.price,
+        priceType: item.priceType || "retail",
         subtotal: item.price * item.quantity,
       }))
     );
     setTotalAmount(sale.totalAmount);
-    setDiscount(sale.discount || 0);
+    const subtotal = sale.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+    const discountPercentage = subtotal > 0 ? ((sale.discount || 0) / subtotal) * 100 : 0;
+    setDiscount(discountPercentage.toFixed(1));
     setPaidAmount(sale.paidAmount || 0);
     setSelectedContact(sale.contact || null);
     setSaleDate(new Date(sale.saleDate).toISOString().split("T")[0]);
@@ -503,14 +516,18 @@ function Sales() {
 
     const employeeId = localStorage.getItem('employeeId');
     console.log('Employee ID from localStorage:', employeeId);
+    const discountPercentage = parseFloat(discount) || 0;
+    const discountAmount = (calculateTotal() * discountPercentage) / 100;
+    
     const saleData = {
       items: saleItems?.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: item.price,
+        priceType: item.priceType || "retail",
       })),
       totalAmount: totalAmount,
-      discount: parseFloat(discount) || 0,
+      discount: discountAmount,
       paidAmount: parsedPaidAmount,
       ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
@@ -658,6 +675,7 @@ function Sales() {
               onClick={() => {
                 setDiscount(0);
                 setPaidAmount("");
+                setPriceType("retail");
                 setIsModalOpen(true);
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap"
@@ -1066,7 +1084,12 @@ function Sales() {
                                       </div>
                                     </div>
                                     <div className="text-primary-600 font-medium">
-                                      Rs.{product.price}
+                                      R: {product.retailPrice ? `Rs.${product.retailPrice}` : (product.price ? `Rs.${product.price}` : '-')}
+                                      {product.wholesalePrice && (
+                                        <span className="text-green-600 ml-2">
+                                          W: Rs.{product.wholesalePrice}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 ))
@@ -1084,7 +1107,7 @@ function Sales() {
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-2">
                       <input
                         type="number"
                         min="1"
@@ -1101,8 +1124,16 @@ function Sales() {
                         }}
                         onWheel={(e) => e.target.blur()}
                         placeholder={t('qty')}
-                        className="w-24 rounded-md border-primary-200 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="w-20 rounded-md border-primary-200 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       />
+                      <select
+                        value={priceType}
+                        onChange={(e) => setPriceType(e.target.value)}
+                        className="w-24 rounded-md border-primary-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+                      >
+                        <option value="retail">Retail</option>
+                        <option value="wholesale">Wholesale</option>
+                      </select>
                       <button
                         type="button"
                         onClick={handleAddItem}
@@ -1150,10 +1181,20 @@ function Sales() {
                             {t('remove')}
                           </button>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 items-center text-sm">
+                        <div className="grid grid-cols-4 gap-2 items-center text-sm">
                           <div>
                             <label className="text-xs text-gray-500">{t('qty')}</label>
                             <div className="font-medium">{item.quantity}</div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500">Type</label>
+                            <div className={`font-medium text-xs px-2 py-1 rounded ${
+                              item.priceType === 'wholesale' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {item.priceType === 'wholesale' ? 'Wholesale' : 'Retail'}
+                            </div>
                           </div>
                           <div>
                             <label className="text-xs text-gray-500">
@@ -1330,23 +1371,25 @@ function Sales() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('discount')}
+                      {t('discount')} (%)
                     </label>
                     <input
                       type="number"
-                      step="1"
+                      step="0.1"
                       min="0"
-                      max={calculateTotal()}
+                      max="100"
                       value={discount}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        if (value <= calculateTotal()) {
+                        const percentage = parseFloat(e.target.value) || 0;
+                        if (percentage <= 100) {
                           setDiscount(e.target.value);
-                          setTotalAmount(calculateTotal() - value);
+                          const discountAmount = (calculateTotal() * percentage) / 100;
+                          setTotalAmount(calculateTotal() - discountAmount);
                         }
                       }}
                       onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -1417,6 +1460,7 @@ function Sales() {
                   setSaleItems([]);
                   setSelectedProduct(null);
                   setQuantity("");
+                  setPriceType("retail");
                   setDiscount(0);
                   setPaidAmount("");
                   setSelectedContact(null);

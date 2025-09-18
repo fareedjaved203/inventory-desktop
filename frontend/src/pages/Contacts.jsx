@@ -304,9 +304,9 @@ function Contacts() {
             onChange={(e) => setContactTypeFilter(e.target.value)}
             className="px-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <option value="">All Contacts</option>
-            <option value="customer">Customers</option>
-            <option value="supplier">Suppliers</option>
+            <option value="">{t('allContacts')}</option>
+            <option value="customer">{t('customers')}</option>
+            <option value="supplier">{t('suppliers')}</option>
           </select>
           <button
             onClick={() => {
@@ -330,7 +330,7 @@ function Contacts() {
                 {t('name')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                Type
+                {t('type')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                 {t('address')}
@@ -363,7 +363,7 @@ function Contacts() {
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : 'Supplier'}
+                    {(contact.contactType || 'customer') === 'customer' ? t('customer') : t('supplier')}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
@@ -402,7 +402,7 @@ function Contacts() {
                       className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
                     >
                       <FaFileAlt className="w-4 h-4" />
-                      Statement
+                      {t('statement')}
                     </button>
                     <button
                       onClick={() => {
@@ -414,7 +414,7 @@ function Contacts() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m6.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </td>
@@ -469,14 +469,14 @@ function Contacts() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Type
+                    {t('contactType')}
                   </label>
                   <select
                     {...register('contactType')}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="customer">Customer</option>
-                    <option value="supplier">Supplier</option>
+                    <option value="customer">{t('customer')}</option>
+                    <option value="supplier">{t('supplier')}</option>
                   </select>
                   {errors.contactType && (
                     <p className="text-red-500 text-sm mt-1">{errors.contactType.message}</p>
@@ -531,7 +531,7 @@ function Contacts() {
                   }}
                   className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
@@ -896,14 +896,14 @@ function Contacts() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl shadow-xl border border-gray-200">
             <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
               <FaFileAlt className="text-blue-600" />
-              Customer Statement - {selectedContact.name}
+              {t('customerStatement')} - {selectedContact.name}
             </h2>
             
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date (Optional)
+                    {t('startDateOptional')}
                   </label>
                   <input
                     type="date"
@@ -914,7 +914,7 @@ function Contacts() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date (Optional)
+                    {t('endDateOptional')}
                   </label>
                   <input
                     type="date"
@@ -926,10 +926,10 @@ function Contacts() {
               </div>
               
               <div className="text-sm text-gray-600">
-                <p>• Leave dates empty to generate complete statement</p>
-                <p>• Statement includes sales, purchases, loans, payments, and returns</p>
-                <p>• Running balance shows amount customer owes or credit balance</p>
-                <p>• Sales increase customer debt, purchases reduce it</p>
+                <p>• {t('leaveDatesEmpty')}</p>
+                <p>• {t('statementIncludes')}</p>
+                <p>• {t('runningBalanceShows')}</p>
+                <p>• {t('salesIncreaseDebt')}</p>
               </div>
               
               <div className="flex justify-between items-center pt-4">
@@ -938,7 +938,7 @@ function Contacts() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
                 >
                   <FaFileAlt />
-                  Generate Statement
+                  {t('generateStatement')}
                 </button>
                 
                 {statementData && shopSettings && (
@@ -955,12 +955,12 @@ function Contacts() {
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
                   >
                     {({ loading }) => (
-                      loading ? 'Preparing PDF...' : (
+                      loading ? t('preparingPDF') : (
                         <>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                           </svg>
-                          Download PDF
+                          {t('downloadPDF')}
                         </>
                       )
                     )}
@@ -970,29 +970,29 @@ function Contacts() {
               
               {statementData && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium mb-3">Statement Summary:</h3>
+                  <h3 className="font-medium mb-3">{t('statementSummary')}:</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600">Opening Balance:</span>
+                      <span className="text-gray-600">{t('openingBalance')}:</span>
                       <span className={`ml-2 font-medium ${
                         statementData.openingBalance >= 0 ? 'text-gray-800' : 'text-gray-600'
                       }`}>
                         {formatPakistaniCurrency(Math.abs(statementData.openingBalance))}
-                        {statementData.openingBalance >= 0 ? ' (Receivable)' : ' (Payable)'}
+                        {statementData.openingBalance >= 0 ? ` (${t('receivable')})` : ` (${t('payable')})`}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Closing Balance:</span>
+                      <span className="text-gray-600">{t('closingBalance')}:</span>
                       <span className={`ml-2 font-medium ${
                         statementData.closingBalance >= 0 ? 'text-gray-800' : 'text-gray-600'
                       }`}>
                         {formatPakistaniCurrency(Math.abs(statementData.closingBalance))}
-                        {statementData.closingBalance >= 0 ? ' (Customer Owes)' : ' (We Owe)'}
+                        {statementData.closingBalance >= 0 ? ` (${t('customerOwes')})` : ` (${t('weOwe')})`}
                       </span>
                     </div>
                   </div>
                   <div className="mt-2">
-                    <span className="text-gray-600">Total Transactions:</span>
+                    <span className="text-gray-600">{t('totalTransactions')}:</span>
                     <span className="ml-2 font-medium">{statementData.transactions?.length || 0}</span>
                   </div>
                 </div>
@@ -1010,7 +1010,7 @@ function Contacts() {
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
-                Close
+                {t('close')}
               </button>
             </div>
           </div>

@@ -23,6 +23,9 @@ model Product {
   unit              String             @default("pcs")
   userId            String
   isRawMaterial     Boolean            @default(false)
+  retailPrice       BigInt?
+  wholesalePrice    BigInt?
+  unitValue         Decimal?
   BulkPurchaseItem  BulkPurchaseItem[]
   expenses          Expense[]
   SaleItem          SaleItem[]
@@ -69,6 +72,7 @@ model SaleItem {
   productId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  priceType     String   @default("retail")
   product       Product  @relation(fields: [productId], references: [id])
   sale          Sale     @relation(fields: [saleId], references: [id])
 }

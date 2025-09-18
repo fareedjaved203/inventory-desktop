@@ -4,6 +4,8 @@ export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string(),
   price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores").nullable().optional(),
+  retailPrice: z.number().positive("Retail price must be positive").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
+  wholesalePrice: z.number().positive("Wholesale price must be positive").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative").max(1000000000, "Quantity cannot exceed 1 billion"),
@@ -18,6 +20,7 @@ export const saleItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().int().positive("Quantity must be positive"),
   price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores"),
+  priceType: z.enum(["retail", "wholesale"]).optional().default("retail"),
 });
 
 export const saleSchema = z.object({
