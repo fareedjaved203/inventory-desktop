@@ -10,6 +10,7 @@ export const productSchema = z.object({
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative").max(1000000000, "Quantity cannot exceed 1 billion"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
+  unitValue: z.number().positive("Unit value must be positive").optional(),
   lowStockThreshold: z.number().int().min(0, "Low stock threshold must be non-negative").optional(),
   isRawMaterial: z.boolean().optional(),
 });

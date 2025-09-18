@@ -219,6 +219,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+        unitValue: item.unitValue ? Number(item.unitValue) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -494,6 +495,7 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
       retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
       wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
       purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+      unitValue: product.unitValue ? Number(product.unitValue) : null,
       quantity: Number(product.quantity)
     });
   } catch (error) {
@@ -551,6 +553,7 @@ app.post(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+        unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });
     } catch (error) {
@@ -647,6 +650,7 @@ app.put(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+        unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });
     } catch (error) {

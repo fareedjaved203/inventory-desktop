@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 
 // Define the formatting function directly in this file since React-PDF doesn't support imports well
 function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
@@ -46,37 +46,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    marginBottom: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
     borderBottom: '2px solid #2563eb',
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
-  shopNameContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
+  logo: {
+    maxWidth: 100,
+    maxHeight: 100,
+    objectFit: 'contain',
+  },
+  companyInfo: {
+    textAlign: 'right',
+    fontSize: 10,
+    lineHeight: 1.4,
   },
   shopName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  brandsContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 10,
-    marginBottom: 15,
-    borderRadius: 5,
-    textAlign: 'center',
+    marginBottom: 4,
   },
   brands: {
-    fontSize: 9,
-    color: '#374151',
-    fontWeight: 'bold',
-  },
-  descriptions: {
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
   },
   subtitle: {
     fontSize: 10,
@@ -175,38 +169,39 @@ function SimpleDateInvoicePDF({ date, sales, shopSettings }) {
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View style={styles.shopNameContainer}>
-            <Text style={styles.shopName}>
-              {shopSettings?.shopName || "DAILY SALES REPORT"}
-            </Text>
-          </View>
-
-          {brands.length > 0 && (
-            <View style={styles.brandsContainer}>
-              <Text style={styles.brands}>{brands.join(" • ")}</Text>
-            </View>
+          {shopSettings?.logo && (
+            <Image src={shopSettings.logo} style={styles.logo} />
           )}
-
-          <View style={styles.descriptions}>
+          <View style={styles.companyInfo}>
+            <Text style={styles.shopName}>{shopSettings?.shopName || "DAILY SALES REPORT"}</Text>
+            {brands.length > 0 && (
+              <Text style={styles.brands}>{brands.join(" • ")}</Text>
+            )}
             {shopSettings?.shopDescription && (
-              <Text style={styles.subtitle}>
-                {shopSettings.shopDescription}
-              </Text>
+              <Text>{shopSettings.shopDescription}</Text>
             )}
             {shopSettings?.shopDescription2 && (
-              <Text style={styles.subtitle}>
-                {shopSettings.shopDescription2}
-              </Text>
+              <Text>{shopSettings.shopDescription2}</Text>
+            )}
+            <Text> </Text>
+            {shopSettings?.userName1 && (
+              <Text>{shopSettings.userName1}: {shopSettings.userPhone1}</Text>
+            )}
+            {shopSettings?.userName2 && (
+              <Text>{shopSettings.userName2}: {shopSettings.userPhone2}</Text>
+            )}
+            {shopSettings?.userName3 && (
+              <Text>{shopSettings.userName3}: {shopSettings.userPhone3}</Text>
             )}
           </View>
-
-          <Text style={styles.title}>DAILY SALES REPORT</Text>
         </View>
+
+        <Text style={styles.title}>DAILY SALES REPORT</Text>
 
         <View style={styles.info}>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>{new Date(date).toLocaleDateString()}</Text>
+            <Text style={styles.value}>{date}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Total Sales:</Text>
@@ -259,7 +254,7 @@ function SimpleDateInvoicePDF({ date, sales, shopSettings }) {
           );
         })}
 
-        <View style={styles.total}>
+        <View style={[styles.total, { marginBottom: 40 }]}>
           <Text style={styles.totalLabel}>Grand Total:</Text>
           <Text>{formatPakistaniCurrencyPDF(totalAmount)}</Text>
         </View>
@@ -287,16 +282,7 @@ function SimpleDateInvoicePDF({ date, sales, shopSettings }) {
                 </View>
               )}
             </View>
-            <View style={{ textAlign: 'right' }}>
-              <View style={{ border: '1px solid #666', padding: 5, borderRadius: 3 }}>
-                <Text style={styles.contactInfo}>
-                  Goods will not be returned or exchanged after use.
-                </Text>
-                <Text style={styles.contactInfo}>
-                  No Return / Exchange after use.
-                </Text>
-              </View>
-            </View>
+
           </View>
           <View style={{ borderTop: '1px solid #ccc', marginTop: 10, paddingTop: 8 }}>
             <Text style={{ fontSize: 8, textAlign: 'center', color: '#666' }}>

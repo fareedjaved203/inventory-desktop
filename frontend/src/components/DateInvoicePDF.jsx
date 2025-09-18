@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 
 // Define the formatting function directly in this file since React-PDF doesn't support imports well
 function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
@@ -46,37 +46,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    marginBottom: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
     borderBottom: '2px solid #059669',
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
-  shopNameContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
+  logo: {
+    maxWidth: 100,
+    maxHeight: 100,
+    objectFit: 'contain',
+  },
+  companyInfo: {
+    textAlign: 'right',
+    fontSize: 10,
+    lineHeight: 1.4,
   },
   shopName: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  brandsContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 10,
-    marginBottom: 15,
-    borderRadius: 5,
-    textAlign: 'center',
+    marginBottom: 4,
   },
   brands: {
-    fontSize: 11,
-    color: '#374151',
-    fontWeight: 'bold',
-  },
-  descriptions: {
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
   },
   title: {
     fontSize: 20,
@@ -211,24 +205,35 @@ function DateInvoicePDF({ date, sales, shopSettings }) {
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View style={styles.shopNameContainer}>
-            <Text style={styles.shopName}>{shopSettings?.shopName || 'DAILY SALES REPORT'}</Text>
-          </View>
-          
-          {brands.length > 0 && (
-            <View style={styles.brandsContainer}>
-              <Text style={styles.brands}>{brands.join(' • ')}</Text>
-            </View>
+          {shopSettings?.logo && (
+            <Image src={shopSettings.logo} style={styles.logo} />
           )}
-          
-          <View style={styles.descriptions}>
-            {shopSettings?.shopDescription && <Text style={styles.subtitle}>{shopSettings.shopDescription}</Text>}
-            {shopSettings?.shopDescription2 && <Text style={styles.subtitle}>{shopSettings.shopDescription2}</Text>}
+          <View style={styles.companyInfo}>
+            <Text style={styles.shopName}>{shopSettings?.shopName || 'DAILY SALES REPORT'}</Text>
+            {brands.length > 0 && (
+              <Text style={styles.brands}>{brands.join(' • ')}</Text>
+            )}
+            {shopSettings?.shopDescription && (
+              <Text>{shopSettings.shopDescription}</Text>
+            )}
+            {shopSettings?.shopDescription2 && (
+              <Text>{shopSettings.shopDescription2}</Text>
+            )}
+            <Text> </Text>
+            {shopSettings?.userName1 && (
+              <Text>{shopSettings.userName1}: {shopSettings.userPhone1}</Text>
+            )}
+            {shopSettings?.userName2 && (
+              <Text>{shopSettings.userName2}: {shopSettings.userPhone2}</Text>
+            )}
+            {shopSettings?.userName3 && (
+              <Text>{shopSettings.userName3}: {shopSettings.userPhone3}</Text>
+            )}
           </View>
-          
-          <Text style={styles.title}>DAILY SALES REPORT</Text>
-          <Text style={styles.subtitle}>Sales Report for {new Date(date).toLocaleDateString()} - Generated at {new Date().toLocaleTimeString()}</Text>
         </View>
+
+        <Text style={styles.title}>DAILY SALES REPORT</Text>
+        <Text style={styles.subtitle}>Sales Report for {new Date(date).toLocaleDateString()} - Generated at {new Date().toLocaleTimeString()}</Text>
 
         <View style={styles.info}>
           <View style={styles.infoRow}>
