@@ -25,7 +25,9 @@ class LicenseManager {
 
       const now = Math.floor(Date.now() / 1000);
       
-      if (now > decoded.activationDeadline) {
+      // Remove activation deadline check for existing licenses
+      const existingLicense = await this.getUserLicense(userId);
+      if (!existingLicense && now > decoded.activationDeadline) {
         return { valid: false, error: 'License activation window expired' };
       }
       
@@ -34,20 +36,15 @@ class LicenseManager {
       }
 
       const deviceFingerprint = this.getDeviceFingerprint();
-      const existingLicense = await this.getUserLicense(userId);
       
-      if (existingLicense?.licenseKey === licenseKey && 
-          existingLicense.deviceFingerprint === deviceFingerprint) {
-        return { valid: false, error: 'License key already activated on this device' };
-      }
-      
-      if (existingLicense?.deviceFingerprint && 
-          existingLicense.deviceFingerprint !== deviceFingerprint && 
-          !forceRebind) {
+      // Allow same license key to be used on multiple devices for same user
+      if (existingLicense?.licenseKey === licenseKey) {
+        // Update device fingerprint for current device
+        await this.bindLicenseToUser(userId, licenseKey, deviceFingerprint, decoded.expiry, decoded.duration);
         return { 
-          valid: false, 
-          error: 'License bound to different device',
-          canRebind: true
+          valid: true, 
+          expiry: decoded.expiry,
+          duration: decoded.duration 
         };
       }
 
@@ -149,14 +146,7 @@ class LicenseManager {
       return await this.createTrialLicense(userId);
     }
     
-    // For trial licenses, skip device fingerprint check
-    if (!license.isTrial) {
-      const deviceFingerprint = this.getDeviceFingerprint();
-      if (license.deviceFingerprint !== deviceFingerprint) {
-        console.log('Device fingerprint mismatch');
-        return false;
-      }
-    }
+    // Skip device fingerprint check entirely - allow same account on multiple devices
     
     const now = Math.floor(Date.now() / 1000);
     const isValid = now <= Number(license.expiry);

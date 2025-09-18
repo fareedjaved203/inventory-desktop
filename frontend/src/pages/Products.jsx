@@ -24,7 +24,7 @@ const productSchema = z.object({
   sku: z.string().optional(),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
-  unitValue: z.number().positive("Unit value must be positive").optional(),
+  unitValue: z.union([z.number().positive("Unit value must be positive"), z.null(), z.undefined()]).optional(),
   lowStockThreshold: z.number().int().min(0, "Low stock threshold must be non-negative"),
   isRawMaterial: z.boolean().optional(),
 });
