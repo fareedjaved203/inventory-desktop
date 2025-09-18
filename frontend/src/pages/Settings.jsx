@@ -26,7 +26,7 @@ function Settings() {
         <UpdateButton />
         
         {/* Priority 4: Data Management */}
-        <DatabaseBackupForm />
+        {/* <DatabaseBackupForm /> */}
         
         {/* Priority 5: Account Settings */}
         <UpdateEmailForm />

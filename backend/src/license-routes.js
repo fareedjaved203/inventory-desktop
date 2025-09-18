@@ -4,7 +4,7 @@ import { authenticateToken } from './middleware.js';
 const router = express.Router();
 
 router.post('/validate', authenticateToken, async (req, res) => {
-  const { licenseKey } = req.body;
+  const { licenseKey, forceRebind } = req.body;
   const userId = req.userId;
   
   if (!licenseKey) {
@@ -12,12 +12,15 @@ router.post('/validate', authenticateToken, async (req, res) => {
   }
 
   try {
-    const result = await licenseManager.validateLicense(licenseKey, userId);
+    const result = await licenseManager.validateLicense(licenseKey, userId, forceRebind);
     
     if (result.valid) {
       res.json({ success: true, expiry: result.expiry });
     } else {
-      res.status(400).json({ error: result.error });
+      res.status(400).json({ 
+        error: result.error,
+        canRebind: result.canRebind 
+      });
     }
   } catch (error) {
     res.status(500).json({ error: 'License validation failed' });

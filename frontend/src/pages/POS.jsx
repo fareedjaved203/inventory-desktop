@@ -122,7 +122,7 @@ function POS() {
         return [...prevCart, {
           id: product.id,
           name: product.name,
-          price: Number(product.price),
+          price: Number(product.retailPrice || product.price),
           quantity: 1,
           maxQuantity: Number(product.quantity),
           unit: product.unit
@@ -347,6 +347,11 @@ function POS() {
       </head>
       <body>
         <div class="header">
+          ${shopSettings?.logo ? `
+            <div style="text-align: center; margin-bottom: 5px;">
+              <img src="${shopSettings.logo}" alt="Logo" style="max-width: 60mm; max-height: 20mm; filter: grayscale(100%) contrast(120%);" />
+            </div>
+          ` : ''}
           <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
           <div class="shop-info">Point of Sale System</div>
           <div class="shop-info">Thank you for your business!</div>
@@ -484,7 +489,7 @@ function POS() {
                   className="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors"
                 >
                   <h4 className="font-medium text-sm mb-1 truncate">{product.name}</h4>
-                  <p className="text-primary-600 font-semibold">{formatPakistaniCurrency(product.price)}</p>
+                  <p className="text-primary-600 font-semibold">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                   <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
                   {product.sku && (
                     <p className="text-xs text-gray-400">SKU: {product.sku}</p>

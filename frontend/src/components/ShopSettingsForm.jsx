@@ -324,25 +324,59 @@ function ShopSettingsForm() {
             onChange={(e) => {
               const file = e.target.files[0];
               if (file) {
-                // Check file size (limit to 2MB)
-                if (file.size > 2 * 1024 * 1024) {
-                  alert(language === 'ur' ? 'فائل کا سائز 2MB سے زیادہ نہیں ہونا چاہیے' : 'File size should not exceed 2MB');
+                // Check file size (limit to 5MB before compression)
+                if (file.size > 5 * 1024 * 1024) {
+                  alert(language === 'ur' ? 'فائل کا سائز 5MB سے زیادہ نہیں ہونا چاہیے' : 'File size should not exceed 5MB');
                   e.target.value = '';
                   return;
                 }
+                
+                // Compress and resize image
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                  // Calculate new dimensions (max 300x300 for logos)
+                  const maxSize = 300;
+                  let { width, height } = img;
+                  
+                  if (width > height) {
+                    if (width > maxSize) {
+                      height = (height * maxSize) / width;
+                      width = maxSize;
+                    }
+                  } else {
+                    if (height > maxSize) {
+                      width = (width * maxSize) / height;
+                      height = maxSize;
+                    }
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  
+                  // Draw and compress
+                  ctx.drawImage(img, 0, 0, width, height);
+                  const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                  
+                  setFormData({ ...formData, logo: compressedDataUrl });
+                };
+                
+                img.onerror = () => {
+                  alert(language === 'ur' ? 'فائل پڑھنے میں خرابی' : 'Error reading file');
+                };
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                  setFormData({ ...formData, logo: event.target.result });
-                };
-                reader.onerror = () => {
-                  alert(language === 'ur' ? 'فائل پڑھنے میں خرابی' : 'Error reading file');
+                  img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
               }
             }}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'انوائس پر دکھانے کے لیے لوگو اپ لوڈ کریں' : 'Upload a logo to display on invoices'}</p>
+          <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'انوائس پر دکھانے کے لیے لوگو اپ لوڈ کریں (خودکار سائز 300x300)' : 'Upload a logo to display on invoices (auto-resized to 300x300)'}</p>
           {formData.logo && (
             <div className="mt-2">
               <img src={formData.logo} alt="Logo preview" className="h-16 w-auto border rounded" />

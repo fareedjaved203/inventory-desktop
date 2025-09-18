@@ -16,7 +16,7 @@ class LicenseManager {
     return crypto.createHash('sha256').update(fingerprint).digest('hex').substring(0, 16);
   }
 
-  async validateLicense(licenseKey, userId) {
+  async validateLicense(licenseKey, userId, forceRebind = false) {
     try {
       const decoded = this.decodeLicenseKey(licenseKey);
       if (!decoded) {
@@ -36,13 +36,19 @@ class LicenseManager {
       const deviceFingerprint = this.getDeviceFingerprint();
       const existingLicense = await this.getUserLicense(userId);
       
-      if (existingLicense?.licenseKey === licenseKey) {
+      if (existingLicense?.licenseKey === licenseKey && 
+          existingLicense.deviceFingerprint === deviceFingerprint) {
         return { valid: false, error: 'License key already activated on this device' };
       }
       
       if (existingLicense?.deviceFingerprint && 
-          existingLicense.deviceFingerprint !== deviceFingerprint) {
-        return { valid: false, error: 'License bound to different device' };
+          existingLicense.deviceFingerprint !== deviceFingerprint && 
+          !forceRebind) {
+        return { 
+          valid: false, 
+          error: 'License bound to different device',
+          canRebind: true
+        };
       }
 
       await this.bindLicenseToUser(userId, licenseKey, deviceFingerprint, decoded.expiry, decoded.duration);

@@ -5,8 +5,9 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
   const [licenseKey, setLicenseKey] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [canRebind, setCanRebind] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, forceRebind = false) => {
     e.preventDefault();
     if (!licenseKey.trim()) {
       setError('Please enter a license key');
@@ -15,10 +16,12 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
 
     setLoading(true);
     setError('');
+    setCanRebind(false);
 
     try {
       const response = await api.post('/api/license/validate', {
-        licenseKey: licenseKey.trim()
+        licenseKey: licenseKey.trim(),
+        forceRebind
       });
 
       if (response.data.success) {
@@ -27,10 +30,18 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
         setError('Invalid license key');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to validate license');
+      const errorData = err.response?.data;
+      setError(errorData?.error || 'Failed to validate license');
+      if (errorData?.canRebind) {
+        setCanRebind(true);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRebind = (e) => {
+    handleSubmit(e, true);
   };
 
   if (!isOpen) return null;
@@ -61,6 +72,11 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               {error}
+              {canRebind && (
+                <p className="mt-2 text-sm">
+                  This license is bound to a different device. Click "Rebind License" to use it on this device.
+                </p>
+              )}
             </div>
           )}
           
@@ -71,6 +87,17 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
           >
             {loading ? 'Validating...' : 'Activate License'}
           </button>
+          
+          {canRebind && (
+            <button
+              type="button"
+              onClick={handleRebind}
+              disabled={loading}
+              className="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 disabled:opacity-50 mb-3"
+            >
+              {loading ? 'Rebinding...' : 'Rebind License to This Device'}
+            </button>
+          )}
         </form>
         
         <button

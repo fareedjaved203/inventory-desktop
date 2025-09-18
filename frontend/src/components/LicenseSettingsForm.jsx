@@ -86,35 +86,7 @@ export default function LicenseSettingsForm() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            {language === 'ur' ? 'لائسنس کی اپڈیٹ کریں' : 'Update License Key'}
-          </label>
-          <input
-            type="text"
-            value={licenseKey}
-            onChange={(e) => setLicenseKey(e.target.value)}
-            placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
-        </div>
-        
-        {message && (
-          <div className={`p-3 rounded ${message.includes('success') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {message}
-          </div>
-        )}
-        
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? (language === 'ur' ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (language === 'ur' ? 'لائسنس اپڈیٹ کریں' : 'Update License')}
-        </button>
-      </form>
+      {/* License input form removed - users should only enter license when expired */}
     </div>
   );
 }
