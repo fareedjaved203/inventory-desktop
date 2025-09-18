@@ -82,9 +82,9 @@ initializeApp().catch(console.error);
 
 const port = process.env.PORT || 3000;
 
-// PostgreSQL migrations are handled by Prisma migrate
+// PostgreSQL migrations are handled manually
 async function checkAndMigrate() {
-  console.log('PostgreSQL migrations handled by Prisma migrate');
+  console.log('Database setup complete - tables should be created manually');
 }
 
 // Test database connection

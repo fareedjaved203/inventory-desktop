@@ -1,6 +1,6 @@
 {
   "name": "hisab-ghar",
-  "version": "5.10.2",
+  "version": "5.10.3",
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
@@ -17,9 +17,14 @@
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:publish": "npm run build && npx --node-options=\"-r dotenv/config\" electron-builder --win --publish=always",
     "dist:simple": "npm run build && electron-builder --win --publish=never",
+    "dist:auto": "node check-db-type.js > .dbtype && set /p DB_TYPE=<.dbtype && del .dbtype && npm run build && electron-builder --win --publish=never --config.win.artifactName=Hisab-Ghar-%DB_TYPE%-Setup-${version}.${ext}",
+    "dist:publish:online": "npm run build && electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}",
+    "dist:offline": "npm run build && electron-builder --win --publish=never --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
+    "dist:publish:offline": "npm run build && npx --node-options=\"-r dotenv/config\" electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version"
+    "version:major": "npm version major --no-git-tag-version",
+    "generate:sql": "cd backend && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > ../complete-schema.sql"
   },
   "build": {
     "appId": "com.hisabghar.desktop",
