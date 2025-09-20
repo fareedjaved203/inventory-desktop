@@ -304,9 +304,9 @@ function Contacts() {
             onChange={(e) => setContactTypeFilter(e.target.value)}
             className="px-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <option value="">{t('allContacts')}</option>
-            <option value="customer">{t('customers')}</option>
-            <option value="supplier">{t('suppliers')}</option>
+            <option value="">All Contacts</option>
+            <option value="customer">Customers</option>
+            <option value="supplier">Suppliers</option>
           </select>
           <button
             onClick={() => {
@@ -314,10 +314,10 @@ function Contacts() {
               setSelectedContact(null);
               reset();
             }}
-            className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2"
+            className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2 w-full sm:w-auto"
           >
             <FaUserPlus />
-            {t('addContact')}
+            Add Contact
           </button>
         </div>
       </div>
@@ -363,7 +363,7 @@ function Contacts() {
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {(contact.contactType || 'customer') === 'customer' ? t('customer') : t('supplier')}
+                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : 'Supplier'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
@@ -475,8 +475,8 @@ function Contacts() {
                     {...register('contactType')}
                     className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="customer">{t('customer')}</option>
-                    <option value="supplier">{t('supplier')}</option>
+                    <option value="customer">Customer</option>
+                    <option value="supplier">Supplier</option>
                   </select>
                   {errors.contactType && (
                     <p className="text-red-500 text-sm mt-1">{errors.contactType.message}</p>

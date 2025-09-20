@@ -5,6 +5,7 @@ import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Sidebar';
+import HamburgerMenu from './components/HamburgerMenu';
 import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
 import Products from './pages/Products';
@@ -33,6 +34,7 @@ function AppContent() {
   const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // Clear auth on container restart by checking a session timestamp
     const authTime = localStorage.getItem('authTime');
@@ -190,9 +192,22 @@ function AppContent() {
   return (
     <Router>
       <div className="flex h-screen bg-gray-50">
-        <Sidebar onLogout={handleLogout} userPermissions={userPermissions} userType={userType} />
+        <Sidebar 
+          onLogout={handleLogout} 
+          userPermissions={userPermissions} 
+          userType={userType}
+          isMobileOpen={isMobileMenuOpen}
+          setIsMobileOpen={setIsMobileMenuOpen}
+        />
         <div className="flex-1 flex flex-col overflow-auto">
-          <div className="flex-1 p-8">
+          {/* Mobile Header with Hamburger Menu */}
+          <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+            <HamburgerMenu onClick={() => setIsMobileMenuOpen(true)} />
+            <h1 className="text-lg font-semibold text-gray-800 flex-1 text-center">Hisab Ghar</h1>
+            <div className="w-10"></div> {/* Spacer for centering */}
+          </div>
+          
+          <div className="flex-1 p-4 md:p-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/pos" element={<POS />} />

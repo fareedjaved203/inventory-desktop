@@ -64,12 +64,12 @@ function Dashboard() {
 
   return (
     <div>
-      <div className={`flex justify-between items-center mb-8 ${language === 'ur' ? 'font-urdu' : ''}`}>
+      <div className={`flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
         <h1 className="text-3xl font-bold text-primary-800">{t('dashboard')}</h1>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <button
             onClick={() => setShowReportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v14a4 4 0 01-4 4z" />
@@ -78,7 +78,7 @@ function Dashboard() {
           </button>
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
             disabled={isLoading || isLoadingStats}
           >
             {isLoading || isLoadingStats ? (

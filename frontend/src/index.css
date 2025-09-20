@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom mobile breakpoints */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 @layer base {
   [dir="rtl"] {
     direction: rtl;
@@ -81,5 +89,37 @@
   [dir="rtl"] th,
   [dir="rtl"] td {
     text-align: right;
+  }
+  
+  /* Mobile responsive utilities */
+  @media (max-width: 768px) {
+    .mobile-padding {
+      padding: 1rem;
+    }
+    
+    .mobile-text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .mobile-hidden {
+      display: none;
+    }
+    
+    /* Ensure tables are scrollable on mobile */
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Mobile-friendly buttons */
+    .mobile-btn {
+      min-height: 44px;
+      padding: 0.75rem 1rem;
+    }
+  }
+  
+  /* Prevent body scroll when mobile menu is open */
+  .mobile-menu-open {
+    overflow: hidden;
   }
 }

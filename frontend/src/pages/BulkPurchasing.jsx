@@ -521,7 +521,7 @@ function BulkPurchasing() {
             )}
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap"
+              className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap w-full sm:w-auto"
             >
               {t('newPurchase')}
             </button>
