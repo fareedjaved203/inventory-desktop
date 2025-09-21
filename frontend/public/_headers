@@ -1,0 +1,8 @@
+/sw.js
+  Content-Type: application/javascript
+
+/manifest.json
+  Content-Type: application/json
+
+/icon.png
+  Content-Type: image/png
