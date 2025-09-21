@@ -121,12 +121,14 @@ app.use((req, res, next) => {
   }
 });
 
-// Serve static files from frontend build
-const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
-const frontendPath = isPackaged 
-  ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist')
-  : path.join(__dirname, '../../frontend/dist');
-app.use(express.static(frontendPath));
+// Serve static files only in development or Electron mode
+if (process.env.NODE_ENV !== 'production') {
+  const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
+  const frontendPath = isPackaged 
+    ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist')
+    : path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendPath));
+}
 
 // Setup routes
 setupContactRoutes(app, prisma);
@@ -699,14 +701,16 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 
 
 
-// Catch-all handler for React Router (must be last)
-app.get('*', (req, res) => {
-  const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
-  const indexPath = isPackaged 
-    ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist/index.html')
-    : path.join(__dirname, '../../frontend/dist/index.html');
-  res.sendFile(indexPath);
-});
+// Catch-all handler only in development or Electron mode
+if (process.env.NODE_ENV !== 'production') {
+  app.get('*', (req, res) => {
+    const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
+    const indexPath = isPackaged 
+      ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist/index.html')
+      : path.join(__dirname, '../../frontend/dist/index.html');
+    res.sendFile(indexPath);
+  });
+}
 
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
@@ -723,6 +727,21 @@ process.on('SIGTERM', async () => {
 
 process.on('beforeExit', async () => {
   await prisma.$disconnect();
+});
+
+// Keep-alive mechanism for Render
+if (process.env.NODE_ENV === 'production') {
+  import('node-fetch').then(({ default: fetch }) => {
+    setInterval(() => {
+      fetch(`http://localhost:${port}/api/health`)
+        .catch(() => {}); // Ignore errors
+    }, 14 * 60 * 1000); // 14 minutes
+  });
+}
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.listen(port, () => {
