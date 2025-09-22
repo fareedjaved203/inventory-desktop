@@ -338,14 +338,9 @@ function startServer() {
       PORT: serverPort,
       NODE_ENV: isDev ? 'development' : undefined,
       ELECTRON_APP: 'true',
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1',
-      DIRECT_URL: process.env.DIRECT_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:5432/postgres'
+      DATABASE_URL: process.env.DATABASE_URL,
+      DIRECT_URL: process.env.DIRECT_URL
     };
-    
-    console.log('Environment variables:');
-    console.log('DATABASE_URL:', env.DATABASE_URL);
-    console.log('DIRECT_URL:', env.DIRECT_URL);
-    console.log('PORT:', env.PORT);
 
     serverProcess = spawn('node', [serverPath], {
       env: {

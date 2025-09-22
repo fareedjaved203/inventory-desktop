@@ -729,19 +729,27 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
-// Keep-alive mechanism for Render
 if (process.env.NODE_ENV === 'production') {
-  import('node-fetch').then(({ default: fetch }) => {
-    setInterval(() => {
-      fetch(`http://localhost:${port}/api/health`)
-        .catch(() => {}); // Ignore errors
-    }, 14 * 60 * 1000); // 14 minutes
-  });
+  const url = process.env.RENDER_EXTERNAL_URL;
+  
+  setInterval(async () => {
+    try {
+      const response = await fetch(`${url}/health`);
+      console.log('Keep-alive ping:', response.status, new Date().toISOString());
+    } catch (error) {
+      console.log('Keep-alive failed:', error.message);
+    }
+  }, 14 * 60 * 1000); // Every 14 minutes
 }
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Simple root endpoint for keep-alive
+app.get('/', (req, res) => {
+  console.log('Keep-alive ping received');
+  res.send('Server is running');
 });
 
 app.listen(port, () => {
