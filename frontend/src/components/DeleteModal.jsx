@@ -1,7 +1,7 @@
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
-function DeleteModal({ isOpen, onClose, onConfirm, itemName, error }) {
+function DeleteModal({ isOpen, onClose, onConfirm, itemName, error, loading = false }) {
   const { language } = useLanguage();
   const t = useTranslation(language);
   
@@ -28,9 +28,10 @@ function DeleteModal({ isOpen, onClose, onConfirm, itemName, error }) {
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            disabled={loading}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('delete')}
+            {loading ? 'Deleting...' : t('delete')}
           </button>
         </div>
       </div>

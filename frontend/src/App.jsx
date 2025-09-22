@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -23,41 +23,43 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
 import LicenseModal from './components/LicenseModal';
-import SplashScreen from './components/SplashScreen';
+import LoadingSpinner from './components/LoadingSpinner';
 import { useLicense } from './hooks/useLicense';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [appVersion, setAppVersion] = useState('1.0.0');
   const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Clear auth on container restart by checking a session timestamp
+  
+  // Initialize auth state from localStorage
+  const [authState, setAuthState] = useState(() => {
     const authTime = localStorage.getItem('authTime');
     const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+    const userType = localStorage.getItem('userType') || 'admin';
+    const userPermissions = localStorage.getItem('userPermissions');
     
-    // If more than 1 hour passed or no timestamp, require re-auth
+    // Clear auth if expired
     if (!authTime || Date.now() - parseInt(authTime) > 3600000) {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('authTime');
       localStorage.removeItem('userPermissions');
       localStorage.removeItem('userType');
-      return false;
+      return { isAuthenticated: false, userType: 'admin', userPermissions: [] };
     }
     
-    return isAuth;
+    return {
+      isAuthenticated: isAuth,
+      userType,
+      userPermissions: userPermissions ? JSON.parse(userPermissions) : []
+    };
   });
-  const [userPermissions, setUserPermissions] = useState(() => {
-    const stored = localStorage.getItem('userPermissions');
-    return stored ? JSON.parse(stored) : [];
-  });
-  const [userType, setUserType] = useState(() => {
-    return localStorage.getItem('userType') || 'admin';
-  });
+  
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   const { data: authCheck, isLoading } = useQuery(
@@ -68,31 +70,41 @@ function AppContent() {
     },
     {
       retry: false,
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: false,
+      enabled: !authInitialized
     }
   );
 
+  // Handle initial auth check and routing
   useEffect(() => {
-    if (authCheck && !isAuthenticated) {
-      setShowAuthModal(true);
+    if (!authInitialized) {
+      if (authState.isAuthenticated) {
+        // Check if user is on wrong page for their role
+        if (authState.userType === 'superadmin' && location.pathname !== '/super-admin') {
+          window.location.replace('/super-admin');
+          return;
+        } else if (authState.userType === 'employee' && location.pathname !== '/employee-stats') {
+          window.location.replace('/employee-stats');
+          return;
+        }
+        setAuthInitialized(true);
+      } else if (authCheck !== undefined) {
+        if (authCheck) {
+          setShowAuthModal(true);
+        }
+        setAuthInitialized(true);
+      }
     }
-    // Mark initial load as complete once auth check is done
-    if (authCheck !== undefined) {
-      setIsInitialLoad(false);
-    }
-  }, [authCheck, isAuthenticated]);
+  }, [authState.isAuthenticated, authState.userType, authCheck, authInitialized, location.pathname]);
 
   useEffect(() => {
-    // Only show license modal after authentication is complete
-    console.log('License check:', { licenseLoading, licenseValid, isAuthenticated });
-    if (!licenseLoading && !licenseValid && isAuthenticated) {
-      console.log('Showing license modal');
+    // Only show license modal for non-superadmin users
+    if (!licenseLoading && !licenseValid && authState.isAuthenticated && authState.userType !== 'superadmin') {
       setShowLicenseModal(true);
-    } else if (!licenseLoading && licenseValid && isAuthenticated) {
-      console.log('License is valid, hiding modal');
+    } else if (!licenseLoading && licenseValid && authState.isAuthenticated) {
       setShowLicenseModal(false);
     }
-  }, [licenseValid, licenseLoading, isAuthenticated]);
+  }, [licenseValid, licenseLoading, authState.isAuthenticated, authState.userType]);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -103,71 +115,57 @@ function AppContent() {
   }, []);
 
   const handleAuthSuccess = (authData = {}) => {
-    setIsAuthenticated(true);
-    setShowAuthModal(false);
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('authTime', Date.now().toString());
-    
-    // Store JWT token and user ID
-    if (authData.token) {
-      localStorage.setItem('authToken', authData.token);
-    }
-    if (authData.userId) {
-      localStorage.setItem('userId', authData.userId);
-    }
-    
-    // Store user permissions and type
     const permissions = authData.permissions || [];
     const type = authData.userType || 'admin';
-    setUserPermissions(permissions);
-    setUserType(type);
+    
+    // Update auth state
+    setAuthState({
+      isAuthenticated: true,
+      userType: type,
+      userPermissions: permissions
+    });
+    setShowAuthModal(false);
+    
+    // Store in localStorage
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('authTime', Date.now().toString());
     localStorage.setItem('userPermissions', JSON.stringify(permissions));
     localStorage.setItem('userType', type);
     
-    // Store employee info if employee login
+    if (authData.token) localStorage.setItem('authToken', authData.token);
+    if (authData.userId) localStorage.setItem('userId', authData.userId);
     if (authData.employeeId) {
       localStorage.setItem('employeeId', authData.employeeId);
       localStorage.setItem('employeeName', authData.employeeName);
     }
     
-    // Invalidate auth check to refetch user count
     queryClient.invalidateQueries(['auth-check']);
     
-    // Redirect based on user type
-    setTimeout(() => {
-      if (type === 'superadmin') {
-        window.location.replace('/super-admin');
-      } else if (type === 'employee') {
-        window.location.replace('/employee-stats');
-      } else {
-        // Regular admin user
-        window.location.replace('/');
-      }
-    }, 100);
+    // Immediate redirect based on user type
+    if (type === 'superadmin') {
+      window.location.replace('/super-admin');
+    } else if (type === 'employee') {
+      window.location.replace('/employee-stats');
+    } else {
+      window.location.replace('/');
+    }
     
-    // Refresh license status for non-super admin users
+    // Refresh license for non-superadmin
     if (type !== 'superadmin') {
-      setTimeout(() => {
-        refreshLicense();
-      }, 500);
+      refreshLicense();
     }
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    setAuthState({ isAuthenticated: false, userType: 'admin', userPermissions: [] });
     setShowAuthModal(true);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('authTime');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userPermissions');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('employeeId');
-    localStorage.removeItem('employeeName');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userPassword');
-    setUserPermissions([]);
-    setUserType('admin');
+    setAuthInitialized(false);
+    
+    // Clear localStorage
+    ['isAuthenticated', 'authTime', 'authToken', 'userId', 'userPermissions', 
+     'userType', 'employeeId', 'employeeName', 'userEmail', 'userPassword'].forEach(
+      key => localStorage.removeItem(key)
+    );
   };
 
   const handleLicenseValidated = () => {
@@ -175,12 +173,16 @@ function AppContent() {
     refreshLicense();
   };
 
-  // Splash screen removed - direct loading
+  // Show loading during initialization
+  if (!authInitialized || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="w-12 h-12" />
+      </div>
+    );
+  }
 
-  // Don't block app startup with license modal
-  // License modal will be shown as overlay instead
-
-  if (!isAuthenticated && showAuthModal) {
+  if (!authState.isAuthenticated && showAuthModal) {
     return (
       <AuthModal 
         onSuccess={handleAuthSuccess}
@@ -189,13 +191,22 @@ function AppContent() {
     );
   }
 
+  // Prevent rendering if not authenticated
+  if (!authState.isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="w-12 h-12" />
+      </div>
+    );
+  }
+
   return (
-    <Router>
+    <>
       <div className="flex h-screen bg-gray-50">
         <Sidebar 
           onLogout={handleLogout} 
-          userPermissions={userPermissions} 
-          userType={userType}
+          userPermissions={authState.userPermissions} 
+          userType={authState.userType}
           isMobileOpen={isMobileMenuOpen}
           setIsMobileOpen={setIsMobileMenuOpen}
         />
@@ -234,7 +245,7 @@ function AppContent() {
       
       {/* License modal as overlay */}
       <LicenseModal 
-        isOpen={showLicenseModal && isAuthenticated}
+        isOpen={showLicenseModal && authState.isAuthenticated}
         onLicenseValidated={handleLicenseValidated}
         onLogout={handleLogout}
       />
@@ -250,7 +261,7 @@ function AppContent() {
           },
         }}
       />
-    </Router>
+    </>
   );
 }
 
@@ -258,7 +269,9 @@ function App() {
   return (
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </QueryClientProvider>
     </LanguageProvider>
   );

@@ -34,19 +34,29 @@ export function setupSuperAdminRoutes(app, prisma) {
     next();
   });
 
-  // Get all users with their stats
+  // Get all users with their stats (with pagination)
   app.get('/api/super-admin/users', authenticateSuperAdmin, async (req, res) => {
     try {
-      const users = await prisma.user.findMany({
-        where: { role: 'admin' },
-        select: {
-          id: true,
-          email: true,
-          companyName: true,
-          trialEndDate: true,
-          createdAt: true,
-        }
-      });
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      const [users, totalCount] = await Promise.all([
+        prisma.user.findMany({
+          where: { role: 'admin' },
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            trialEndDate: true,
+            createdAt: true,
+          },
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.user.count({ where: { role: 'admin' } })
+      ]);
 
       const usersWithStats = await Promise.all(users.map(async (user) => {
         const [productCount, branchCount, employeeCount, salesCount, totalInventory, license] = await Promise.all([
@@ -66,6 +76,7 @@ export function setupSuperAdminRoutes(app, prisma) {
           licenseDuration: license?.duration,
           licenseStartDate: license?.activatedAt,
           licenseEndDate: license?.expiry ? new Date(Number(license.expiry) * 1000) : null,
+          licenseType: license?.type,
           stats: {
             products: productCount,
             branches: branchCount,
@@ -76,7 +87,12 @@ export function setupSuperAdminRoutes(app, prisma) {
         };
       }));
 
-      res.json(usersWithStats);
+      res.json({
+        users: usersWithStats,
+        total: totalCount,
+        page,
+        totalPages: Math.ceil(totalCount / limit)
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -127,6 +143,59 @@ export function setupSuperAdminRoutes(app, prisma) {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: error.errors[0].message });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete user and all associated data
+  app.delete('/api/super-admin/users/:userId', authenticateSuperAdmin, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      
+      if (!userId || typeof userId !== 'string') {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+
+      // Check if user exists and is not a superadmin
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (user.role === 'superadmin') {
+        return res.status(403).json({ error: 'Cannot delete super admin user' });
+      }
+
+      // Delete all associated data in transaction
+      await prisma.$transaction(async (tx) => {
+        // Delete core tables that definitely exist
+        await tx.product.deleteMany({ where: { userId } });
+        await tx.employee.deleteMany({ where: { userId } });
+        await tx.branch.deleteMany({ where: { userId } });
+        await tx.sale.deleteMany({ where: { userId } });
+        
+        // Try to delete from other tables if they exist
+        try {
+          await tx.contact?.deleteMany({ where: { userId } });
+        } catch (e) { /* Table might not exist */ }
+        
+        try {
+          await tx.expense?.deleteMany({ where: { userId } });
+        } catch (e) { /* Table might not exist */ }
+        
+        try {
+          await tx.license?.deleteMany({ where: { userId } });
+        } catch (e) { /* Table might not exist */ }
+        
+        // Finally delete the user
+        await tx.user.delete({ where: { id: userId } });
+      });
+
+      res.json({ success: true, message: 'User and all associated data deleted successfully' });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });

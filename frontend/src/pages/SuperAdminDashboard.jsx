@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../utils/axios';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DeleteModal from '../components/DeleteModal';
+import toast from 'react-hot-toast';
 
 export default function SuperAdminDashboard() {
   const userType = localStorage.getItem('userType');
@@ -21,20 +23,28 @@ export default function SuperAdminDashboard() {
   });
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
+  const [deleting, setDeleting] = useState(false);
 
-  const { data: users = [], isLoading, error, refetch, isFetching } = useQuery(
-    ['super-admin-users'],
+  const { data: usersData, isLoading, error, refetch, isFetching } = useQuery(
+    ['super-admin-users', currentPage, pageSize],
     async () => {
-      const response = await api.get('/api/super-admin/users');
+      const response = await api.get(`/api/super-admin/users?page=${currentPage}&limit=${pageSize}`);
       return response.data;
     },
     {
       retry: 1,
-      staleTime: 0,
-      cacheTime: 0,
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      cacheTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false
     }
   );
+
+  const users = usersData?.users || [];
+  const totalPages = usersData?.totalPages || 1;
+  const totalUsers = usersData?.total || 0;
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -47,10 +57,30 @@ export default function SuperAdminDashboard() {
       setFormData({ email: '', password: '', companyName: '' });
       setShowCreateForm(false);
       queryClient.invalidateQueries(['super-admin-users']);
+      toast.success('User created successfully!');
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to create user');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteModal.user) return;
+    
+    setDeleting(true);
+    try {
+      await api.delete(`/api/super-admin/users/${deleteModal.user.id}`);
+      toast.success('User deleted successfully!');
+      setDeleteModal({ isOpen: false, user: null });
+      
+      // Force immediate refetch of user list
+      await queryClient.invalidateQueries(['super-admin-users']);
+      await refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -69,7 +99,10 @@ export default function SuperAdminDashboard() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+          <p className="text-gray-600 mt-1">Total Users: {totalUsers}</p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => refetch()}
@@ -89,7 +122,12 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100">
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100 relative">
+        {isFetching && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <LoadingSpinner size="w-8 h-8" />
+          </div>
+        )}
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
@@ -103,6 +141,7 @@ export default function SuperAdminDashboard() {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License Start</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">License End</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -135,11 +174,47 @@ export default function SuperAdminDashboard() {
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                   {user.licenseEndDate ? new Date(user.licenseEndDate).toLocaleDateString() : 'N/A'}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <button
+                    onClick={() => setDeleteModal({ isOpen: true, user })}
+                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-6">
+          <div className="text-sm text-gray-700">
+            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalUsers)} of {totalUsers} users
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-2 border rounded-md bg-blue-50 text-blue-600">
+              {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Create User Modal */}
       {showCreateForm && (
@@ -207,6 +282,15 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Delete Modal */}
+      <DeleteModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, user: null })}
+        onConfirm={handleDeleteUser}
+        itemName={deleteModal.user ? `${deleteModal.user.companyName || deleteModal.user.email} and all associated data` : ''}
+        loading={deleting}
+      />
     </div>
   );
 }
