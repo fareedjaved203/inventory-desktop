@@ -5,6 +5,13 @@ import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function SuperAdminDashboard() {
+  const userType = localStorage.getItem('userType');
+  
+  if (userType !== 'superadmin') {
+    window.location.replace('/');
+    return null;
+  }
+  
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({

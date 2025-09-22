@@ -222,9 +222,7 @@ function AppContent() {
               <Route path="/branches" element={<Branches />} />
               <Route path="/employees" element={<Employees />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/super-admin" element={
-                userType === 'superadmin' ? <SuperAdminDashboard /> : <Dashboard />
-              } />
+              <Route path="/super-admin" element={<SuperAdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
