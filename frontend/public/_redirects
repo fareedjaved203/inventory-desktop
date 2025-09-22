@@ -1,1 +1,9 @@
 /*    /index.html   200
+/assets/*  /assets/:splat  200
+  Cache-Control: public, max-age=31536000, immutable
+/*.js  /:splat  200
+  Cache-Control: no-cache
+/*.css  /:splat  200
+  Cache-Control: no-cache
+/index.html  /index.html  200
+  Cache-Control: no-cache, no-store, must-revalidate
