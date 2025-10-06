@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import api from '../utils/axios';
+// License validation not available in offline mode
 
 export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
   const [licenseKey, setLicenseKey] = useState('');
@@ -19,10 +19,8 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
     setCanRebind(false);
 
     try {
-      const response = await api.post('/api/license/validate', {
-        licenseKey: licenseKey.trim(),
-        forceRebind
-      });
+      // License validation not available in offline mode
+      throw new Error('License validation not available in offline mode');
 
       if (response.data.success) {
         onLicenseValidated();

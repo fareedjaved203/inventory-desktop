@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from '../utils/axios';
+import API from '../utils/api';
 import { z } from "zod";
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -72,19 +72,16 @@ function Employees() {
     ["employees", debouncedSearchTerm, currentPage],
     async () => {
       try {
-        const response = await api.get(`/api/employees?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`, {
-          headers: { 'Cache-Control': 'no-cache' }
+        const result = await API.getEmployees({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: debouncedSearchTerm
         });
-        console.log('Employees API response:', response.data);
         setApiError(null);
-        // Handle both paginated and non-paginated responses
-        if (Array.isArray(response.data)) {
-          return { items: response.data, total: response.data.length };
-        }
-        return response.data;
+        return result;
       } catch (err) {
         console.error('Employees API error:', err);
-        setApiError(err.response?.data?.error || err.message || 'Failed to fetch employees');
+        setApiError(err.message || 'Failed to fetch employees');
         return { items: [], total: 0 };
       }
     },
@@ -99,10 +96,8 @@ function Employees() {
   const { data: branches } = useQuery(
     ["branches"],
     async () => {
-      const response = await api.get('/api/branches', {
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      return response.data || [];
+      const result = await API.getBranches({ limit: 1000 });
+      return result.items || [];
     },
     {
       staleTime: 0,
@@ -112,8 +107,7 @@ function Employees() {
 
   const createEmployee = useMutation(
     async (employeeData) => {
-      const response = await api.post('/api/employees', employeeData);
-      return response.data;
+      return await API.createEmployee(employeeData);
     },
     {
       onSuccess: () => {
@@ -132,8 +126,7 @@ function Employees() {
 
   const updateEmployee = useMutation(
     async ({ id, ...employeeData }) => {
-      const response = await api.put(`/api/employees/${id}`, employeeData);
-      return response.data;
+      return await API.updateEmployee(id, employeeData);
     },
     {
       onSuccess: () => {
@@ -152,7 +145,7 @@ function Employees() {
 
   const deleteEmployee = useMutation(
     async (id) => {
-      await api.delete(`/api/employees/${id}`);
+      return await API.deleteEmployee(id);
     },
     {
       onSuccess: () => {

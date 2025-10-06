@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -96,10 +96,11 @@ function Expenses() {
   const { data: expenses, isLoading, isFetching } = useQuery(
     ['expenses', debouncedSearchTerm, currentPage],
     async () => {
-      const response = await api.get(
-        `/api/expenses?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`
-      );
-      return response.data;
+      return await API.getExpenses({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearchTerm
+      });
     }
   );
 
@@ -119,11 +120,11 @@ function Expenses() {
   const { data: contacts = [], isLoading: contactsLoading } = useQuery(
     ['contacts', debouncedContactSearchTerm],
     async () => {
-      const searchParam = debouncedContactSearchTerm
-        ? `&search=${debouncedContactSearchTerm}`
-        : '';
-      const response = await api.get(`/api/contacts?limit=100${searchParam}`);
-      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      const result = await API.getContacts({
+        limit: 100,
+        search: debouncedContactSearchTerm
+      });
+      return result.items || [];
     }
   );
 
@@ -162,8 +163,7 @@ function Expenses() {
 
   const createExpense = useMutation(
     async (expenseData) => {
-      const response = await api.post('/api/expenses', expenseData);
-      return response.data;
+      return await API.createExpense(expenseData);
     },
     {
       onSuccess: () => {
@@ -182,11 +182,7 @@ function Expenses() {
 
   const updateExpense = useMutation(
     async (updatedExpense) => {
-      const response = await api.put(
-        `/api/expenses/${updatedExpense.id}`,
-        updatedExpense
-      );
-      return response.data;
+      return await API.updateExpense(updatedExpense.id, updatedExpense);
     },
     {
       onSuccess: () => {
@@ -205,8 +201,7 @@ function Expenses() {
 
   const deleteExpense = useMutation(
     async (expenseId) => {
-      const response = await api.delete(`/api/expenses/${expenseId}`);
-      return response.data;
+      return await API.deleteExpense(expenseId);
     },
     {
       onSuccess: () => {

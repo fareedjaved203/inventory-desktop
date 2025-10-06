@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { z } from "zod";
 import DeleteModal from "../components/DeleteModal";
 import TableSkeleton from "../components/TableSkeleton";
@@ -78,11 +78,7 @@ function Sales() {
 
   const updateSale = useMutation(
     async (updatedSale) => {
-      const response = await api.put(
-        `/api/sales/${updatedSale.id}`,
-        updatedSale
-      );
-      return response.data;
+      return await API.updateSale(updatedSale.id, updatedSale);
     },
     {
       onSuccess: (updatedSale) => {
@@ -148,13 +144,11 @@ function Sales() {
   const { data: products, isLoading: productsLoading } = useQuery(
     ["products", debouncedProductSearchTerm],
     async () => {
-      const searchParam = debouncedProductSearchTerm
-        ? `&search=${debouncedProductSearchTerm}`
-        : "";
-      const response = await api.get(
-        `/api/products?limit=100${searchParam}`
-      );
-      return response.data.items;
+      const result = await API.getProducts({
+        limit: 100,
+        search: debouncedProductSearchTerm
+      });
+      return result.items;
     }
   );
 
@@ -162,13 +156,11 @@ function Sales() {
   const { data: contacts, isLoading: contactsLoading } = useQuery(
     ["contacts", debouncedContactSearchTerm],
     async () => {
-      const searchParam = debouncedContactSearchTerm
-        ? `&search=${debouncedContactSearchTerm}`
-        : "";
-      const response = await api.get(
-        `/api/contacts?limit=100${searchParam}`
-      );
-      return response.data.items;
+      const result = await API.getContacts({
+        limit: 100,
+        search: debouncedContactSearchTerm
+      });
+      return result.items;
     }
   );
 
@@ -188,30 +180,18 @@ function Sales() {
       currentPage,
     ],
     async () => {
-      let endpoint = "/api/sales";
-      if (showPendingPayments) endpoint = "/api/sales/pending-payments";
-      if (showCreditBalance) endpoint = "/api/sales/credit-balance";
-
-      const params = new URLSearchParams({
+      const params = {
         page: currentPage,
-        limit: itemsPerPage
-      });
+        limit: itemsPerPage,
+        search: debouncedSearchTerm
+      };
 
       if (selectedDate) {
         const [year, month, day] = selectedDate.split("-");
-        const dateParam = `${day}/${month}/${year}`;
-        console.log('selectedDate:', selectedDate, 'dateParam:', dateParam);
-        params.append('date', dateParam);
+        params.date = `${day}/${month}/${year}`;
       }
 
-      if (debouncedSearchTerm) {
-        params.append('search', debouncedSearchTerm);
-      }
-
-      const url = `${endpoint}?${params.toString()}`;
-      console.log("API URL:", url);
-      const response = await api.get(url);
-      return response.data;
+      return await API.getSales(params);
     }
   );
 
@@ -224,11 +204,7 @@ function Sales() {
 
   const createSale = useMutation(
     async (saleData) => {
-      const response = await api.post(
-        `/api/sales`,
-        saleData
-      );
-      return response.data;
+      return await API.createSale(saleData);
     },
     {
       onSuccess: () => {
@@ -251,10 +227,7 @@ function Sales() {
 
   const deleteSale = useMutation(
     async (saleId) => {
-      const response = await api.delete(
-        `/api/sales/${saleId}`
-      );
-      return response.data;
+      return await API.deleteSale(saleId);
     },
     {
       onSuccess: () => {
@@ -474,7 +447,7 @@ function Sales() {
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
       try {
         setCreatingContact(true);
-        const contactResponse = await api.post('/api/contacts', {
+        const contactResponse = await API.createContact({
           ...newContactData,
           contactType: 'customer'
         });

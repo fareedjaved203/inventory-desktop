@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PurchaseInvoicePDF from './PurchaseInvoicePDF';
 
@@ -34,8 +34,8 @@ function formatPakistaniCurrency(amount, showCurrency = true) {
 
 function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await api.get('/shop-settings');
-    return response.data;
+    const result = await API.getShopSettings();
+    return result.items?.[0] || {};
   });
 
   if (!isOpen) return null;

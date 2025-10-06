@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const DEMO_EMAIL = 'demo@gmail.com';
+const DEMO_EMAIL = 'autos@gmail.com';
 
 // Helper function to generate random dates
 const randomDate = (start, end) => {
@@ -73,12 +73,12 @@ async function seedDemoData() {
     // 1. Create Branches (5 branches)
     console.log('Creating branches...');
     const branches = [];
-    const branchNames = ['Main Store', 'Downtown Branch', 'Mall Outlet', 'Warehouse', 'Online Store'];
+    const branchNames = ['Auto Main Showroom', 'Auto Service Center', 'Auto Parts Warehouse', 'Auto Body Shop', 'Auto Online Store'];
     for (let i = 0; i < 5; i++) {
       const branch = await prisma.branch.create({
         data: {
-          name: branchNames[i],
-          code: `BR${String(i + 1).padStart(3, '0')}`,
+          name: `${branchNames[i]} - ${demoUser.id.substring(0, 8)}`,
+          code: `AUTO${demoUser.id.substring(0, 4)}${String(i + 1).padStart(3, '0')}`,
           location: `Location ${i + 1}, City`,
           userId: demoUser.id,
           createdAt: randomDate(new Date(2023, 0, 1), new Date())
@@ -101,7 +101,7 @@ async function seedDemoData() {
           firstName,
           lastName,
           phone: `+92300${String(1000000 + i).substring(1)}`,
-          email: `employee${i + 1}@demo.com`,
+          email: `employee${i + 1}@autos.com`,
           password: '$2a$10$hashedpassword', // placeholder hash
           permissions: JSON.stringify(['pos', 'inventory']),
           branchId: branches[i % branches.length].id,
@@ -116,12 +116,12 @@ async function seedDemoData() {
     console.log('Creating contacts...');
     const contacts = [];
     const contactNames = [
-      'ABC Electronics', 'XYZ Traders', 'Global Supplies', 'Tech Solutions', 'Metro Wholesale',
-      'City Electronics', 'Prime Distributors', 'Alpha Trading', 'Beta Corporation', 'Gamma Industries',
-      'John Smith', 'Sarah Johnson', 'Mike Wilson', 'Lisa Brown', 'David Lee',
-      'Emma Davis', 'James Miller', 'Anna Garcia', 'Robert Taylor', 'Maria Rodriguez',
-      'Super Mart', 'Mega Store', 'Quick Shop', 'Easy Buy', 'Smart Electronics',
-      'Digital World', 'Gadget Hub', 'Tech Plaza', 'Mobile Zone', 'Computer Center'
+      'Toyota Motors', 'Honda Dealership', 'Suzuki Parts', 'Hyundai Service', 'KIA Motors',
+      'Auto Parts Plus', 'Speed Motors', 'Car Care Center', 'Elite Motors', 'Prime Auto',
+      'Ahmad Ali', 'Fatima Khan', 'Hassan Sheikh', 'Aisha Malik', 'Omar Hussain',
+      'Zainab Qureshi', 'Usman Siddiqui', 'Khadija Butt', 'Ibrahim Chaudhry', 'Ali Ahmed',
+      'Fast Track Motors', 'Auto Zone', 'Car Mart', 'Speed Shop', 'Motor World',
+      'Auto Hub', 'Car Palace', 'Motor Plaza', 'Auto Center', 'Car Kingdom'
     ];
 
     for (let i = 0; i < 30; i++) {
@@ -142,36 +142,36 @@ async function seedDemoData() {
     console.log('Creating products...');
     const products = [];
     const productData = [
-      { name: 'iPhone 14', price: 150000, purchasePrice: 140000, quantity: 5, lowStock: 10 },
-      { name: 'Samsung Galaxy S23', price: 120000, purchasePrice: 110000, quantity: 3, lowStock: 8 },
-      { name: 'MacBook Air M2', price: 250000, purchasePrice: 230000, quantity: 2, lowStock: 5 },
-      { name: 'Dell Laptop', price: 80000, purchasePrice: 70000, quantity: 15, lowStock: 10 },
-      { name: 'HP Printer', price: 25000, purchasePrice: 20000, quantity: 8, lowStock: 5 },
-      { name: 'Wireless Mouse', price: 2500, purchasePrice: 2000, quantity: 50, lowStock: 20 },
-      { name: 'Keyboard', price: 3500, purchasePrice: 3000, quantity: 30, lowStock: 15 },
-      { name: 'Monitor 24"', price: 35000, purchasePrice: 30000, quantity: 12, lowStock: 8 },
-      { name: 'USB Cable', price: 500, purchasePrice: 300, quantity: 100, lowStock: 50 },
-      { name: 'Power Bank', price: 4000, purchasePrice: 3200, quantity: 25, lowStock: 15 },
-      { name: 'Headphones', price: 8000, purchasePrice: 6500, quantity: 20, lowStock: 10 },
-      { name: 'Speaker Bluetooth', price: 12000, purchasePrice: 9500, quantity: 18, lowStock: 12 },
-      { name: 'Tablet Samsung', price: 45000, purchasePrice: 40000, quantity: 7, lowStock: 10 },
-      { name: 'Smart Watch', price: 15000, purchasePrice: 12000, quantity: 14, lowStock: 8 },
-      { name: 'Camera DSLR', price: 85000, purchasePrice: 75000, quantity: 4, lowStock: 6 },
-      { name: 'Gaming Console', price: 65000, purchasePrice: 58000, quantity: 6, lowStock: 8 },
-      { name: 'Router WiFi', price: 8500, purchasePrice: 7000, quantity: 22, lowStock: 15 },
-      { name: 'Hard Drive 1TB', price: 12000, purchasePrice: 10000, quantity: 16, lowStock: 12 },
-      { name: 'SSD 500GB', price: 18000, purchasePrice: 15000, quantity: 11, lowStock: 8 },
-      { name: 'RAM 8GB', price: 8000, purchasePrice: 6800, quantity: 28, lowStock: 20 },
-      { name: 'Graphics Card', price: 45000, purchasePrice: 40000, quantity: 3, lowStock: 5 },
-      { name: 'Motherboard', price: 25000, purchasePrice: 22000, quantity: 9, lowStock: 6 },
-      { name: 'CPU Processor', price: 35000, purchasePrice: 31000, quantity: 7, lowStock: 5 },
-      { name: 'Phone Case', price: 1500, purchasePrice: 1000, quantity: 80, lowStock: 40 },
-      { name: 'Screen Protector', price: 800, purchasePrice: 500, quantity: 120, lowStock: 60 },
-      { name: 'Charger Fast', price: 2500, purchasePrice: 2000, quantity: 45, lowStock: 25 },
-      { name: 'Earbuds Wireless', price: 6500, purchasePrice: 5200, quantity: 32, lowStock: 20 },
-      { name: 'Webcam HD', price: 8500, purchasePrice: 7000, quantity: 13, lowStock: 10 },
-      { name: 'Microphone USB', price: 12000, purchasePrice: 9500, quantity: 8, lowStock: 6 },
-      { name: 'Cooling Fan', price: 3500, purchasePrice: 2800, quantity: 24, lowStock: 15 }
+      { name: 'Engine Oil 5W-30', price: 3500, purchasePrice: 2800, quantity: 50, lowStock: 20 },
+      { name: 'Brake Pads Set', price: 8000, purchasePrice: 6500, quantity: 15, lowStock: 10 },
+      { name: 'Air Filter', price: 2500, purchasePrice: 2000, quantity: 30, lowStock: 15 },
+      { name: 'Spark Plugs Set', price: 4500, purchasePrice: 3500, quantity: 25, lowStock: 12 },
+      { name: 'Car Battery 12V', price: 18000, purchasePrice: 15000, quantity: 8, lowStock: 5 },
+      { name: 'Tire 185/65R15', price: 12000, purchasePrice: 9500, quantity: 20, lowStock: 8 },
+      { name: 'Headlight Bulb H4', price: 1500, purchasePrice: 1200, quantity: 40, lowStock: 20 },
+      { name: 'Windshield Wipers', price: 2000, purchasePrice: 1600, quantity: 35, lowStock: 15 },
+      { name: 'Radiator Coolant', price: 1800, purchasePrice: 1400, quantity: 45, lowStock: 25 },
+      { name: 'Clutch Plate', price: 15000, purchasePrice: 12000, quantity: 6, lowStock: 4 },
+      { name: 'Shock Absorber', price: 8500, purchasePrice: 7000, quantity: 12, lowStock: 6 },
+      { name: 'Fuel Filter', price: 1200, purchasePrice: 900, quantity: 60, lowStock: 30 },
+      { name: 'Alternator Belt', price: 2200, purchasePrice: 1800, quantity: 25, lowStock: 12 },
+      { name: 'Car Jack 2 Ton', price: 5500, purchasePrice: 4500, quantity: 10, lowStock: 5 },
+      { name: 'Side Mirror Left', price: 4500, purchasePrice: 3600, quantity: 8, lowStock: 4 },
+      { name: 'Exhaust Pipe', price: 12000, purchasePrice: 9500, quantity: 5, lowStock: 3 },
+      { name: 'Gear Oil', price: 2800, purchasePrice: 2200, quantity: 30, lowStock: 15 },
+      { name: 'Carburetor Kit', price: 6500, purchasePrice: 5200, quantity: 12, lowStock: 6 },
+      { name: 'Timing Belt', price: 4200, purchasePrice: 3400, quantity: 18, lowStock: 10 },
+      { name: 'Water Pump', price: 9500, purchasePrice: 7600, quantity: 7, lowStock: 4 },
+      { name: 'Brake Fluid DOT 4', price: 800, purchasePrice: 600, quantity: 80, lowStock: 40 },
+      { name: 'Car Polish Wax', price: 1500, purchasePrice: 1200, quantity: 50, lowStock: 25 },
+      { name: 'Seat Covers Set', price: 3500, purchasePrice: 2800, quantity: 15, lowStock: 8 },
+      { name: 'Floor Mats Rubber', price: 2500, purchasePrice: 2000, quantity: 20, lowStock: 10 },
+      { name: 'Car Perfume', price: 500, purchasePrice: 350, quantity: 100, lowStock: 50 },
+      { name: 'Steering Wheel Cover', price: 1200, purchasePrice: 900, quantity: 35, lowStock: 18 },
+      { name: 'Car Charger USB', price: 800, purchasePrice: 600, quantity: 60, lowStock: 30 },
+      { name: 'Jumper Cables', price: 2200, purchasePrice: 1800, quantity: 15, lowStock: 8 },
+      { name: 'Tool Kit 21 Pcs', price: 4500, purchasePrice: 3600, quantity: 12, lowStock: 6 },
+      { name: 'Car Vacuum Cleaner', price: 8500, purchasePrice: 7000, quantity: 8, lowStock: 4 }
     ];
 
     for (let i = 0; i < 30; i++) {
@@ -205,7 +205,7 @@ async function seedDemoData() {
       
       const purchase = await prisma.bulkPurchase.create({
         data: {
-          invoiceNumber: `INV-${String(i + 1).padStart(4, '0')}`,
+          invoiceNumber: `AUTO-INV-${demoUser.id.substring(0, 4)}-${String(i + 1).padStart(4, '0')}`,
           totalAmount,
           paidAmount,
           purchaseDate,
@@ -240,7 +240,7 @@ async function seedDemoData() {
       
       const sale = await prisma.sale.create({
         data: {
-          billNumber: `BILL-${String(i + 1).padStart(6, '0')}`,
+          billNumber: `AUTO-BILL-${demoUser.id.substring(0, 4)}-${String(i + 1).padStart(6, '0')}`,
           totalAmount,
           originalTotalAmount: totalAmount,
           paidAmount,
@@ -280,7 +280,7 @@ async function seedDemoData() {
       
       const saleReturn = await prisma.saleReturn.create({
         data: {
-          returnNumber: `RET-${String(i + 1).padStart(4, '0')}`,
+          returnNumber: `AUTO-RET-${demoUser.id.substring(0, 4)}-${String(i + 1).padStart(4, '0')}`,
           totalAmount,
           returnDate,
           reason: ['Defective', 'Wrong item', 'Customer changed mind', 'Damaged'][i % 4],
@@ -309,7 +309,7 @@ async function seedDemoData() {
 
     // 8. Create Expenses (30 expenses)
     console.log('Creating expenses...');
-    const expenseCategories = ['Rent', 'Utilities', 'Marketing', 'Office Supplies', 'Transportation', 'Maintenance', 'Insurance', 'Staff Salary'];
+    const expenseCategories = ['Showroom Rent', 'Utilities', 'Marketing', 'Office Supplies', 'Transportation', 'Equipment Maintenance', 'Insurance', 'Staff Salary'];
     for (let i = 0; i < 30; i++) {
       await prisma.expense.create({
         data: {
@@ -345,20 +345,20 @@ async function seedDemoData() {
     await prisma.shopSettings.create({
       data: {
         email: DEMO_EMAIL,
-        shopName: 'Demo Electronics Store',
-        shopDescription: 'Your trusted electronics partner',
-        shopDescription2: 'Quality products, competitive prices',
+        shopName: 'AutoParts Plus',
+        shopDescription: 'Your trusted automotive partner',
+        shopDescription2: 'Quality auto parts, competitive prices',
         userName1: 'Muhammad Ahmed',
         userPhone1: '+92300-1234567',
         userName2: 'Ali Hassan',
         userPhone2: '+92301-2345678',
         userName3: 'Fatima Khan',
         userPhone3: '+92302-3456789',
-        brand1: 'TechMart',
+        brand1: 'AutoMart',
         brand1Registered: true,
-        brand2: 'ElectroHub',
+        brand2: 'CarHub',
         brand2Registered: false,
-        brand3: 'GadgetWorld',
+        brand3: 'MotorWorld',
         brand3Registered: true,
         userId: demoUser.id
       }

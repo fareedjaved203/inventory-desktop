@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { FaDatabase, FaEnvelope, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
 function DatabaseBackupForm() {
@@ -19,13 +19,13 @@ function DatabaseBackupForm() {
   const [credentialsExist, setCredentialsExist] = useState(false);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await api.get('/api/shop-settings');
-    return response.data;
+    const result = await API.getShopSettings();
+    return result.items?.[0] || {};
   });
 
   const { data: driveSettings } = useQuery(['drive-settings'], async () => {
-    const response = await api.get('/api/user/drive-settings');
-    return response.data;
+    // Drive settings not available in API wrapper
+    return { hasCredentials: false };
   });
 
   useEffect(() => {
@@ -47,10 +47,8 @@ function DatabaseBackupForm() {
     setDriveError(null);
 
     try {
-      await api.post(
-        '/api/user/drive-settings',
-        { serviceAccountKey }
-      );
+      // Drive settings not available in API wrapper
+      throw new Error('Drive backup not available in offline mode');
       
       setDriveSuccess(true);
       setCredentialsExist(true);
@@ -68,9 +66,8 @@ function DatabaseBackupForm() {
     setDriveError(null);
 
     try {
-      const response = await api.post(
-        '/api/user/drive-backup'
-      );
+      // Drive backup not available in API wrapper
+      throw new Error('Drive backup not available in offline mode');
       
       setDriveSuccess(true);
     } catch (err) {
@@ -82,7 +79,8 @@ function DatabaseBackupForm() {
 
   const handleDeleteCredentials = async () => {
     try {
-      await api.delete('/api/user/drive-settings');
+      // Drive settings not available in API wrapper
+      throw new Error('Drive settings not available in offline mode');
       setCredentialsExist(false);
       setDriveSuccess(false);
     } catch (err) {
@@ -98,10 +96,8 @@ function DatabaseBackupForm() {
     setPreviewUrl(null);
 
     try {
-      const response = await api.post(
-        '/api/user/backup',
-        { email }
-      );
+      // Backup not available in API wrapper
+      throw new Error('Email backup not available in offline mode');
       
       setSuccess(true);
       

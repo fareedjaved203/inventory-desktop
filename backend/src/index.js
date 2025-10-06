@@ -18,6 +18,7 @@ import { setupBranchRoutes } from './branch-routes.js';
 import { setupEmployeeRoutes } from './employee-routes.js';
 import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { setupSuperAdminRoutes } from './super-admin-routes.js';
+import { setupSyncRoutes } from './sync-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 import expenseRoutes from './expense-routes.js';
@@ -144,6 +145,7 @@ setupBranchRoutes(app, prisma);
 setupEmployeeRoutes(app, prisma);
 setupEmployeeStatsRoutes(app, prisma);
 setupSuperAdminRoutes(app, prisma);
+setupSyncRoutes(app, prisma);
 
 // License routes
 app.use('/api/license', licenseRoutes);

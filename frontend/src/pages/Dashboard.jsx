@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import ErrorBoundary from '../components/ErrorBoundary';
 import DashboardCard from '../components/DashboardCard';
@@ -23,23 +23,22 @@ function Dashboard() {
   const t = useTranslation(language);
   const [showReportModal, setShowReportModal] = useState(false);
   
-  // Fetch basic dashboard data
-  const { data, isLoading, error } = useQuery(['dashboard'], async () => {
-    const response = await api.get('/api/dashboard');
-    return response.data;
+  // Fetch dashboard stats
+  const { data: salesStats, isLoading, error } = useQuery(['dashboard-stats'], async () => {
+    console.log('Dashboard: Fetching stats...');
+    const result = await API.getDashboardStats();
+    console.log('Dashboard: Stats result:', result);
+    return result;
   }, {
-    retry: 2,
-    staleTime: 30000
+    retry: false,
+    staleTime: 0,
+    cacheTime: 0
   });
 
-  // Fetch enhanced sales statistics
-  const { data: salesStats, isLoading: isLoadingStats, error: statsError } = useQuery(['dashboard-stats'], async () => {
-    const response = await api.get('/api/dashboard/stats');
-    return response.data;
-  }, {
-    retry: 2,
-    staleTime: 30000
-  });
+  // Use salesStats for both data and stats
+  const data = salesStats;
+  const isLoadingStats = isLoading;
+  const statsError = error;
 
   const handleLowStockClick = () => {
     navigate('/products', { state: { showLowStock: true } });

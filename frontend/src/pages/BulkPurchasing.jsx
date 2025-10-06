@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -113,11 +113,12 @@ function BulkPurchasing() {
   const { data: purchases, isLoading, isFetching } = useQuery(
     ['bulk-purchases', debouncedSearchTerm, currentPage, showPendingPayments],
     async () => {
-      const endpoint = showPendingPayments ? '/api/bulk-purchases/pending-payments' : '/api/bulk-purchases';
-      const response = await api.get(
-        `${endpoint}?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`
-      );
-      return response.data;
+      return await API.getBulkPurchases({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearchTerm,
+        pendingPayments: showPendingPayments
+      });
     }
   );
 
@@ -125,9 +126,11 @@ function BulkPurchasing() {
   const { data: contacts, isLoading: contactsLoading } = useQuery(
     ['contacts', debouncedContactSearchTerm],
     async () => {
-      const searchParam = debouncedContactSearchTerm ? `&search=${debouncedContactSearchTerm}` : '';
-      const response = await api.get(`/api/contacts?limit=100${searchParam}`);
-      return response.data.items;
+      const result = await API.getContacts({
+        limit: 100,
+        search: debouncedContactSearchTerm
+      });
+      return result.items;
     }
   );
 
@@ -135,9 +138,11 @@ function BulkPurchasing() {
   const { data: products, isLoading: productsLoading } = useQuery(
     ['products', debouncedProductSearchTerm],
     async () => {
-      const searchParam = debouncedProductSearchTerm ? `&search=${debouncedProductSearchTerm}` : '';
-      const response = await api.get(`/api/products?limit=100${searchParam}`);
-      return response.data.items;
+      const result = await API.getProducts({
+        limit: 100,
+        search: debouncedProductSearchTerm
+      });
+      return result.items;
     }
   );
 
@@ -165,11 +170,7 @@ function BulkPurchasing() {
   // Create bulk purchase mutation
   const createPurchase = useMutation(
     async (purchaseData) => {
-      const response = await api.post(
-        '/api/bulk-purchases',
-        purchaseData
-      );
-      return response.data;
+      return await API.createBulkPurchase(purchaseData);
     },
     {
       onSuccess: () => {
@@ -184,11 +185,7 @@ function BulkPurchasing() {
   // Update bulk purchase mutation
   const updatePurchase = useMutation(
     async (updatedPurchase) => {
-      const response = await api.put(
-        `/api/bulk-purchases/${updatedPurchase.id}`,
-        updatedPurchase
-      );
-      return response.data;
+      return await API.updateBulkPurchase(updatedPurchase.id, updatedPurchase);
     },
     {
       onSuccess: () => {
@@ -206,10 +203,7 @@ function BulkPurchasing() {
   const [selectedPurchase, setSelectedPurchase] = useState(null);
   const deletePurchase = useMutation(
     async (purchaseId) => {
-      const response = await api.delete(
-        `/api/bulk-purchases/${purchaseId}`
-      );
-      return response.data;
+      return await API.deleteBulkPurchase(purchaseId);
     },
     {
       onSuccess: () => {

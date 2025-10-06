@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TableSkeleton from '../components/TableSkeleton';
 import DeleteModal from '../components/DeleteModal';
@@ -44,19 +44,16 @@ function Branches() {
     ["branches", debouncedSearchTerm, currentPage],
     async () => {
       try {
-        const response = await api.get(`/api/branches?page=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`, {
-          headers: { 'Cache-Control': 'no-cache' }
+        const result = await API.getBranches({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: debouncedSearchTerm
         });
-        console.log('Branches API response:', response.data);
         setApiError(null);
-        // Handle both paginated and non-paginated responses
-        if (Array.isArray(response.data)) {
-          return { items: response.data, total: response.data.length };
-        }
-        return response.data;
+        return result;
       } catch (err) {
         console.error('Branches API error:', err);
-        setApiError(err.response?.data?.error || err.message || 'Failed to fetch branches');
+        setApiError(err.message || 'Failed to fetch branches');
         return { items: [], total: 0 };
       }
     },
@@ -70,8 +67,7 @@ function Branches() {
 
   const createBranch = useMutation(
     async (branchData) => {
-      const response = await api.post('/api/branches', branchData);
-      return response.data;
+      return await API.createBranch(branchData);
     },
     {
       onSuccess: () => {
@@ -90,8 +86,7 @@ function Branches() {
 
   const updateBranch = useMutation(
     async ({ id, ...branchData }) => {
-      const response = await api.put(`/api/branches/${id}`, branchData);
-      return response.data;
+      return await API.updateBranch(id, branchData);
     },
     {
       onSuccess: () => {
@@ -106,7 +101,7 @@ function Branches() {
 
   const deleteBranch = useMutation(
     async (id) => {
-      await api.delete(`/api/branches/${id}`);
+      return await API.deleteBranch(id);
     },
     {
       onSuccess: () => {

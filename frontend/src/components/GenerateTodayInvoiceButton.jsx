@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axios';
+import API from '../utils/api';
 
 function GenerateTodayInvoiceButton({ sales }) {
   const [shopSettings, setShopSettings] = useState(null);
@@ -8,9 +8,9 @@ function GenerateTodayInvoiceButton({ sales }) {
   useEffect(() => {
     const fetchShopSettings = async () => {
       try {
-        const response = await api.get('/api/shop-settings');
+        const result = await API.getShopSettings();
         // Handle null response from database
-        setShopSettings(response.data || {});
+        setShopSettings(result.items?.[0] || {});
       } catch (error) {
         // Set empty shop settings to allow PDF generation
         setShopSettings({});
@@ -36,9 +36,9 @@ function GenerateTodayInvoiceButton({ sales }) {
         const [year, month, day] = today.split('-');
         const dateParam = `${day}/${month}/${year}`;
         console.log('Fetching today sales with:', { today, dateParam });
-        const response = await api.get(`/api/sales?limit=1000&date=${encodeURIComponent(dateParam)}`);
-        console.log('Today sales response:', response.data);
-        setTodaySales(response.data.items || []);
+        const result = await API.getSales({ limit: 1000, date: dateParam });
+        console.log('Today sales response:', result);
+        setTodaySales(result.items || []);
       } catch (error) {
         console.error('Failed to fetch today\'s sales:', error);
         setTodaySales([]);

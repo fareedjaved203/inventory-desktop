@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../utils/axios';
+import API from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProductLabel from '../components/ProductLabel';
 import { debounce } from 'lodash';
@@ -29,9 +29,11 @@ function ProductLabels() {
   const { data: products = [], isLoading } = useQuery(
     ['products-labels', debouncedSearchTerm],
     async () => {
-      const searchParam = debouncedSearchTerm ? `&search=${debouncedSearchTerm}` : '';
-      const response = await api.get(`/api/products?limit=100${searchParam}`);
-      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      const result = await API.getProducts({
+        limit: 100,
+        search: debouncedSearchTerm
+      });
+      return result.items || [];
     }
   );
 

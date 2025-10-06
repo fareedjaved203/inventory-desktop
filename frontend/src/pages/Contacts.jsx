@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { useForm } from 'react-hook-form';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -63,13 +63,11 @@ function Contacts() {
   const { data: contactsData, isLoading, isFetching, error } = useQuery(
     ['contacts', page, debouncedSearchTerm, contactTypeFilter],
     async () => {
-      const params = new URLSearchParams({
+      return await API.getContacts({
         page: page.toString(),
         search: debouncedSearchTerm,
-        ...(contactTypeFilter && { contactType: contactTypeFilter })
+        contactType: contactTypeFilter
       });
-      const response = await api.get(`/api/contacts?${params.toString()}`);
-      return response.data;
     }
   );
 
@@ -83,11 +81,7 @@ function Contacts() {
   // Create contact mutation
   const createContact = useMutation(
     async (data) => {
-      const response = await api.post(
-        '/api/contacts',
-        data
-      );
-      return response.data;
+      return await API.createContact(data);
     },
     {
       onSuccess: () => {
@@ -106,11 +100,7 @@ function Contacts() {
   // Update contact mutation
   const updateContact = useMutation(
     async ({ id, data }) => {
-      const response = await api.put(
-        `/api/contacts/${id}`,
-        data
-      );
-      return response.data;
+      return await API.updateContact(id, data);
     },
     {
       onSuccess: () => {
@@ -129,10 +119,7 @@ function Contacts() {
   // Delete contact mutation
   const deleteContact = useMutation(
     async (id) => {
-      const response = await api.delete(
-        `/api/contacts/${id}`
-      );
-      return response.data;
+      return await API.deleteContact(id);
     },
     {
       onSuccess: () => {

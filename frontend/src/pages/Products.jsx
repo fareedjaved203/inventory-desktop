@@ -2,7 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
+import DataStorageManager from '../utils/DataStorageManager';
+import { STORES } from '../utils/indexedDBSchema';
 import { z } from 'zod';
 import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
@@ -87,16 +89,17 @@ function Products() {
   const { data: products, isLoading, isFetching } = useQuery(
     ['products', debouncedSearchTerm, currentPage, showLowStock, showDamaged, showRawMaterials],
     async () => {
-      let endpoint = '/api/products';
-      if (showLowStock) endpoint = '/api/products/low-stock';
-      if (showDamaged) endpoint = '/api/products/damaged';
-      if (showRawMaterials) endpoint = '/api/products/raw-materials';
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        search: !showDamaged ? debouncedSearchTerm : ''
+      };
       
-      const searchParam = !showDamaged ? `&search=${debouncedSearchTerm}` : '';
-      const response = await api.get(
-        `${endpoint}?page=${currentPage}&limit=${itemsPerPage}${searchParam}`
-      );
-      return response.data;
+      if (showLowStock) {
+        return await DataStorageManager.getLowStockProducts(params);
+      }
+      
+      return await DataStorageManager.read(STORES.products, params);
     }
   );
 
@@ -110,11 +113,7 @@ function Products() {
   const updateProduct = useMutation(
     async (updatedProduct) => {
       console.log("payload of product:", updatedProduct)
-      const response = await api.put(
-        `/api/products/${updatedProduct.id.toString()}`,
-        updatedProduct
-      );
-      return response.data;
+      return await DataStorageManager.update(STORES.products, updatedProduct.id, updatedProduct);
     },
     {
       onSuccess: () => {
@@ -138,10 +137,7 @@ function Products() {
 
   const deleteProduct = useMutation(
     async (productId) => {
-      const response = await api.delete(
-        `/api/products/${productId}`
-      );
-      return response.data;
+      return await DataStorageManager.delete(STORES.products, productId);
     },
     {
       onSuccess: () => {
@@ -159,11 +155,7 @@ function Products() {
 
   const createProduct = useMutation(
     async (newProduct) => {
-      const response = await api.post(
-        `/api/products`,
-        newProduct
-      );
-      return response.data;
+      return await DataStorageManager.create(STORES.products, newProduct);
     },
     {
       onSuccess: () => {
@@ -183,11 +175,16 @@ function Products() {
 
   const markAsDamaged = useMutation(
     async ({ productId, quantity }) => {
-      const response = await api.post(
-        `/api/products/${productId}/damage`,
-        { quantity }
-      );
-      return response.data;
+      // Update product quantity by reducing damaged amount
+      const product = await DataStorageManager.read(STORES.products, { id: productId });
+      if (product.items?.[0]) {
+        const updatedProduct = {
+          ...product.items[0],
+          quantity: Math.max(0, product.items[0].quantity - quantity)
+        };
+        return await DataStorageManager.update(STORES.products, productId, updatedProduct);
+      }
+      throw new Error('Product not found');
     },
     {
       onSuccess: () => {
@@ -202,11 +199,16 @@ function Products() {
 
   const restoreDamaged = useMutation(
     async ({ productId, quantity }) => {
-      const response = await api.post(
-        `/api/products/${productId}/restore`,
-        { quantity }
-      );
-      return response.data;
+      // Update product quantity by adding restored amount
+      const product = await DataStorageManager.read(STORES.products, { id: productId });
+      if (product.items?.[0]) {
+        const updatedProduct = {
+          ...product.items[0],
+          quantity: product.items[0].quantity + quantity
+        };
+        return await DataStorageManager.update(STORES.products, productId, updatedProduct);
+      }
+      throw new Error('Product not found');
     },
     {
       onSuccess: () => {

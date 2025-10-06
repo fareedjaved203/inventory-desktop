@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import LoadingSpinner from './LoadingSpinner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -32,11 +32,11 @@ function ShopSettingsForm() {
   });
 
   const { data: settings, isLoading } = useQuery(['shop-settings'], async () => {
-    const response = await api.get('/api/shop-settings');
-    return response.data;
+    const result = await API.getShopSettings();
+    return result.items?.[0] || {};
   }, {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -56,19 +56,7 @@ function ShopSettingsForm() {
 
   const saveSettings = useMutation(
     async (data) => {
-      try {
-        const response = await api.post('/api/shop-settings', data);
-        return response.data;
-      } catch (error) {
-        // If logo field causes validation error, try without logo for backward compatibility
-        if (error.response?.status === 400 && data.logo) {
-          console.warn('Logo field not supported by backend, saving without logo');
-          const { logo, ...dataWithoutLogo } = data;
-          const response = await api.post('/api/shop-settings', dataWithoutLogo);
-          return response.data;
-        }
-        throw error;
-      }
+      return await API.createShopSettings(data);
     },
     {
       onSuccess: () => {

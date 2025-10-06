@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLicense } from '../hooks/useLicense';
 import { useLanguage } from '../contexts/LanguageContext';
-import api from '../utils/axios';
+// License validation not available in offline mode
 
 export default function LicenseSettingsForm() {
   const { language } = useLanguage();
@@ -21,9 +21,8 @@ export default function LicenseSettingsForm() {
     setMessage('');
 
     try {
-      const response = await api.post('/api/license/validate', {
-        licenseKey: licenseKey.trim()
-      });
+      // License validation not available in offline mode
+      throw new Error('License validation not available in offline mode');
 
       if (response.data.success) {
         setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');

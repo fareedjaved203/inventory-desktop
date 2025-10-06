@@ -4,6 +4,7 @@ import UpdateEmailForm from '../components/UpdateUsernameForm';
 import ShopSettingsForm from '../components/ShopSettingsForm';
 import UpdateButton from '../components/UpdateButton';
 import LicenseSettingsForm from '../components/LicenseSettingsForm';
+import OfflineToggle from '../components/OfflineToggle';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -16,10 +17,13 @@ function Settings() {
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-8">{t('settings')}</h1>
       
       <div className="space-y-6">
-        {/* Priority 1: License Management */}
+        {/* Priority 1: Data Storage Mode */}
+        <OfflineToggle />
+        
+        {/* Priority 2: License Management */}
         <LicenseSettingsForm />
         
-        {/* Priority 2: Shop Configuration */}
+        {/* Priority 3: Shop Configuration */}
         <ShopSettingsForm />
         
         {/* Priority 3: App Updates */}

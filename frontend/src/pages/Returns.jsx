@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import API from '../utils/api';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
@@ -35,8 +35,11 @@ function Returns() {
   const { data: returns, isLoading, isFetching } = useQuery(
     ['returns', debouncedSearchTerm, currentPage],
     async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/returns?search=${debouncedSearchTerm}&page=${currentPage}&limit=${itemsPerPage}`);
-      return response.data;
+      return await API.getReturns({
+        search: debouncedSearchTerm,
+        page: currentPage,
+        limit: itemsPerPage
+      });
     }
   );
 

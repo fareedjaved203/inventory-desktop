@@ -1,22 +1,9 @@
+import DataStorageManager from './DataStorageManager';
+
 // User-specific barcode generator utility
 export const generateUserBarcode = async () => {
   try {
-    // Get auth token from localStorage
-    const token = localStorage.getItem('authToken');
-    
-    // Get the next barcode number from the backend
-    const response = await fetch('/api/products/next-barcode', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const data = await DataStorageManager.getNextBarcode();
     return data.barcode;
   } catch (error) {
     console.error('Error generating barcode:', error);

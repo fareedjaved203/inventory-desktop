@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -49,11 +49,11 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
   }, [isMobile, isMobileOpen]);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await api.get('/api/shop-settings');
-    return response.data;
+    const result = await API.getShopSettings();
+    return result.items?.[0] || {};
   }, {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 

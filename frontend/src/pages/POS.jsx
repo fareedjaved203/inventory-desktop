@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import api from '../utils/axios';
+import API from '../utils/api';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -68,9 +68,11 @@ function POS() {
   const { data: products = [], isLoading: productsLoading } = useQuery(
     ['pos-products', debouncedSearchTerm],
     async () => {
-      const searchParam = debouncedSearchTerm ? `&search=${debouncedSearchTerm}` : '';
-      const response = await api.get(`/api/products?limit=50${searchParam}`);
-      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      const result = await API.getProducts({
+        limit: 50,
+        search: debouncedSearchTerm
+      });
+      return result.items || [];
     }
   );
 
@@ -78,9 +80,11 @@ function POS() {
   const { data: customers = [], isLoading: customersLoading } = useQuery(
     ['pos-customers', debouncedCustomerSearchTerm],
     async () => {
-      const searchParam = debouncedCustomerSearchTerm ? `&search=${debouncedCustomerSearchTerm}` : '';
-      const response = await api.get(`/api/contacts?limit=100${searchParam}`);
-      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      const result = await API.getContacts({
+        limit: 100,
+        search: debouncedCustomerSearchTerm
+      });
+      return result.items || [];
     }
   );
 
@@ -97,8 +101,8 @@ function POS() {
 
     setBarcodeLoading(true);
     try {
-      const response = await api.get(`/api/products?sku=${barcodeInput.trim().toUpperCase()}`);
-      const products = Array.isArray(response.data) ? response.data : response.data?.items || [];
+      const result = await API.getProducts({ sku: barcodeInput.trim().toUpperCase() });
+      const products = result.items || [];
       
       if (products.length > 0) {
         addToCart(products[0]);
@@ -190,8 +194,7 @@ function POS() {
   // Create sale mutation
   const createSale = useMutation(
     async (saleData) => {
-      const response = await api.post('/api/sales', saleData);
-      return response.data;
+      return await API.createSale(saleData);
     },
     {
       onSuccess: (data) => {

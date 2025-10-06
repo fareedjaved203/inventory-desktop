@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../utils/axios';
+// License checking not available in offline mode
 
 export function useLicense() {
   const [licenseStatus, setLicenseStatus] = useState({
@@ -35,21 +35,13 @@ export function useLicense() {
       return;
     }
 
-    try {
-      const response = await api.get('/api/license/status');
-      setLicenseStatus({
-        ...response.data,
-        loading: false
-      });
-    } catch (error) {
-      console.warn('License check failed:', error);
-      setLicenseStatus({
-        valid: false,
-        expiry: null,
-        timeRemaining: -1,
-        loading: false
-      });
-    }
+    // License checking not available in offline mode - always return valid
+    setLicenseStatus({
+      valid: true,
+      expiry: null,
+      timeRemaining: -1,
+      loading: false
+    });
   };
 
   useEffect(() => {

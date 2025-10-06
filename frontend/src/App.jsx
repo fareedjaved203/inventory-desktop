@@ -6,6 +6,8 @@ import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Sidebar';
 import HamburgerMenu from './components/HamburgerMenu';
+import NetworkStatus from './components/NetworkStatus';
+import ModeIndicator from './components/ModeIndicator';
 import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
 import Products from './pages/Products';
@@ -26,7 +28,23 @@ import LicenseModal from './components/LicenseModal';
 import LoadingSpinner from './components/LoadingSpinner';
 import { useLicense } from './hooks/useLicense';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: 0,
+      cacheTime: 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: false,
+      suspense: false,
+      useErrorBoundary: false
+    },
+    mutations: {
+      retry: false
+    }
+  }
+});
 
 function AppContent() {
   const queryClient = useQueryClient();
@@ -65,37 +83,28 @@ function AppContent() {
   const { data: authCheck, isLoading } = useQuery(
     ['auth-check'],
     async () => {
+      console.log('Auth check running...');
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/check`);
       return response.data;
     },
     {
       retry: false,
       refetchOnWindowFocus: false,
-      enabled: !authInitialized
+      enabled: false // Disable auth check completely for now
     }
   );
 
   // Handle initial auth check and routing
   useEffect(() => {
+    console.log('Auth effect running:', { authInitialized, authState, authCheck });
     if (!authInitialized) {
-      if (authState.isAuthenticated) {
-        // Check if user is on wrong page for their role
-        if (authState.userType === 'superadmin' && location.pathname !== '/super-admin') {
-          window.location.replace('/super-admin');
-          return;
-        } else if (authState.userType === 'employee' && location.pathname !== '/employee-stats') {
-          window.location.replace('/employee-stats');
-          return;
-        }
-        setAuthInitialized(true);
-      } else if (authCheck !== undefined) {
-        if (authCheck) {
-          setShowAuthModal(true);
-        }
-        setAuthInitialized(true);
+      // Skip auth check completely and initialize immediately
+      setAuthInitialized(true);
+      if (!authState.isAuthenticated) {
+        setShowAuthModal(true);
       }
     }
-  }, [authState.isAuthenticated, authState.userType, authCheck, authInitialized, location.pathname]);
+  }, [authInitialized, authState.isAuthenticated]);
 
   useEffect(() => {
     // Only show license modal for non-superadmin users
@@ -174,10 +183,12 @@ function AppContent() {
   };
 
   // Show loading during initialization
-  if (!authInitialized || isLoading) {
+  if (!authInitialized) {
+    console.log('App loading state:', { authInitialized, authState });
     return (
       <div className="flex items-center justify-center h-screen">
         <LoadingSpinner size="w-12 h-12" />
+        <div className="ml-4 text-gray-600">Initializing...</div>
       </div>
     );
   }
@@ -202,6 +213,7 @@ function AppContent() {
 
   return (
     <>
+      <NetworkStatus />
       <div className="flex h-screen bg-gray-50">
         <Sidebar 
           onLogout={handleLogout} 
@@ -215,7 +227,14 @@ function AppContent() {
           <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
             <HamburgerMenu onClick={() => setIsMobileMenuOpen(true)} />
             <h1 className="text-lg font-semibold text-gray-800 flex-1 text-center">Hisab Ghar</h1>
-            <div className="w-10"></div> {/* Spacer for centering */}
+            <ModeIndicator />
+          </div>
+          
+          {/* Desktop Header */}
+          <div className="hidden md:block bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
+            <div className="flex justify-end">
+              <ModeIndicator />
+            </div>
           </div>
           
           <div className="flex-1 p-4 md:p-8">
