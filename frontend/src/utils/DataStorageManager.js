@@ -54,7 +54,7 @@ class DataStorageManager {
     for (const item of results) {
       let shouldInclude = true;
       
-      // Handle contact name search for sales
+      // Handle contact name search for sales and bulk purchases
       if (item._needsContactCheck && searchTerm) {
         shouldInclude = false;
         if (item.contactId) {
@@ -74,7 +74,7 @@ class DataStorageManager {
       }
       
       if (shouldInclude) {
-        // Populate relationships for sales
+        // Populate relationships for sales and bulk purchases
         if (storeName === 'sales') {
           // Get contact if not already populated
           if (item.contactId && !item.contact) {
@@ -105,6 +105,37 @@ class DataStorageManager {
           }
         }
         
+        // Populate relationships for bulk purchases
+        if (storeName === 'bulkPurchases') {
+          // Get contact if not already populated
+          if (item.contactId && !item.contact) {
+            try {
+              const contactResult = await this.readOffline('contacts', { id: item.contactId });
+              item.contact = contactResult.items?.[0];
+            } catch (error) {
+              console.error('Error fetching contact:', error);
+            }
+          }
+          
+          // Get purchase items and populate products
+          try {
+            const purchaseItemsResult = await this.readOffline('bulkPurchaseItems', {});
+            const purchaseItems = purchaseItemsResult.items.filter(purchaseItem => purchaseItem.bulkPurchaseId === item.id);
+            
+            for (const purchaseItem of purchaseItems) {
+              if (purchaseItem.productId && !purchaseItem.product) {
+                const productResult = await this.readOffline('products', { id: purchaseItem.productId });
+                purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+              }
+            }
+            
+            item.items = purchaseItems;
+          } catch (error) {
+            console.error('Error fetching purchase items:', error);
+            item.items = [];
+          }
+        }
+        
         processedResults.push(item);
       }
     }
@@ -114,9 +145,11 @@ class DataStorageManager {
 
   // Generic CRUD operations
   async create(storeName, data) {
-    const result = this.getOfflineMode() 
-      ? await this.createOffline(storeName, data)
-      : await this.createOnline(storeName, data);
+    // Always use online APIs for employees and branches
+    const useOnline = !this.getOfflineMode() || storeName === 'employees' || storeName === 'branches';
+    const result = useOnline
+      ? await this.createOnline(storeName, data)
+      : await this.createOffline(storeName, data);
     
     // Invalidate related caches when products or contacts are created
     if (storeName === 'products' || storeName === 'contacts') {
@@ -127,16 +160,20 @@ class DataStorageManager {
   }
 
   async read(storeName, params = {}) {
-    if (this.getOfflineMode()) {
-      return this.readOffline(storeName, params);
+    // Always use online APIs for employees and branches
+    const useOnline = !this.getOfflineMode() || storeName === 'employees' || storeName === 'branches';
+    if (useOnline) {
+      return this.readOnline(storeName, params);
     }
-    return this.readOnline(storeName, params);
+    return this.readOffline(storeName, params);
   }
 
   async update(storeName, id, data) {
-    const result = this.getOfflineMode() 
-      ? await this.updateOffline(storeName, id, data)
-      : await this.updateOnline(storeName, id, data);
+    // Always use online APIs for employees and branches
+    const useOnline = !this.getOfflineMode() || storeName === 'employees' || storeName === 'branches';
+    const result = useOnline
+      ? await this.updateOnline(storeName, id, data)
+      : await this.updateOffline(storeName, id, data);
     
     // Invalidate related caches when products or contacts are updated
     if (storeName === 'products' || storeName === 'contacts') {
@@ -147,9 +184,11 @@ class DataStorageManager {
   }
 
   async delete(storeName, id) {
-    const result = this.getOfflineMode() 
-      ? await this.deleteOffline(storeName, id)
-      : await this.deleteOnline(storeName, id);
+    // Always use online APIs for employees and branches
+    const useOnline = !this.getOfflineMode() || storeName === 'employees' || storeName === 'branches';
+    const result = useOnline
+      ? await this.deleteOnline(storeName, id)
+      : await this.deleteOffline(storeName, id);
     
     // Invalidate related caches when products or contacts are deleted
     if (storeName === 'products' || storeName === 'contacts') {
@@ -278,10 +317,12 @@ class DataStorageManager {
               (item.name && item.name.toLowerCase().includes(searchLower)) ||
               (item.description && item.description.toLowerCase().includes(searchLower)) ||
               (item.sku && item.sku.toLowerCase().includes(searchLower)) ||
-              (item.billNumber && item.billNumber.toLowerCase().includes(searchLower));
+              (item.billNumber && item.billNumber.toLowerCase().includes(searchLower)) ||
+              (item.invoiceNumber && item.invoiceNumber.toLowerCase().includes(searchLower)) ||
+              (item.id && item.id.toLowerCase().includes(searchLower));
             
-            // For sales, also search by contact name
-            if (storeName === 'sales' && item.contactId && !matchesSearch) {
+            // For sales and bulk purchases, also search by contact name
+            if ((storeName === 'sales' || storeName === 'bulkPurchases') && item.contactId && !matchesSearch) {
               // We'll need to check contact name - add to results for now and filter later
               results.push({ ...item, _needsContactCheck: true, _searchTerm: searchLower });
             } else if (matchesSearch) {
@@ -362,27 +403,105 @@ class DataStorageManager {
 
   // Online operations (existing API calls)
   async createOnline(storeName, data) {
-    const endpoint = this.getEndpoint(storeName);
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, data);
-    return response.data;
+    try {
+      const endpoint = this.getEndpoint(storeName);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
+    }
   }
 
   async readOnline(storeName, params = {}) {
-    const endpoint = this.getEndpoint(storeName);
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, { params });
-    return response.data;
+    try {
+      const endpoint = this.getEndpoint(storeName);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Ensure consistent data structure for branches and employees
+      if (storeName === 'branches' || storeName === 'employees') {
+        const data = response.data;
+        // If backend returns items directly, wrap in expected structure
+        if (Array.isArray(data)) {
+          return {
+            items: data,
+            total: data.length,
+            page: parseInt(params.page) || 1,
+            totalPages: Math.ceil(data.length / (parseInt(params.limit) || 10))
+          };
+        }
+        // If backend already returns proper structure, use as is
+        return data;
+      }
+      
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
+    }
   }
 
   async updateOnline(storeName, id, data) {
-    const endpoint = this.getEndpoint(storeName);
-    const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`, data);
-    return response.data;
+    try {
+      const endpoint = this.getEndpoint(storeName);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
+    }
   }
 
   async deleteOnline(storeName, id) {
-    const endpoint = this.getEndpoint(storeName);
-    await axios.delete(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`);
-    return { success: true };
+    try {
+      const endpoint = this.getEndpoint(storeName);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { success: true };
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
+    }
   }
 
   getEndpoint(storeName) {

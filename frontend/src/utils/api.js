@@ -198,10 +198,53 @@ class API {
 
   // Bulk Purchases
   async getBulkPurchases(params = {}) {
-    return DataStorageManager.read(STORES.bulkPurchases, params);
+    const purchasesResult = await DataStorageManager.read(STORES.bulkPurchases, params);
+    
+    // Populate relationships for offline mode
+    if (DataStorageManager.getOfflineMode() && purchasesResult.items) {
+      for (const purchase of purchasesResult.items) {
+        // Get contact details
+        if (purchase.contactId && !purchase.contact) {
+          const contactResult = await DataStorageManager.read(STORES.contacts, { id: purchase.contactId });
+          purchase.contact = contactResult.items?.[0] || contactResult || { id: purchase.contactId, name: 'Unknown Contact' };
+        }
+        
+        // Get purchase items
+        const purchaseItemsResult = await DataStorageManager.readOffline(STORES.bulkPurchaseItems, {});
+        const purchaseItems = purchaseItemsResult.items.filter(item => item.bulkPurchaseId === purchase.id);
+        
+        // Populate product details for each item
+        for (const item of purchaseItems) {
+          if (item.productId && !item.product) {
+            const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+            item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+          }
+        }
+        
+        purchase.items = purchaseItems;
+        
+        // Ensure invoice number exists (should be set during creation)
+        if (!purchase.invoiceNumber) {
+          // Generate invoice number as fallback
+          purchase.invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
+          // Update the purchase in storage with the invoice number
+          await DataStorageManager.update(STORES.bulkPurchases, purchase.id, { invoiceNumber: purchase.invoiceNumber });
+        }
+      }
+    }
+    
+    return purchasesResult;
   }
 
   async createBulkPurchase(data) {
+    // Generate invoice number using same mechanism as backend
+    if (DataStorageManager.getOfflineMode()) {
+      if (!data.invoiceNumber) {
+        data.invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
+      }
+      data.purchaseDate = data.purchaseDate || new Date().toISOString();
+    }
+    
     const purchase = await DataStorageManager.create(STORES.bulkPurchases, data);
     
     // Create bulk purchase items
@@ -260,7 +303,38 @@ class API {
 
   // Loan Transactions
   async getLoanTransactions(params = {}) {
-    return DataStorageManager.read(STORES.loanTransactions, params);
+    const result = await DataStorageManager.read(STORES.loanTransactions, params);
+    
+    // If contactId is provided, filter and calculate summary
+    if (params.contactId) {
+      const transactions = result.items.filter(t => t.contactId === params.contactId);
+      
+      const totalGiven = transactions
+        .filter(t => t.type === 'GIVEN')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      const totalReturnedByContact = transactions
+        .filter(t => t.type === 'RETURNED_BY_CONTACT')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      const totalTaken = transactions
+        .filter(t => t.type === 'TAKEN')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      const totalReturnedToContact = transactions
+        .filter(t => t.type === 'RETURNED_TO_CONTACT')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      return {
+        transactions,
+        totalGiven,
+        totalReturnedByContact,
+        totalTaken,
+        totalReturnedToContact
+      };
+    }
+    
+    return result;
   }
 
   async createLoanTransaction(data) {

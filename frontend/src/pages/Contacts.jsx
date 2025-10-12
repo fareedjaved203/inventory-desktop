@@ -140,10 +140,7 @@ function Contacts() {
     ['loan-transactions', selectedContact?.id],
     async () => {
       if (!selectedContact?.id) return null;
-      const response = await api.get(
-        `/api/contacts/${selectedContact.id}/loans`
-      );
-      return response.data;
+      return await API.getLoanTransactions({ contactId: selectedContact.id });
     },
     { enabled: !!selectedContact?.id && showLoanModal }
   );
@@ -151,11 +148,7 @@ function Contacts() {
   // Create loan transaction mutation
   const createLoanTransaction = useMutation(
     async (data) => {
-      const response = await api.post(
-        `/api/contacts/${selectedContact.id}/loans`,
-        data
-      );
-      return response.data;
+      return await API.createLoanTransaction({ ...data, contactId: selectedContact.id });
     },
     {
       onSuccess: () => {
@@ -169,10 +162,7 @@ function Contacts() {
   // Delete loan transaction mutation
   const deleteLoanTransaction = useMutation(
     async (transactionId) => {
-      const response = await api.delete(
-        `/api/contacts/${selectedContact.id}/loans/${transactionId}`
-      );
-      return response.data;
+      return await API.deleteLoanTransaction(transactionId);
     },
     {
       onSuccess: () => {
@@ -185,21 +175,89 @@ function Contacts() {
   const { data: shopSettingsData } = useQuery(
     ['shop-settings'],
     async () => {
-      const response = await api.get('/api/shop-settings');
-      return response.data;
+      return await API.getShopSettings();
     }
   );
 
   // Fetch customer statement data
   const fetchStatementData = async (contactId, startDate, endDate) => {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+    // Get contact details
+    const contactResult = await API.getContacts({ id: contactId });
+    const contact = contactResult.items?.[0] || contactResult;
     
-    const response = await api.get(
-      `/api/contacts/${contactId}/statement?${params.toString()}`
-    );
-    return response.data;
+    // Get all sales for this contact
+    const salesResult = await API.getSales({ limit: 1000 });
+    const contactSales = salesResult.items.filter(sale => sale.contactId === contactId);
+    
+    // Get loan transactions for this contact
+    const loanResult = await API.getLoanTransactions({ contactId });
+    const loanTransactions = loanResult.transactions || [];
+    
+    // Filter by date range if provided
+    let filteredSales = contactSales;
+    let filteredLoans = loanTransactions;
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      filteredSales = filteredSales.filter(sale => new Date(sale.saleDate) >= start);
+      filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) >= start);
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // End of day
+      filteredSales = filteredSales.filter(sale => new Date(sale.saleDate) <= end);
+      filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) <= end);
+    }
+    
+    // Combine and sort transactions by date
+    const allTransactions = [
+      ...filteredSales.map(sale => ({
+        date: sale.saleDate,
+        type: 'sale',
+        description: `Sale #${sale.billNumber}`,
+        debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
+        credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
+        balance: 0 // Will be calculated
+      })),
+      ...filteredLoans.map(loan => {
+        let debit = 0, credit = 0;
+        if (loan.type === 'GIVEN') {
+          debit = Number(loan.amount) || 0; // Money given to customer increases their debt to us
+        } else if (loan.type === 'TAKEN') {
+          credit = Number(loan.amount) || 0; // Money taken from customer reduces their debt (we owe them)
+        } else if (loan.type === 'RETURNED_BY_CONTACT') {
+          credit = Number(loan.amount) || 0; // Customer returned money, reduces their debt
+        } else if (loan.type === 'RETURNED_TO_CONTACT') {
+          debit = Number(loan.amount) || 0; // We returned money to customer, increases their debt
+        }
+        
+        return {
+          date: loan.date || loan.createdAt,
+          type: 'loan',
+          description: loan.description || `Loan ${loan.type}`,
+          debit,
+          credit,
+          balance: 0 // Will be calculated
+        };
+      })
+    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Calculate running balance
+    let runningBalance = 0;
+    allTransactions.forEach(transaction => {
+      runningBalance += (transaction.debit || 0) - (transaction.credit || 0);
+      transaction.balance = runningBalance;
+    });
+    
+    return {
+      contact: contact || { name: 'Unknown Contact', phoneNumber: '', address: '' },
+      openingBalance: 0,
+      closingBalance: runningBalance,
+      transactions: allTransactions,
+      startDate,
+      endDate
+    };
   };
 
   const onSubmit = (data) => {

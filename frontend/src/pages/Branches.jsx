@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from 'react-hot-toast';
 import API from '../utils/api';
@@ -7,6 +7,7 @@ import TableSkeleton from '../components/TableSkeleton';
 import DeleteModal from '../components/DeleteModal';
 import { z } from "zod";
 import { debounce } from 'lodash';
+import DataStorageManager from '../utils/DataStorageManager';
 
 const branchSchema = z.object({
   name: z.string().min(1, "Branch name is required"),
@@ -27,6 +28,11 @@ function Branches() {
   const [itemsPerPage] = useState(10);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [branchToDelete, setBranchToDelete] = useState(null);
+  const [isOffline, setIsOffline] = useState(true);
+
+  useEffect(() => {
+    setIsOffline(DataStorageManager.getOfflineMode());
+  }, []);
 
   const debouncedSearch = useCallback(
     debounce((term) => {

@@ -313,11 +313,11 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate 
                     {transaction.credit > 0 ? formatPakistaniCurrencyPDF(transaction.credit) : '-'}
                   </Text>
                   <Text style={[styles.col5, { 
-                    color: transaction.runningBalance >= 0 ? "#2d3748" : "#4a5568",
+                    color: transaction.balance >= 0 ? "#2d3748" : "#4a5568",
                     fontWeight: "bold"
                   }]}>
-                    {formatPakistaniCurrencyPDF(Math.abs(transaction.runningBalance))}
-                    {transaction.runningBalance >= 0 ? " Dr" : " Cr"}
+                    {formatPakistaniCurrencyPDF(Math.abs(transaction.balance))}
+                    {transaction.balance >= 0 ? " Dr" : " Cr"}
                   </Text>
                 </View>
               );
