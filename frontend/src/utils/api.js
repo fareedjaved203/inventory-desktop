@@ -364,30 +364,7 @@ class API {
 
   // Dashboard Stats
   async getDashboardStats() {
-    console.log('API.getDashboardStats called');
-    return {
-      totalProducts: 0,
-      totalSales: 0,
-      totalExpenses: 0,
-      lowStockProducts: 0,
-      totalCustomers: 0,
-      totalSuppliers: 0,
-      salesToday: 0,
-      salesLast7Days: 0,
-      salesLast30Days: 0,
-      salesLast365Days: 0,
-      profitToday: 0,
-      profitLast7Days: 0,
-      profitLast30Days: 0,
-      profitLast365Days: 0,
-      expensesToday: 0,
-      expensesLast7Days: 0,
-      expensesLast30Days: 0,
-      expensesLast365Days: 0,
-      totalPurchaseDueAmount: 0,
-      totalSalesDueAmount: 0,
-      totalDueCredits: 0
-    };
+    return DataStorageManager.getDashboardStats();
   }
 }
 

@@ -430,8 +430,17 @@ class DataStorageManager {
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
+      
+      // Clean params - remove empty strings and undefined values
+      const cleanParams = {};
+      Object.keys(params).forEach(key => {
+        if (params[key] !== '' && params[key] !== undefined && params[key] !== null) {
+          cleanParams[key] = params[key];
+        }
+      });
+      
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, { 
-        params,
+        params: cleanParams,
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -458,6 +467,7 @@ class DataStorageManager {
         localStorage.removeItem('userId');
         throw new Error('Session expired. Please login again.');
       }
+      console.error(`Error reading ${storeName}:`, error.response?.data || error.message);
       throw error;
     }
   }
@@ -552,6 +562,70 @@ class DataStorageManager {
     }
     
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products/low-stock`, { params });
+    return response.data;
+  }
+
+  async getDashboardStats() {
+    if (this.getOfflineMode()) {
+      const [products, sales, expenses] = await Promise.all([
+        this.readOffline(STORES.products, { limit: 10000 }),
+        this.readOffline(STORES.sales, { limit: 10000 }),
+        this.readOffline(STORES.expenses, { limit: 10000 })
+      ]);
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const last365Days = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+      
+      const salesData = sales.items;
+      const salesToday = salesData.filter(s => new Date(s.saleDate || s.createdAt) >= today)
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+      const salesLast7Days = salesData.filter(s => new Date(s.saleDate || s.createdAt) >= last7Days)
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+      const salesLast30Days = salesData.filter(s => new Date(s.saleDate || s.createdAt) >= last30Days)
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+      const salesLast365Days = salesData.filter(s => new Date(s.saleDate || s.createdAt) >= last365Days)
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+      
+      const expensesData = expenses.items;
+      const expensesToday = expensesData.filter(e => new Date(e.date || e.createdAt) >= today)
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const expensesLast7Days = expensesData.filter(e => new Date(e.date || e.createdAt) >= last7Days)
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const expensesLast30Days = expensesData.filter(e => new Date(e.date || e.createdAt) >= last30Days)
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const expensesLast365Days = expensesData.filter(e => new Date(e.date || e.createdAt) >= last365Days)
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      
+      return {
+        totalProducts: products.items.length,
+        totalInventory: products.items.reduce((sum, p) => sum + Number(p.quantity || 0), 0),
+        lowStock: products.items.filter(p => Number(p.quantity || 0) <= Number(p.lowStockThreshold || 10)).length,
+        totalSales: salesData.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0),
+        salesToday,
+        salesLast7Days,
+        salesLast30Days,
+        salesLast365Days,
+        profitToday: 0,
+        profitLast7Days: 0,
+        profitLast30Days: 0,
+        profitLast365Days: 0,
+        expensesToday,
+        expensesLast7Days,
+        expensesLast30Days,
+        expensesLast365Days,
+        totalPurchaseDueAmount: 0,
+        totalSalesDueAmount: salesData.reduce((sum, s) => sum + (Number(s.totalAmount || 0) - Number(s.paidAmount || 0)), 0),
+        totalDueCredits: 0
+      };
+    }
+    
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   }
 }
