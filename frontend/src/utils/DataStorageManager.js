@@ -41,28 +41,28 @@ class DataStorageManager {
 
   // Generic CRUD operations
   async create(storeName, data) {
-    if (this.isOfflineMode) {
+    if (this.getOfflineMode()) {
       return this.createOffline(storeName, data);
     }
     return this.createOnline(storeName, data);
   }
 
   async read(storeName, params = {}) {
-    if (this.isOfflineMode) {
+    if (this.getOfflineMode()) {
       return this.readOffline(storeName, params);
     }
     return this.readOnline(storeName, params);
   }
 
   async update(storeName, id, data) {
-    if (this.isOfflineMode) {
+    if (this.getOfflineMode()) {
       return this.updateOffline(storeName, id, data);
     }
     return this.updateOnline(storeName, id, data);
   }
 
   async delete(storeName, id) {
-    if (this.isOfflineMode) {
+    if (this.getOfflineMode()) {
       return this.deleteOffline(storeName, id);
     }
     return this.deleteOnline(storeName, id);
@@ -227,36 +227,24 @@ class DataStorageManager {
 
   // Online operations (existing API calls)
   async createOnline(storeName, data) {
-    if (this.isOfflineMode) {
-      throw new Error('Cannot make online requests in offline mode');
-    }
     const endpoint = this.getEndpoint(storeName);
     const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, data);
     return response.data;
   }
 
   async readOnline(storeName, params = {}) {
-    if (this.isOfflineMode) {
-      throw new Error('Cannot make online requests in offline mode');
-    }
     const endpoint = this.getEndpoint(storeName);
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, { params });
     return response.data;
   }
 
   async updateOnline(storeName, id, data) {
-    if (this.isOfflineMode) {
-      throw new Error('Cannot make online requests in offline mode');
-    }
     const endpoint = this.getEndpoint(storeName);
     const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`, data);
     return response.data;
   }
 
   async deleteOnline(storeName, id) {
-    if (this.isOfflineMode) {
-      throw new Error('Cannot make online requests in offline mode');
-    }
     const endpoint = this.getEndpoint(storeName);
     await axios.delete(`${import.meta.env.VITE_API_URL}/api/${endpoint}/${id}`);
     return { success: true };
@@ -295,7 +283,7 @@ class DataStorageManager {
   }
 
   async getLowStockProducts(params = {}) {
-    if (this.isOfflineMode) {
+    if (this.getOfflineMode()) {
       const products = await this.readOffline(STORES.products, params);
       const lowStockItems = products.items.filter(product => 
         Number(product.quantity) <= Number(product.lowStockThreshold || 10)

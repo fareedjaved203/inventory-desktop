@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import AuthAPI from '../utils/authAPI';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function AuthModal({ onSuccess, queryClient }) {
@@ -34,9 +34,9 @@ function AuthModal({ onSuccess, queryClient }) {
     setError('');
 
     try {
-      const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
-      const data = { email, password };
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}${endpoint}`, data);
+      const response = isSignup 
+        ? await AuthAPI.register(email, password)
+        : await AuthAPI.login(email, password);
       
       // Save email for autocomplete
       saveEmail(email);
@@ -52,9 +52,9 @@ function AuthModal({ onSuccess, queryClient }) {
         queryClient.invalidateQueries(['auth-check']);
       }
       
-      onSuccess(response.data);
+      onSuccess(response);
     } catch (err) {
-      setError(err.response?.data?.error || err);
+      setError(err.response?.data?.error || err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -66,10 +66,7 @@ function AuthModal({ onSuccess, queryClient }) {
     setError('');
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/forgot-password`, {
-        email: resetEmail
-      });
-      
+      await AuthAPI.forgotPassword(resetEmail);
       setShowResetForm(true);
       setError('');
     } catch (err) {
@@ -85,12 +82,7 @@ function AuthModal({ onSuccess, queryClient }) {
     setError('');
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/reset-password`, {
-        email: resetEmail,
-        otp,
-        newPassword
-      });
-      
+      await AuthAPI.resetPassword(resetEmail, otp, newPassword);
       setShowForgotPassword(false);
       setShowResetForm(false);
       setError('');

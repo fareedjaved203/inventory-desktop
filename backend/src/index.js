@@ -47,7 +47,7 @@ async function initializeApp() {
   // Set PostgreSQL URL for Electron with connection pooling
   if (process.env.ELECTRON_APP) {
     console.log('Running in Electron mode');
-    const postgresUrl = process.env.DATABASE_URL || 'postgresql://postgres.aosisusebnmoddyhovag:fareedjaved203@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=15&pool_timeout=30&statement_timeout=30000&idle_timeout=300';
+    const postgresUrl = process.env.DATABASE_URL;
     
     // Try PostgreSQL first with connection pooling
     try {

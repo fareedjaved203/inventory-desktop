@@ -19,20 +19,31 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
     setCanRebind(false);
 
     try {
-      // License validation not available in offline mode
-      throw new Error('License validation not available in offline mode');
-
-      if (response.data.success) {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          licenseKey: licenseKey.trim(),
+          forceRebind 
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
         onLicenseValidated();
       } else {
-        setError('Invalid license key');
+        setError(data.error || 'Invalid license key');
+        if (data.canRebind) {
+          setCanRebind(true);
+        }
       }
     } catch (err) {
-      const errorData = err.response?.data;
-      setError(errorData?.error || 'Failed to validate license');
-      if (errorData?.canRebind) {
-        setCanRebind(true);
-      }
+      setError('Failed to validate license. Please check your internet connection.');
     } finally {
       setLoading(false);
     }

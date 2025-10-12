@@ -62,8 +62,8 @@ function AppContent() {
     const userType = localStorage.getItem('userType') || 'admin';
     const userPermissions = localStorage.getItem('userPermissions');
     
-    // Clear auth if expired
-    if (!authTime || Date.now() - parseInt(authTime) > 3600000) {
+    // Clear auth if expired (24 hours)
+    if (!authTime || Date.now() - parseInt(authTime) > 86400000) {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('authTime');
       localStorage.removeItem('userPermissions');
@@ -159,9 +159,9 @@ function AppContent() {
       window.location.replace('/');
     }
     
-    // Refresh license for non-superadmin
+    // Check license immediately after login for non-superadmin
     if (type !== 'superadmin') {
-      refreshLicense();
+      setTimeout(() => refreshLicense(), 100);
     }
   };
 
