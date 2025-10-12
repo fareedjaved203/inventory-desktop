@@ -79,11 +79,16 @@ class DataStorageManager {
       const newData = {
         ...data,
         id: data.id || this.generateId(),
-        userId: this.userId,
+        userId: this.userId || 'offline-user',
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         _syncStatus: 'pending'
       };
+      
+      // Generate saleItems ID if it's a sale item
+      if (storeName === 'saleItems' && !newData.id) {
+        newData.id = `${newData.saleId}_${newData.productId}_${Date.now()}`;
+      }
       
       const request = store.add(newData);
       
@@ -123,7 +128,14 @@ class DataStorageManager {
       
       if (params.id) {
         const request = store.get(params.id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+          const result = request.result;
+          if (result) {
+            resolve({ items: [result], total: 1, page: 1, totalPages: 1 });
+          } else {
+            resolve({ items: [], total: 0, page: 1, totalPages: 0 });
+          }
+        };
         request.onerror = () => reject(request.error);
         return;
       }
@@ -135,8 +147,13 @@ class DataStorageManager {
       if (!this.userId) {
         request = store.openCursor();
       } else {
-        const index = store.index('userId');
-        request = index.openCursor(this.userId);
+        try {
+          const index = store.index('userId');
+          request = index.openCursor(this.userId);
+        } catch (error) {
+          // If userId index doesn't exist, fall back to all records
+          request = store.openCursor();
+        }
       }
       
       request.onsuccess = (event) => {
@@ -144,13 +161,20 @@ class DataStorageManager {
         if (cursor) {
           const item = cursor.value;
           
+          // Filter by userId if no index available
+          if (this.userId && !store.indexNames.contains('userId') && item.userId !== this.userId) {
+            cursor.continue();
+            return;
+          }
+          
           // Apply search filter
           if (params.search) {
             const searchLower = params.search.toLowerCase();
             const matchesSearch = 
               (item.name && item.name.toLowerCase().includes(searchLower)) ||
               (item.description && item.description.toLowerCase().includes(searchLower)) ||
-              (item.sku && item.sku.toLowerCase().includes(searchLower));
+              (item.sku && item.sku.toLowerCase().includes(searchLower)) ||
+              (item.billNumber && item.billNumber.toLowerCase().includes(searchLower));
             
             if (matchesSearch) {
               results.push(item);

@@ -48,20 +48,90 @@ class API {
 
   // Sales
   async getSales(params = {}) {
-    return DataStorageManager.read(STORES.sales, params);
+    const salesResult = await DataStorageManager.read(STORES.sales, params);
+    
+    // Populate relationships for offline mode
+    if (DataStorageManager.getOfflineMode() && salesResult.items) {
+      for (const sale of salesResult.items) {
+        // Get sale items
+        const saleItemsResult = await DataStorageManager.readOffline(STORES.saleItems, {});
+        const saleItems = saleItemsResult.items.filter(item => item.saleId === sale.id);
+        
+        // Populate product details for each item
+        for (const item of saleItems) {
+          if (item.productId && !item.product) {
+            const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+            item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+          }
+        }
+        
+        sale.items = saleItems;
+        
+        // Get contact details
+        if (sale.contactId && !sale.contact) {
+          const contactResult = await DataStorageManager.read(STORES.contacts, { id: sale.contactId });
+          sale.contact = contactResult.items?.[0] || contactResult;
+        }
+        
+        // Ensure bill number exists (should be set during creation)
+        if (!sale.billNumber) {
+          // Generate proper numeric bill number as fallback
+          sale.billNumber = Math.floor(1000000 + Math.random() * 9000000).toString();
+          // Update the sale in storage with the bill number
+          await DataStorageManager.update(STORES.sales, sale.id, { billNumber: sale.billNumber });
+        }
+        if (!sale.saleDate) {
+          sale.saleDate = sale.createdAt || new Date().toISOString();
+        }
+      }
+    }
+    
+    return salesResult;
   }
 
   async createSale(data) {
+    // Generate bill number using same mechanism as online mode
+    if (DataStorageManager.getOfflineMode()) {
+      let billNumber;
+      let isUnique = false;
+      
+      while (!isUnique) {
+        billNumber = Math.floor(1000000 + Math.random() * 9000000).toString();
+        
+        const existingSales = await DataStorageManager.read(STORES.sales, { limit: 1000 });
+        const existingSale = existingSales.items.find(sale => sale.billNumber === billNumber);
+        
+        if (!existingSale) {
+          isUnique = true;
+        }
+      }
+      
+      data.billNumber = billNumber;
+      data.saleDate = data.saleDate || new Date().toISOString();
+    }
+    
     const sale = await DataStorageManager.create(STORES.sales, data);
     
-    // Create sale items
+    // Create sale items with product relationships
     if (data.items && Array.isArray(data.items)) {
+      const itemsWithProducts = [];
       for (const item of data.items) {
-        await DataStorageManager.create(STORES.saleItems, {
+        // Get product details for offline mode
+        const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+        const product = productResult.items?.[0] || productResult;
+        
+        const saleItem = {
           ...item,
-          saleId: sale.id
-        });
+          saleId: sale.id,
+          product: product || { id: item.productId, name: 'Unknown Product' }
+        };
+        
+        await DataStorageManager.create(STORES.saleItems, saleItem);
+        itemsWithProducts.push(saleItem);
       }
+      
+      // Update sale with populated items
+      sale.items = itemsWithProducts;
     }
     
     return sale;
