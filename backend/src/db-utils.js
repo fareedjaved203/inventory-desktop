@@ -35,13 +35,6 @@ export function createConnectionConfig() {
       }
     },
     log: isProduction ? ['error'] : ['warn', 'error'],
-    errorFormat: 'pretty',
-    // Connection pool settings
-    __internal: {
-      engine: {
-        connectionTimeout: 20000,
-        maxIdleTime: 30000
-      }
-    }
+    errorFormat: 'pretty'
   };
 }

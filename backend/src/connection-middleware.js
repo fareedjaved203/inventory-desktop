@@ -2,16 +2,41 @@
 
 export function connectionCleanup(prisma) {
   return async (req, res, next) => {
-    // Add cleanup on response finish
-    res.on('finish', () => {
-      // Prisma handles connection pooling automatically
-      // This is just for logging and monitoring
-      console.debug(`Request ${req.method} ${req.path} completed`);
-    });
+    const startTime = Date.now();
+    
+    // Store original end function
+    const originalEnd = res.end;
+    
+    // Override end function to ensure cleanup
+    res.end = function(...args) {
+      // Force connection cleanup
+      setImmediate(async () => {
+        try {
+          // Disconnect any hanging connections
+          await prisma.$disconnect();
+          await prisma.$connect();
+        } catch (error) {
+          console.error('Connection cleanup error:', error.message);
+        }
+      });
+      
+      const duration = Date.now() - startTime;
+      if (duration > 5000) {
+        console.warn(`Slow query: ${req.method} ${req.path} took ${duration}ms`);
+      }
+      
+      // Call original end
+      originalEnd.apply(this, args);
+    };
 
     // Handle errors and ensure cleanup
-    res.on('error', (error) => {
+    res.on('error', async (error) => {
       console.error('Response error:', error);
+      try {
+        await prisma.$disconnect();
+      } catch (cleanupError) {
+        console.error('Error cleanup failed:', cleanupError.message);
+      }
     });
 
     next();
