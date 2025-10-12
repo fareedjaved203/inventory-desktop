@@ -39,12 +39,91 @@ class DataStorageManager {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
+  invalidateRelatedCaches() {
+    // Clear any cached relationship data by dispatching a custom event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dataStorageInvalidate', {
+        detail: { timestamp: Date.now() }
+      }));
+    }
+  }
+
+  async postProcessResults(storeName, results, searchTerm) {
+    const processedResults = [];
+    
+    for (const item of results) {
+      let shouldInclude = true;
+      
+      // Handle contact name search for sales
+      if (item._needsContactCheck && searchTerm) {
+        shouldInclude = false;
+        if (item.contactId) {
+          try {
+            const contactResult = await this.readOffline('contacts', { id: item.contactId });
+            const contact = contactResult.items?.[0];
+            if (contact && contact.name && contact.name.toLowerCase().includes(searchTerm)) {
+              shouldInclude = true;
+              item.contact = contact;
+            }
+          } catch (error) {
+            console.error('Error fetching contact:', error);
+          }
+        }
+        delete item._needsContactCheck;
+        delete item._searchTerm;
+      }
+      
+      if (shouldInclude) {
+        // Populate relationships for sales
+        if (storeName === 'sales') {
+          // Get contact if not already populated
+          if (item.contactId && !item.contact) {
+            try {
+              const contactResult = await this.readOffline('contacts', { id: item.contactId });
+              item.contact = contactResult.items?.[0];
+            } catch (error) {
+              console.error('Error fetching contact:', error);
+            }
+          }
+          
+          // Get sale items and populate products
+          try {
+            const saleItemsResult = await this.readOffline('saleItems', {});
+            const saleItems = saleItemsResult.items.filter(saleItem => saleItem.saleId === item.id);
+            
+            for (const saleItem of saleItems) {
+              if (saleItem.productId && !saleItem.product) {
+                const productResult = await this.readOffline('products', { id: saleItem.productId });
+                saleItem.product = productResult.items?.[0] || { id: saleItem.productId, name: 'Unknown Product' };
+              }
+            }
+            
+            item.items = saleItems;
+          } catch (error) {
+            console.error('Error fetching sale items:', error);
+            item.items = [];
+          }
+        }
+        
+        processedResults.push(item);
+      }
+    }
+    
+    return processedResults;
+  }
+
   // Generic CRUD operations
   async create(storeName, data) {
-    if (this.getOfflineMode()) {
-      return this.createOffline(storeName, data);
+    const result = this.getOfflineMode() 
+      ? await this.createOffline(storeName, data)
+      : await this.createOnline(storeName, data);
+    
+    // Invalidate related caches when products or contacts are created
+    if (storeName === 'products' || storeName === 'contacts') {
+      this.invalidateRelatedCaches();
     }
-    return this.createOnline(storeName, data);
+    
+    return result;
   }
 
   async read(storeName, params = {}) {
@@ -55,17 +134,29 @@ class DataStorageManager {
   }
 
   async update(storeName, id, data) {
-    if (this.getOfflineMode()) {
-      return this.updateOffline(storeName, id, data);
+    const result = this.getOfflineMode() 
+      ? await this.updateOffline(storeName, id, data)
+      : await this.updateOnline(storeName, id, data);
+    
+    // Invalidate related caches when products or contacts are updated
+    if (storeName === 'products' || storeName === 'contacts') {
+      this.invalidateRelatedCaches();
     }
-    return this.updateOnline(storeName, id, data);
+    
+    return result;
   }
 
   async delete(storeName, id) {
-    if (this.getOfflineMode()) {
-      return this.deleteOffline(storeName, id);
+    const result = this.getOfflineMode() 
+      ? await this.deleteOffline(storeName, id)
+      : await this.deleteOnline(storeName, id);
+    
+    // Invalidate related caches when products or contacts are deleted
+    if (storeName === 'products' || storeName === 'contacts') {
+      this.invalidateRelatedCaches();
     }
-    return this.deleteOnline(storeName, id);
+    
+    return result;
   }
 
   // Offline operations
@@ -167,16 +258,33 @@ class DataStorageManager {
             return;
           }
           
+          // Apply date filter for sales
+          if (params.date && storeName === 'sales') {
+            const itemDate = new Date(item.saleDate || item.createdAt);
+            const [day, month, year] = params.date.split('/');
+            const filterDate = new Date(year, month - 1, day);
+            
+            // Check if dates match (same day)
+            if (itemDate.toDateString() !== filterDate.toDateString()) {
+              cursor.continue();
+              return;
+            }
+          }
+          
           // Apply search filter
           if (params.search) {
             const searchLower = params.search.toLowerCase();
-            const matchesSearch = 
+            let matchesSearch = 
               (item.name && item.name.toLowerCase().includes(searchLower)) ||
               (item.description && item.description.toLowerCase().includes(searchLower)) ||
               (item.sku && item.sku.toLowerCase().includes(searchLower)) ||
               (item.billNumber && item.billNumber.toLowerCase().includes(searchLower));
             
-            if (matchesSearch) {
+            // For sales, also search by contact name
+            if (storeName === 'sales' && item.contactId && !matchesSearch) {
+              // We'll need to check contact name - add to results for now and filter later
+              results.push({ ...item, _needsContactCheck: true, _searchTerm: searchLower });
+            } else if (matchesSearch) {
               results.push(item);
             }
           } else {
@@ -185,21 +293,24 @@ class DataStorageManager {
           
           cursor.continue();
         } else {
-          // Apply pagination
-          const page = parseInt(params.page) || 1;
-          const limit = parseInt(params.limit) || 10;
-          const startIndex = (page - 1) * limit;
-          const endIndex = startIndex + limit;
-          
-          const result = {
-            items: results.slice(startIndex, endIndex),
-            total: results.length,
-            page,
-            totalPages: Math.ceil(results.length / limit)
-          };
-          
-          console.log(`ReadOffline ${storeName}:`, result);
-          resolve(result);
+          // Post-process results for contact name search and relationships
+          this.postProcessResults(storeName, results, params.search).then(processedResults => {
+            // Apply pagination
+            const page = parseInt(params.page) || 1;
+            const limit = parseInt(params.limit) || 10;
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit;
+            
+            const result = {
+              items: processedResults.slice(startIndex, endIndex),
+              total: processedResults.length,
+              page,
+              totalPages: Math.ceil(processedResults.length / limit)
+            };
+            
+            console.log(`ReadOffline ${storeName}:`, result);
+            resolve(result);
+          }).catch(reject);
         }
       };
       

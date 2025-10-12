@@ -81,20 +81,8 @@ function Sales() {
       return await API.updateSale(updatedSale.id, updatedSale);
     },
     {
-      onSuccess: (updatedSale) => {
-        // Update the specific sale in cache instead of invalidating entire query
-        queryClient.setQueryData(
-          ['sales', selectedDate, debouncedSearchTerm, showPendingPayments, showCreditBalance, currentPage],
-          (oldData) => {
-            if (!oldData) return oldData;
-            return {
-              ...oldData,
-              items: oldData.items.map(sale => 
-                sale.id === updatedSale.id ? updatedSale : sale
-              )
-            };
-          }
-        );
+      onSuccess: () => {
+        queryClient.invalidateQueries(["sales"]);
         setIsModalOpen(false);
         setSaleItems([]);
         setSelectedProduct(null);
@@ -414,6 +402,18 @@ function Sales() {
       delete window.openReturnModal;
     };
   }, []);
+
+  // Listen for data storage invalidation events
+  useEffect(() => {
+    const handleDataInvalidation = () => {
+      queryClient.invalidateQueries(["sales"]);
+    };
+
+    window.addEventListener('dataStorageInvalidate', handleDataInvalidation);
+    return () => {
+      window.removeEventListener('dataStorageInvalidate', handleDataInvalidation);
+    };
+  }, [queryClient]);
 
   const handleEdit = (sale) => {
     setEditingSale(sale);
