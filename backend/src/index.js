@@ -22,6 +22,7 @@ import { setupSyncRoutes } from './sync-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 import expenseRoutes from './expense-routes.js';
+import backupRoutes from './backup-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
 
@@ -157,6 +158,9 @@ app.use('/api/license', licenseRoutes);
 
 // Expense routes
 app.use('/api/expenses', expenseRoutes);
+
+// Backup routes
+app.use('/api/backup', backupRoutes);
 
 // Get next barcode for user (optimized for performance)
 app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {

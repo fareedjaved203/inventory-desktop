@@ -17,10 +17,7 @@ function Settings() {
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-8">{t('settings')}</h1>
       
       <div className="space-y-6">
-        {/* Priority 1: Data Storage Mode */}
-        <OfflineToggle />
-        
-        {/* Priority 2: License Management */}
+        {/* Priority 1: License Management */}
         <LicenseSettingsForm />
         
         {/* Priority 3: Shop Configuration */}
@@ -30,7 +27,7 @@ function Settings() {
         <UpdateButton />
         
         {/* Priority 4: Data Management */}
-        {/* <DatabaseBackupForm /> */}
+        <DatabaseBackupForm />
         
         {/* Priority 5: Account Settings */}
         <UpdateEmailForm />

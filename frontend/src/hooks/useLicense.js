@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 
 export function useLicense() {
   const [licenseStatus, setLicenseStatus] = useState({
-    valid: true,
+    valid: false, // Start as invalid to check properly
     expiry: null,
-    timeRemaining: -1,
+    timeRemaining: 0,
     loading: true
   });
 
@@ -18,70 +18,94 @@ export function useLicense() {
       setLicenseStatus({
         valid: true,
         expiry: null,
-        timeRemaining: -1,
+        timeRemaining: 999999999, // Lifetime
         loading: false
       });
       return;
     }
     
     if (!token) {
-      setLicenseStatus({
-        valid: true,
-        expiry: null,
-        timeRemaining: -1,
-        loading: false
-      });
-      return;
-    }
-
-    // Skip license check if offline
-    if (!navigator.onLine) {
-      const cachedLicense = localStorage.getItem('lastLicenseStatus');
-      if (cachedLicense) {
-        const parsed = JSON.parse(cachedLicense);
-        setLicenseStatus({ ...parsed, loading: false });
+      // Check offline license storage for non-authenticated users
+      const savedLicense = localStorage.getItem('offlineLicense');
+      if (savedLicense) {
+        const parsed = JSON.parse(savedLicense);
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((parsed.expiry - now) / 1000));
+        setLicenseStatus({
+          valid: remaining > 0,
+          expiry: parsed.expiry,
+          timeRemaining: remaining,
+          loading: false
+        });
+        
+        // If license expired, clear it to force new trial
+        if (remaining <= 0) {
+          localStorage.removeItem('offlineLicense');
+        }
       } else {
+        // New user gets 7-day trial
+        const trialExpiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
+        localStorage.setItem('offlineLicense', JSON.stringify({ expiry: trialExpiry, type: 'trial' }));
         setLicenseStatus({
           valid: true,
-          expiry: null,
-          timeRemaining: -1,
+          expiry: trialExpiry,
+          timeRemaining: 7 * 24 * 60 * 60,
           loading: false
         });
       }
       return;
     }
 
-    // Online license check
+    // Try API call first for authenticated users
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/check`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/status`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await response.json();
       
-      const licenseData = {
-        valid: data.valid,
-        expiry: data.expiry,
-        timeRemaining: data.timeRemaining
-      };
-      
-      // Cache license status for offline use
-      localStorage.setItem('lastLicenseStatus', JSON.stringify(licenseData));
-      
-      setLicenseStatus({ ...licenseData, loading: false });
-    } catch (error) {
-      // If online check fails, use cached license or default to valid
-      const cachedLicense = localStorage.getItem('lastLicenseStatus');
-      if (cachedLicense) {
-        const parsed = JSON.parse(cachedLicense);
-        setLicenseStatus({ ...parsed, loading: false });
-      } else {
-        setLicenseStatus({
-          valid: true,
-          expiry: null,
-          timeRemaining: -1,
-          loading: false
-        });
+      if (response.ok) {
+        const data = await response.json();
+        const licenseData = {
+          valid: data.valid,
+          expiry: data.expiry,
+          timeRemaining: data.timeRemaining
+        };
+        
+        // Store both for caching and offline use
+        localStorage.setItem('lastLicenseStatus', JSON.stringify(licenseData));
+        localStorage.setItem('offlineLicense', JSON.stringify({ 
+          expiry: data.expiry, 
+          type: data.type || 'premium' 
+        }));
+        
+        setLicenseStatus({ ...licenseData, loading: false });
+        return;
       }
+    } catch (error) {
+      console.log('API call failed, using offline license data');
+    }
+    
+    // Fallback to offline license storage
+    const savedLicense = localStorage.getItem('offlineLicense');
+    if (savedLicense) {
+      const parsed = JSON.parse(savedLicense);
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((parsed.expiry - now) / 1000));
+      setLicenseStatus({
+        valid: remaining > 0,
+        expiry: parsed.expiry,
+        timeRemaining: remaining,
+        loading: false
+      });
+    } else {
+      // New user gets 7-day trial
+      const trialExpiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
+      localStorage.setItem('offlineLicense', JSON.stringify({ expiry: trialExpiry, type: 'trial' }));
+      setLicenseStatus({
+        valid: true,
+        expiry: trialExpiry,
+        timeRemaining: 7 * 24 * 60 * 60,
+        loading: false
+      });
     }
   };
 

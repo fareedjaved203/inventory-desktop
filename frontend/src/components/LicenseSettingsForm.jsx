@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useLicense } from '../hooks/useLicense';
 import { useLanguage } from '../contexts/LanguageContext';
-// License validation not available in offline mode
 
 export default function LicenseSettingsForm() {
   const { language } = useLanguage();
@@ -21,18 +20,41 @@ export default function LicenseSettingsForm() {
     setMessage('');
 
     try {
-      // License validation not available in offline mode
-      throw new Error('License validation not available in offline mode');
-
-      if (response.data.success) {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ licenseKey, forceRebind: false })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
         setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');
         setLicenseKey('');
-        refreshLicense();
+        // Clear offline license to force DB fetch
+        localStorage.removeItem('offlineLicense');
+        localStorage.removeItem('lastLicenseStatus');
+        // Refresh license from database
+        setTimeout(() => refreshLicense(), 500);
       } else {
-        setMessage(language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license');
+        setMessage(data.error || (language === 'ur' ? 'غلط لائسنس کی' : 'Invalid license key'));
       }
     } catch (err) {
-      setMessage(err.response?.data?.error || (language === 'ur' ? 'لائسنس اپڈیٹ کرنے میں ناکام' : 'Failed to update license'));
+      console.error('License activation error:', err);
+      setMessage(language === 'ur' ? 'لائسنس ایپی آئی دستیاب نہیں' : 'License API not available');
     } finally {
       setLoading(false);
     }
@@ -74,18 +96,42 @@ export default function LicenseSettingsForm() {
             {valid ? (language === 'ur' ? 'فعال' : 'Active') : (language === 'ur' ? 'ختم ہو گیا' : 'Expired')}
           </span>
         </div>
-        {valid && (
-          <div className="mt-2 text-sm text-gray-600">
-            {language === 'ur' ? 'باقی وقت' : 'Time Remaining'}: {timeRemaining === -1 ? '...' : formatTimeRemaining(timeRemaining)}
-            {/* Show trial indicator */}
-            {timeRemaining <= (3 * 24 * 60 * 60) && timeRemaining > (2 * 24 * 60 * 60) && (
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{language === 'ur' ? 'آزمائشی' : 'Trial'}</span>
-            )}
-          </div>
-        )}
+        <div className="mt-2 text-sm text-gray-600">
+          {language === 'ur' ? 'باقی وقت' : 'Time Remaining'}: {timeRemaining === -1 ? 'Loading...' : formatTimeRemaining(timeRemaining)}
+          {timeRemaining <= (3 * 24 * 60 * 60) && timeRemaining > (2 * 24 * 60 * 60) && (
+            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{language === 'ur' ? 'آزمائشی' : 'Trial'}</span>
+          )}
+        </div>
       </div>
 
-      {/* License input form removed - users should only enter license when expired */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {language === 'ur' ? 'لائسنس کی' : 'License Key'}
+          </label>
+          <input
+            type="text"
+            value={licenseKey}
+            onChange={(e) => setLicenseKey(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={language === 'ur' ? 'لائسنس کی داخل کریں' : 'Enter license key'}
+          />
+        </div>
+        
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? (language === 'ur' ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (language === 'ur' ? 'لائسنس اپڈیٹ کریں' : 'Update License')}
+        </button>
+        
+        {message && (
+          <div className={`p-3 rounded ${message.includes('success') || message.includes('کامیابی') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {message}
+          </div>
+        )}
+      </form>
     </div>
   );
 }
