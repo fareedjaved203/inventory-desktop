@@ -4,9 +4,9 @@ import { initDB, STORES } from './indexedDBSchema.js';
 class DataStorageManager {
   constructor() {
     this.db = null;
-    // Always default to offline mode (IndexedDB)
+    // Default to online mode
     const offlineMode = localStorage.getItem('offlineMode');
-    this.isOfflineMode = offlineMode === null ? true : offlineMode === 'true';
+    this.isOfflineMode = offlineMode === null ? false : offlineMode === 'true';
     this.userId = localStorage.getItem('userId');
     this.initializeDB();
   }
@@ -31,7 +31,7 @@ class DataStorageManager {
   getOfflineMode() {
     // Only check localStorage - no automatic network switching
     const offlineMode = localStorage.getItem('offlineMode');
-    this.isOfflineMode = offlineMode === null ? true : offlineMode === 'true';
+    this.isOfflineMode = offlineMode === null ? false : offlineMode === 'true';
     return this.isOfflineMode;
   }
 
@@ -542,7 +542,10 @@ class DataStorageManager {
       return { barcode: `H${(maxSku + 1).toString().padStart(5, '0')}` };
     }
     
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products/next-barcode`);
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products/next-barcode`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   }
 
@@ -561,7 +564,11 @@ class DataStorageManager {
       };
     }
     
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products/low-stock`, { params });
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/products/low-stock`, { 
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   }
 

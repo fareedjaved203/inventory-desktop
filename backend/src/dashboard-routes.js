@@ -584,7 +584,31 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     const rawMaterialExpensesLast30DaysAmount = calculateRawMaterialExpenses(rawMaterialExpensesLast30Days);
     const rawMaterialExpensesLast365DaysAmount = calculateRawMaterialExpenses(rawMaterialExpensesLast365Days);
 
+    // Get basic inventory stats
+    const [totalProducts, totalInventory, lowStock, totalSales] = await Promise.all([
+      prisma.product.count({ where: { userId: req.userId } }),
+      prisma.product.aggregate({
+        where: { userId: req.userId },
+        _sum: { quantity: true }
+      }),
+      prisma.product.findMany({ where: { userId: req.userId } }).then(products => 
+        products.filter(product => 
+          Number(product.quantity) <= Number(product.lowStockThreshold || 10)
+        ).length
+      ),
+      prisma.sale.aggregate({
+        where: { userId: req.userId },
+        _sum: { totalAmount: true }
+      })
+    ]);
+
     res.json({
+      // Basic inventory stats
+      totalProducts,
+      totalInventory: Number(totalInventory._sum.quantity || 0),
+      lowStock,
+      totalSales: Number(totalSales._sum.totalAmount || 0),
+      // Time-based sales stats
       salesToday: Number(salesToday._sum.totalAmount || 0),
       salesLast7Days: Number(salesLast7Days._sum.totalAmount || 0),
       salesLast30Days: Number(salesLast30Days._sum.totalAmount || 0),
