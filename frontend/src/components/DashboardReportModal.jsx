@@ -27,7 +27,7 @@ function DashboardReportModal({ isOpen, onClose }) {
     return result.items?.[0] || {};
   });
 
-  const { data: reportData, isLoading, error } = useQuery(
+  const { data: reportData, isLoading, error, refetch } = useQuery(
     ['dashboard-report', startDate, endDate, isOpen],
     async () => {
       console.log('Making API calls with dates:', { startDate, endDate });
@@ -50,16 +50,31 @@ function DashboardReportModal({ isOpen, onClose }) {
         });
       };
 
-      const filteredSales = filterByDateRange(salesRes.data.items || [], 'saleDate');
-      const filteredPurchases = filterByDateRange(purchasesRes.data.items || [], 'purchaseDate');
-      const filteredExpenses = filterByDateRange(expensesRes.data.items || [], 'date');
+      const filteredSales = filterByDateRange(salesRes?.items || salesRes?.data?.items || [], 'saleDate');
+      const filteredPurchases = filterByDateRange(purchasesRes?.items || purchasesRes?.data?.items || [], 'purchaseDate');
+      const filteredExpenses = filterByDateRange(expensesRes?.items || expensesRes?.data?.items || [], 'date');
       
       // Only use manual expenses - raw materials are already in purchases
       const allExpenses = filteredExpenses;
 
+      // Calculate totals from actual data
+      const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
+      const totalPurchases = filteredPurchases.reduce((sum, purchase) => sum + (purchase.totalAmount || 0), 0);
+      const totalExpenses = allExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+      const totalTransactions = filteredSales.length;
+      const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+      const totalSalesDueAmount = filteredSales.reduce((sum, sale) => sum + (sale.dueAmount || 0), 0);
+
       return {
         dashboardData: dashboardRes.data,
-        salesStats: statsRes.data,
+        salesStats: {
+          totalSales,
+          totalPurchases,
+          totalExpenses,
+          totalTransactions,
+          averageSaleValue,
+          totalSalesDueAmount
+        },
         salesData: filteredSales,
         purchaseData: filteredPurchases,
         expenseData: allExpenses
@@ -68,7 +83,9 @@ function DashboardReportModal({ isOpen, onClose }) {
     {
       enabled: Boolean(isOpen && startDate && endDate),
       staleTime: 0,
-      refetchOnWindowFocus: false
+      cacheTime: 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true
     }
   );
 
@@ -110,7 +127,10 @@ function DashboardReportModal({ isOpen, onClose }) {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setTimeout(() => refetch(), 100);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -119,7 +139,10 @@ function DashboardReportModal({ isOpen, onClose }) {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setTimeout(() => refetch(), 100);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

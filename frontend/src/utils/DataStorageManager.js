@@ -444,9 +444,11 @@ class DataStorageManager {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      // Ensure response has proper structure
+      const data = response.data || {};
+      
       // Ensure consistent data structure for branches and employees
       if (storeName === 'branches' || storeName === 'employees') {
-        const data = response.data;
         // If backend returns items directly, wrap in expected structure
         if (Array.isArray(data)) {
           return {
@@ -460,7 +462,17 @@ class DataStorageManager {
         return data;
       }
       
-      return response.data;
+      // Ensure all responses have items array
+      if (!data.items && Array.isArray(data)) {
+        return {
+          items: data,
+          total: data.length,
+          page: parseInt(params.page) || 1,
+          totalPages: Math.ceil(data.length / (parseInt(params.limit) || 10))
+        };
+      }
+      
+      return data;
     } catch (error) {
       if (error.response?.status === 401) {
         localStorage.removeItem('authToken');
