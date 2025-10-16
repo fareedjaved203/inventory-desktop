@@ -56,7 +56,12 @@ function ShopSettingsForm() {
 
   const saveSettings = useMutation(
     async (data) => {
-      return await API.createShopSettings(data);
+      // If settings exist, update them; otherwise create new
+      if (settings && settings.id) {
+        return await API.updateShopSettings(settings.id, data);
+      } else {
+        return await API.createShopSettings(data);
+      }
     },
     {
       onSuccess: () => {

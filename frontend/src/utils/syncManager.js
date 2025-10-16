@@ -1,3 +1,6 @@
+import DataStorageManager from './DataStorageManager';
+import { STORES } from './indexedDBSchema';
+
 class SyncManager {
   constructor() {
     this.userId = localStorage.getItem('userId');

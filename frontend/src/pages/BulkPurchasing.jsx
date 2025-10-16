@@ -540,6 +540,7 @@ function BulkPurchasing() {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('invoiceNumber')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('date')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('contact')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Items</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('totalAmount')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('paidAmount')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
@@ -548,7 +549,7 @@ function BulkPurchasing() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && (debouncedSearchTerm || showPendingPayments) ? (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center">
+                <td colSpan="7" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -566,6 +567,21 @@ function BulkPurchasing() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                   {purchase.contact.name}
+                </td>
+                <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
+                  <div className="space-y-1">
+                    {purchase.items && purchase.items.length > 0 ? (
+                      purchase.items.map((item, index) => (
+                        <div key={index} className="text-sm flex items-center gap-2 flex-wrap">
+                          <span className="whitespace-nowrap">
+                            {item.product?.name || "Unknown Product"} x {item.quantity}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-400 text-sm">No items</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
                   {formatPakistaniCurrency(purchase.totalAmount)}

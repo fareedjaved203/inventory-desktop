@@ -50,24 +50,27 @@ class API {
   async getSales(params = {}) {
     const salesResult = await DataStorageManager.read(STORES.sales, params);
     
-    // Populate relationships for offline mode
+    // For offline mode, items are already included from sync - don't overwrite them
     if (DataStorageManager.getOfflineMode() && salesResult.items) {
       for (const sale of salesResult.items) {
-        // Get sale items
-        const saleItemsResult = await DataStorageManager.readOffline(STORES.saleItems, {});
-        const saleItems = saleItemsResult.items.filter(item => item.saleId === sale.id);
-        
-        // Populate product details for each item
-        for (const item of saleItems) {
-          if (item.productId && !item.product) {
-            const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
-            item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+        // Only populate items if they don't already exist (backward compatibility)
+        if (!sale.items || sale.items.length === 0) {
+          // Get sale items from separate store (fallback for old data)
+          const saleItemsResult = await DataStorageManager.readOffline(STORES.saleItems, {});
+          const saleItems = saleItemsResult.items.filter(item => item.saleId === sale.id);
+          
+          // Populate product details for each item
+          for (const item of saleItems) {
+            if (item.productId && !item.product) {
+              const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+              item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+            }
           }
+          
+          sale.items = saleItems;
         }
         
-        sale.items = saleItems;
-        
-        // Get contact details
+        // Get contact details if not already populated
         if (sale.contactId && !sale.contact) {
           const contactResult = await DataStorageManager.read(STORES.contacts, { id: sale.contactId });
           sale.contact = contactResult.items?.[0] || contactResult;
@@ -84,6 +87,9 @@ class API {
           sale.saleDate = sale.createdAt || new Date().toISOString();
         }
       }
+      
+      // Sort by sale date (latest first) in offline mode
+      salesResult.items.sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt));
     }
     
     return salesResult;
@@ -200,28 +206,31 @@ class API {
   async getBulkPurchases(params = {}) {
     const purchasesResult = await DataStorageManager.read(STORES.bulkPurchases, params);
     
-    // Populate relationships for offline mode
+    // For offline mode, items are already included from sync - don't overwrite them
     if (DataStorageManager.getOfflineMode() && purchasesResult.items) {
       for (const purchase of purchasesResult.items) {
-        // Get contact details
+        // Get contact details if not already populated
         if (purchase.contactId && !purchase.contact) {
           const contactResult = await DataStorageManager.read(STORES.contacts, { id: purchase.contactId });
           purchase.contact = contactResult.items?.[0] || contactResult || { id: purchase.contactId, name: 'Unknown Contact' };
         }
         
-        // Get purchase items
-        const purchaseItemsResult = await DataStorageManager.readOffline(STORES.bulkPurchaseItems, {});
-        const purchaseItems = purchaseItemsResult.items.filter(item => item.bulkPurchaseId === purchase.id);
-        
-        // Populate product details for each item
-        for (const item of purchaseItems) {
-          if (item.productId && !item.product) {
-            const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
-            item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+        // Only populate items if they don't already exist (backward compatibility)
+        if (!purchase.items || purchase.items.length === 0) {
+          // Get purchase items from separate store (fallback for old data)
+          const purchaseItemsResult = await DataStorageManager.readOffline(STORES.bulkPurchaseItems, {});
+          const purchaseItems = purchaseItemsResult.items.filter(item => item.bulkPurchaseId === purchase.id);
+          
+          // Populate product details for each item
+          for (const item of purchaseItems) {
+            if (item.productId && !item.product) {
+              const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+              item.product = productResult.items?.[0] || productResult || { id: item.productId, name: 'Unknown Product' };
+            }
           }
+          
+          purchase.items = purchaseItems;
         }
-        
-        purchase.items = purchaseItems;
         
         // Ensure invoice number exists (should be set during creation)
         if (!purchase.invoiceNumber) {
@@ -231,6 +240,9 @@ class API {
           await DataStorageManager.update(STORES.bulkPurchases, purchase.id, { invoiceNumber: purchase.invoiceNumber });
         }
       }
+      
+      // Sort by purchase date (latest first) in offline mode
+      purchasesResult.items.sort((a, b) => new Date(b.purchaseDate || b.createdAt) - new Date(a.purchaseDate || a.createdAt));
     }
     
     return purchasesResult;

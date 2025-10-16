@@ -80,7 +80,6 @@ export function setupSalesRoutes(app, prisma) {
           }
 
           const saleDate = req.body.saleDate ? createPakistanDate(req.body.saleDate) : getCurrentPakistanTime();
-          console.log("to create sale: ",req.body)
           // Get product details including purchase prices
           const productDetails = await Promise.all(
             req.body.items.map(item => 
@@ -108,9 +107,7 @@ export function setupSalesRoutes(app, prisma) {
                   price: item.price,
                   priceType: item.priceType || "retail",
                   purchasePrice: productDetails[index]?.purchasePrice || 0,
-                  product: {
-                    connect: { id: item.productId }
-                  }
+                  productId: item.productId
                 }))
               }
             },
@@ -520,6 +517,8 @@ export function setupSalesRoutes(app, prisma) {
       
       // Add returned quantities to each sale
       const items = salesData.map(sale => {
+        console.log('Sale items for sale', sale.id, ':', sale.items?.length || 0);
+        
         const returnedQuantities = {};
         if (sale.returns && Array.isArray(sale.returns)) {
           sale.returns.forEach(returnRecord => {
@@ -540,6 +539,8 @@ export function setupSalesRoutes(app, prisma) {
           ...sale,
           items: sale.items?.map(item => ({
             ...item,
+            id: item.id?.toString(),
+            productId: item.productId?.toString(),
             returnedQuantity: returnedQuantities[item.productId] || 0,
             remainingQuantity: Number(item.quantity) - (returnedQuantities[item.productId] || 0)
           })) || []

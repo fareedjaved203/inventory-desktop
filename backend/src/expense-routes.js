@@ -1,10 +1,12 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from './middleware.js';
 import { z } from 'zod';
 
-const router = express.Router();
-const prisma = new PrismaClient();
+let prisma;
+
+function createExpenseRoutes(prismaInstance) {
+  prisma = prismaInstance;
+  const router = express.Router();
 
 const expenseSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
@@ -179,4 +181,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-export default router;
+  return router;
+}
+
+export default createExpenseRoutes;

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const DEMO_EMAIL = 'autos@gmail.com';
+const DEMO_EMAIL = 'demo@gmail.com';
 
 // Helper function to generate random dates
 const randomDate = (start, end) => {
@@ -54,21 +54,62 @@ async function seedDemoData() {
       }
     });
 
-    // Clear existing data for demo user
-    console.log('Clearing existing demo data...');
-    await prisma.saleItem.deleteMany({ where: { sale: { userId: demoUser.id } } });
-    await prisma.sale.deleteMany({ where: { userId: demoUser.id } });
-    await prisma.bulkPurchaseItem.deleteMany({ where: { bulkPurchase: { userId: demoUser.id } } });
-    await prisma.bulkPurchase.deleteMany({ where: { userId: demoUser.id } });
-    await prisma.saleReturnItem.deleteMany({ where: { saleReturn: { userId: demoUser.id } } });
+    // Clear ALL existing data for demo user (complete wipe except User and License)
+    console.log('Wiping all demo user data...');
+    
+    // Delete all employees with demo emails globally to avoid conflicts
+    await prisma.employee.deleteMany({ 
+      where: { 
+        email: { 
+          contains: '@autos.com' 
+        } 
+      } 
+    });
+    
+    // Get all sales for this user first
+    const userSales = await prisma.sale.findMany({
+      where: { userId: demoUser.id },
+      select: { id: true }
+    });
+    const saleIds = userSales.map(sale => sale.id);
+    
+    // Get all bulk purchases for this user
+    const userBulkPurchases = await prisma.bulkPurchase.findMany({
+      where: { userId: demoUser.id },
+      select: { id: true }
+    });
+    const bulkPurchaseIds = userBulkPurchases.map(bp => bp.id);
+    
+    // Get all sale returns for this user
+    const userSaleReturns = await prisma.saleReturn.findMany({
+      where: { userId: demoUser.id },
+      select: { id: true }
+    });
+    const saleReturnIds = userSaleReturns.map(sr => sr.id);
+    
+    // Delete in correct order to handle foreign key constraints
+    if (saleReturnIds.length > 0) {
+      await prisma.saleReturnItem.deleteMany({ where: { saleReturnId: { in: saleReturnIds } } });
+    }
     await prisma.saleReturn.deleteMany({ where: { userId: demoUser.id } });
+    
+    if (saleIds.length > 0) {
+      await prisma.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+    }
+    await prisma.sale.deleteMany({ where: { userId: demoUser.id } });
+    
+    if (bulkPurchaseIds.length > 0) {
+      await prisma.bulkPurchaseItem.deleteMany({ where: { bulkPurchaseId: { in: bulkPurchaseIds } } });
+    }
+    await prisma.bulkPurchase.deleteMany({ where: { userId: demoUser.id } });
     await prisma.loanTransaction.deleteMany({ where: { userId: demoUser.id } });
     await prisma.expense.deleteMany({ where: { userId: demoUser.id } });
-    await prisma.employee.deleteMany({ where: { userId: demoUser.id } });
     await prisma.branch.deleteMany({ where: { userId: demoUser.id } });
     await prisma.contact.deleteMany({ where: { userId: demoUser.id } });
     await prisma.product.deleteMany({ where: { userId: demoUser.id } });
     await prisma.shopSettings.deleteMany({ where: { userId: demoUser.id } });
+    
+    console.log('All demo user data cleared successfully.');
 
     // 1. Create Branches (5 branches)
     console.log('Creating branches...');
@@ -101,7 +142,7 @@ async function seedDemoData() {
           firstName,
           lastName,
           phone: `+92300${String(1000000 + i).substring(1)}`,
-          email: `employee${i + 1}@autos.com`,
+          email: `employee${i + 1}.${demoUser.id.substring(0, 8)}@autos.com`,
           password: '$2a$10$hashedpassword', // placeholder hash
           permissions: JSON.stringify(['pos', 'inventory']),
           branchId: branches[i % branches.length].id,

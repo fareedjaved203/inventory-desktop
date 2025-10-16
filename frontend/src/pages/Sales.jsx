@@ -755,6 +755,13 @@ function Sales() {
                 >
                   <div className="space-y-1">
                     {(() => {
+                      // Debug logging
+                      console.log('Sale items in component:', sale.items);
+                      if (sale.items && sale.items.length > 0) {
+                        console.log('First item in component:', sale.items[0]);
+                        console.log('Product name in component:', sale.items[0].product?.name);
+                      }
+                      
                       // Calculate total returned quantity per product from returns data
                       const returnedQuantities = {};
                       if (Array.isArray(sale.returns)) {
@@ -775,9 +782,12 @@ function Sales() {
                       }
 
                       // Consolidate items by product ID for display
+                      console.log('Sale ================',sale);
                       const consolidatedItems = {};
                       if (Array.isArray(sale.items)) {
+                        console.log('Processing sale items:', sale.items.length);
                         sale.items.forEach((item) => {
+                          console.log('Processing item:', item, 'Product:', item.product);
                           if (consolidatedItems[item.product?.id]) {
                             consolidatedItems[item.product.id].quantity +=
                               item.quantity;
@@ -791,6 +801,7 @@ function Sales() {
                           }
                         });
                       }
+                      console.log('Consolidated items:', consolidatedItems);
 
                       return Object.values(consolidatedItems).map(
                         (item, index) => (

@@ -21,7 +21,7 @@ import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { setupSyncRoutes } from './sync-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
-import expenseRoutes from './expense-routes.js';
+import createExpenseRoutes from './expense-routes.js';
 import backupRoutes from './backup-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
@@ -120,13 +120,6 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Add connection management middleware
 app.use(requestTimeout(30000)); // 30 second timeout
-app.use((req, res, next) => {
-  if (prisma) {
-    connectionCleanup(prisma)(req, res, next);
-  } else {
-    next();
-  }
-});
 
 // Serve static files only in development or Electron mode
 if (process.env.NODE_ENV !== 'production') {
@@ -157,7 +150,7 @@ setupSyncRoutes(app, prisma);
 app.use('/api/license', licenseRoutes);
 
 // Expense routes
-app.use('/api/expenses', expenseRoutes);
+app.use('/api/expenses', createExpenseRoutes(prisma));
 
 // Backup routes
 app.use('/api/backup', backupRoutes);

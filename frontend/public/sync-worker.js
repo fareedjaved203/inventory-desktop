@@ -137,13 +137,29 @@ function openDB() {
 
 async function getStoreData(db, storeName, userId) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([storeName], 'readonly');
-    const store = transaction.objectStore(storeName);
-    const index = store.index('userId');
-    const request = index.getAll(userId);
-    
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    try {
+      const transaction = db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      
+      // Check if userId index exists
+      if (store.indexNames.contains('userId')) {
+        const index = store.index('userId');
+        const request = index.getAll(userId);
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      } else {
+        // Fallback: get all records and filter by userId
+        const request = store.getAll();
+        request.onsuccess = () => {
+          const allRecords = request.result || [];
+          const userRecords = allRecords.filter(record => record.userId === userId);
+          resolve(userRecords);
+        };
+        request.onerror = () => reject(request.error);
+      }
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -151,32 +167,75 @@ async function clearUserData(db, userId) {
   const stores = ['products', 'contacts', 'sales', 'saleItems', 'bulkPurchases', 'bulkPurchaseItems', 'branches', 'employees', 'expenses', 'saleReturns', 'saleReturnItems', 'loanTransactions', 'shopSettings'];
   
   for (const storeName of stores) {
-    const transaction = db.transaction([storeName], 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const index = store.index('userId');
-    const request = index.openCursor(userId);
-    
-    await new Promise((resolve, reject) => {
-      request.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        } else {
-          resolve();
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
+    try {
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      
+      if (store.indexNames.contains('userId')) {
+        const index = store.index('userId');
+        const request = index.openCursor(userId);
+        
+        await new Promise((resolve, reject) => {
+          request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+              cursor.delete();
+              cursor.continue();
+            } else {
+              resolve();
+            }
+          };
+          request.onerror = () => reject(request.error);
+        });
+      } else {
+        // Fallback: get all records and delete user records
+        const getAllRequest = store.getAll();
+        await new Promise((resolve, reject) => {
+          getAllRequest.onsuccess = () => {
+            const allRecords = getAllRequest.result || [];
+            const userRecords = allRecords.filter(record => record.userId === userId);
+            
+            let deletedCount = 0;
+            if (userRecords.length === 0) {
+              resolve();
+              return;
+            }
+            
+            for (const record of userRecords) {
+              const deleteRequest = store.delete(record.id);
+              deleteRequest.onsuccess = () => {
+                deletedCount++;
+                if (deletedCount === userRecords.length) resolve();
+              };
+              deleteRequest.onerror = () => reject(deleteRequest.error);
+            }
+          };
+          getAllRequest.onerror = () => reject(getAllRequest.error);
+        });
+      }
+    } catch (error) {
+      console.error(`Error clearing store ${storeName}:`, error);
+    }
   }
 }
 
 async function storeData(db, storeName, items) {
+  if (!items || items.length === 0) return;
+  
   const transaction = db.transaction([storeName], 'readwrite');
   const store = transaction.objectStore(storeName);
   
   for (const item of items) {
-    store.add(item);
+    try {
+      store.add({
+        ...item,
+        userId: item.userId || 'offline-user',
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`Error adding item to ${storeName}:`, error);
+    }
   }
   
   return new Promise((resolve, reject) => {

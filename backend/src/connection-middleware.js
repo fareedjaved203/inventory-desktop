@@ -1,43 +1,22 @@
 // Middleware to handle database connection cleanup
 
 export function connectionCleanup(prisma) {
-  return async (req, res, next) => {
+  return (req, res, next) => {
     const startTime = Date.now();
     
     // Store original end function
     const originalEnd = res.end;
     
-    // Override end function to ensure cleanup
+    // Override end function for monitoring only
     res.end = function(...args) {
-      // Force connection cleanup
-      setImmediate(async () => {
-        try {
-          // Disconnect any hanging connections
-          await prisma.$disconnect();
-          await prisma.$connect();
-        } catch (error) {
-          console.error('Connection cleanup error:', error.message);
-        }
-      });
-      
       const duration = Date.now() - startTime;
-      if (duration > 5000) {
+      if (duration > 10000) {
         console.warn(`Slow query: ${req.method} ${req.path} took ${duration}ms`);
       }
       
       // Call original end
       originalEnd.apply(this, args);
     };
-
-    // Handle errors and ensure cleanup
-    res.on('error', async (error) => {
-      console.error('Response error:', error);
-      try {
-        await prisma.$disconnect();
-      } catch (cleanupError) {
-        console.error('Error cleanup failed:', cleanupError.message);
-      }
-    });
 
     next();
   };

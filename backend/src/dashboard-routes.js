@@ -119,27 +119,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     const yearAgo = new Date(todayPakistan.getTime() - 365 * 24 * 60 * 60 * 1000);
     const tomorrowStart = new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000);
 
-    const [
-      salesToday,
-      salesLast7Days,
-      salesLast30Days,
-      salesLast365Days,
-      totalPurchaseDueAmount,
-      totalSalesDueAmount,
-      totalDueCredits,
-      profitToday,
-      profitLast7Days,
-      profitLast30Days,
-      profitLast365Days,
-      expensesToday,
-      expensesLast7Days,
-      expensesLast30Days,
-      expensesLast365Days,
-      rawMaterialExpensesToday,
-      rawMaterialExpensesLast7Days,
-      rawMaterialExpensesLast30Days,
-      rawMaterialExpensesLast365Days
-    ] = await safeQuery(prisma, async (prisma) => Promise.all([
+    // Execute queries in smaller batches to avoid connection pool exhaustion
+    const [salesToday, salesLast7Days, salesLast30Days, salesLast365Days] = await Promise.all([
       // Sales Today
       prisma.sale.aggregate({
         _sum: { totalAmount: true },
@@ -186,8 +167,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             lt: tomorrowStart
           }
         }
-      }),
-      
+      })
+    ]);
+
+    const [totalPurchaseDueAmount, totalSalesDueAmount, totalDueCredits] = await Promise.all([
       // Total Due Amount (Bulk Purchases) - Get all and filter in JS
       prisma.bulkPurchase.findMany({
         where: { userId: req.userId },
@@ -211,8 +194,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         include: {
           returns: true
         }
-      }).catch(() => []),
-      
+      }).catch(() => [])
+    ]);
+
+    const [profitToday, profitLast7Days, profitLast30Days, profitLast365Days] = await Promise.all([
       // Profit Today
       prisma.sale.findMany({
         where: {
@@ -267,8 +252,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         include: {
           items: true
         }
-      }),
-      
+      })
+    ]);
+
+    const [expensesToday, expensesLast7Days, expensesLast30Days, expensesLast365Days] = await Promise.all([
       // Expenses Today - Fixed to use 'date' field instead of 'createdAt'
       prisma.expense.aggregate({
         _sum: { amount: true },
@@ -315,8 +302,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             lt: tomorrowStart
           }
         }
-      }),
-      
+      })
+    ]);
+
+    const [rawMaterialExpensesToday, rawMaterialExpensesLast7Days, rawMaterialExpensesLast30Days, rawMaterialExpensesLast365Days] = await Promise.all([
       // Raw Material Expenses Today (from bulk purchases)
       prisma.bulkPurchase.findMany({
         where: {
@@ -396,7 +385,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           }
         }
       })
-    ]));
+    ]);
 
     // Calculate profit for each period using stored purchase prices
     const calculateProfit = (sales) => {

@@ -49,6 +49,21 @@ class DataStorageManager {
   }
 
   async postProcessResults(storeName, results, searchTerm) {
+    console.log(`PostProcessResults called for ${storeName}, results count:`, results.length);
+    
+    // For stores that don't need processing, return results as-is
+    if (storeName !== 'sales' && storeName !== 'bulkPurchases') {
+      return results;
+    }
+    
+    if (storeName === 'sales' && results.length > 0) {
+      console.log('First sale before processing:', results[0]);
+      console.log('First sale items before processing:', results[0].items?.length || 0);
+      if (results[0].items && results[0].items.length > 0) {
+        console.log('First sale item structure:', results[0].items[0]);
+      }
+    }
+    
     const processedResults = [];
     
     for (const item of results) {
@@ -86,22 +101,43 @@ class DataStorageManager {
             }
           }
           
-          // Get sale items and populate products
-          try {
-            const saleItemsResult = await this.readOffline('saleItems', {});
-            const saleItems = saleItemsResult.items.filter(saleItem => saleItem.saleId === item.id);
-            
-            for (const saleItem of saleItems) {
+          // Items are already included in the downloaded data, no need to fetch separately
+          // Just ensure products are populated if missing
+          if (item.items && Array.isArray(item.items)) {
+            for (const saleItem of item.items) {
               if (saleItem.productId && !saleItem.product) {
-                const productResult = await this.readOffline('products', { id: saleItem.productId });
-                saleItem.product = productResult.items?.[0] || { id: saleItem.productId, name: 'Unknown Product' };
+                try {
+                  const productResult = await this.readOffline('products', { id: saleItem.productId });
+                  saleItem.product = productResult.items?.[0] || { id: saleItem.productId, name: 'Unknown Product' };
+                } catch (error) {
+                  console.error('Error fetching product for sale item:', error);
+                  saleItem.product = { id: saleItem.productId, name: 'Unknown Product' };
+                }
               }
             }
-            
-            item.items = saleItems;
-          } catch (error) {
-            console.error('Error fetching sale items:', error);
-            item.items = [];
+          } else {
+            // Fallback: if items not included, try to fetch from separate store (for backward compatibility)
+            try {
+              const saleItemsResult = await this.readOffline('saleItems', { limit: 10000 });
+              const saleItems = saleItemsResult.items.filter(saleItem => saleItem.saleId === item.id);
+              
+              for (const saleItem of saleItems) {
+                if (saleItem.productId && !saleItem.product) {
+                  try {
+                    const productResult = await this.readOffline('products', { id: saleItem.productId });
+                    saleItem.product = productResult.items?.[0] || { id: saleItem.productId, name: 'Unknown Product' };
+                  } catch (error) {
+                    console.error('Error fetching product for sale item:', error);
+                    saleItem.product = { id: saleItem.productId, name: 'Unknown Product' };
+                  }
+                }
+              }
+              
+              item.items = saleItems;
+            } catch (error) {
+              console.error('Error fetching sale items:', error);
+              item.items = [];
+            }
           }
         }
         
@@ -117,26 +153,56 @@ class DataStorageManager {
             }
           }
           
-          // Get purchase items and populate products
-          try {
-            const purchaseItemsResult = await this.readOffline('bulkPurchaseItems', {});
-            const purchaseItems = purchaseItemsResult.items.filter(purchaseItem => purchaseItem.bulkPurchaseId === item.id);
-            
-            for (const purchaseItem of purchaseItems) {
+          // Items are already included in the downloaded data, no need to fetch separately
+          // Just ensure products are populated if missing
+          if (item.items && Array.isArray(item.items)) {
+            for (const purchaseItem of item.items) {
               if (purchaseItem.productId && !purchaseItem.product) {
-                const productResult = await this.readOffline('products', { id: purchaseItem.productId });
-                purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+                try {
+                  const productResult = await this.readOffline('products', { id: purchaseItem.productId });
+                  purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+                } catch (error) {
+                  console.error('Error fetching product for purchase item:', error);
+                  purchaseItem.product = { id: purchaseItem.productId, name: 'Unknown Product' };
+                }
               }
             }
-            
-            item.items = purchaseItems;
-          } catch (error) {
-            console.error('Error fetching purchase items:', error);
-            item.items = [];
+          } else {
+            // Fallback: if items not included, try to fetch from separate store (for backward compatibility)
+            try {
+              const purchaseItemsResult = await this.readOffline('bulkPurchaseItems', { limit: 10000 });
+              const purchaseItems = purchaseItemsResult.items.filter(purchaseItem => purchaseItem.bulkPurchaseId === item.id);
+              
+              for (const purchaseItem of purchaseItems) {
+                if (purchaseItem.productId && !purchaseItem.product) {
+                  try {
+                    const productResult = await this.readOffline('products', { id: purchaseItem.productId });
+                    purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+                  } catch (error) {
+                    console.error('Error fetching product for purchase item:', error);
+                    purchaseItem.product = { id: purchaseItem.productId, name: 'Unknown Product' };
+                  }
+                }
+              }
+              
+              item.items = purchaseItems;
+            } catch (error) {
+              console.error('Error fetching purchase items:', error);
+              item.items = [];
+            }
           }
         }
         
         processedResults.push(item);
+      }
+    }
+    
+    if (storeName === 'sales' && processedResults.length > 0) {
+      console.log('First sale after processing:', processedResults[0]);
+      console.log('First sale items after processing:', processedResults[0].items?.length || 0);
+      if (processedResults[0].items && processedResults[0].items.length > 0) {
+        console.log('First processed item:', processedResults[0].items[0]);
+        console.log('Product name after processing:', processedResults[0].items[0].product?.name);
       }
     }
     
@@ -350,6 +416,18 @@ class DataStorageManager {
             };
             
             console.log(`ReadOffline ${storeName}:`, result);
+            if (storeName === 'sales' && result.items && result.items.length > 0) {
+              console.log('=== FRONTEND SALES DATA ===');
+              result.items.forEach((sale, index) => {
+                console.log(`Frontend Sale ${index + 1}: ID=${sale.id}, Items=${sale.items?.length || 0}`);
+                if (sale.items && sale.items.length > 0) {
+                  console.log(`  First item structure:`, sale.items[0]);
+                  console.log(`  Product name:`, sale.items[0].product?.name);
+                } else {
+                  console.log(`  NO ITEMS IN FRONTEND SALE`);
+                }
+              });
+            }
             resolve(result);
           }).catch(reject);
         }
@@ -447,8 +525,8 @@ class DataStorageManager {
       // Ensure response has proper structure
       const data = response.data || {};
       
-      // Ensure consistent data structure for branches and employees
-      if (storeName === 'branches' || storeName === 'employees') {
+      // Ensure consistent data structure for branches, employees, and shopSettings
+      if (storeName === 'branches' || storeName === 'employees' || storeName === 'shopSettings') {
         // If backend returns items directly, wrap in expected structure
         if (Array.isArray(data)) {
           return {
@@ -456,6 +534,15 @@ class DataStorageManager {
             total: data.length,
             page: parseInt(params.page) || 1,
             totalPages: Math.ceil(data.length / (parseInt(params.limit) || 10))
+          };
+        }
+        // If backend returns a single object (like shop settings), wrap it in items array
+        if (storeName === 'shopSettings' && data && !data.items && typeof data === 'object') {
+          return {
+            items: [data],
+            total: 1,
+            page: 1,
+            totalPages: 1
           };
         }
         // If backend already returns proper structure, use as is
@@ -563,16 +650,33 @@ class DataStorageManager {
 
   async getLowStockProducts(params = {}) {
     if (this.getOfflineMode()) {
-      const products = await this.readOffline(STORES.products, params);
-      const lowStockItems = products.items.filter(product => 
+      // Get all products first without pagination
+      const allProducts = await this.readOffline(STORES.products, { limit: 10000 });
+      let lowStockItems = allProducts.items.filter(product => 
         Number(product.quantity) <= Number(product.lowStockThreshold || 10)
       );
       
+      // Apply search filter if provided
+      if (params.search) {
+        const searchLower = params.search.toLowerCase();
+        lowStockItems = lowStockItems.filter(product =>
+          (product.name && product.name.toLowerCase().includes(searchLower)) ||
+          (product.description && product.description.toLowerCase().includes(searchLower)) ||
+          (product.sku && product.sku.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Apply pagination
+      const page = parseInt(params.page) || 1;
+      const limit = parseInt(params.limit) || 10;
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      
       return {
-        items: lowStockItems,
+        items: lowStockItems.slice(startIndex, endIndex),
         total: lowStockItems.length,
-        page: params.page || 1,
-        totalPages: Math.ceil(lowStockItems.length / (params.limit || 10))
+        page: page,
+        totalPages: Math.ceil(lowStockItems.length / limit)
       };
     }
     
@@ -618,10 +722,12 @@ class DataStorageManager {
       const expensesLast365Days = expensesData.filter(e => new Date(e.date || e.createdAt) >= last365Days)
         .reduce((sum, e) => sum + Number(e.amount || 0), 0);
       
+      const lowStockCount = products.items.filter(p => Number(p.quantity || 0) <= Number(p.lowStockThreshold || 10)).length;
+      
       return {
         totalProducts: products.items.length,
         totalInventory: products.items.reduce((sum, p) => sum + Number(p.quantity || 0), 0),
-        lowStock: products.items.filter(p => Number(p.quantity || 0) <= Number(p.lowStockThreshold || 10)).length,
+        lowStock: lowStockCount,
         totalSales: salesData.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0),
         salesToday,
         salesLast7Days,
