@@ -110,6 +110,16 @@ function Products() {
     }
   }, [products]);
 
+  // Listen for sync events to refresh data
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      queryClient.invalidateQueries(['products']);
+    };
+
+    window.addEventListener('productsSyncComplete', handleSyncComplete);
+    return () => window.removeEventListener('productsSyncComplete', handleSyncComplete);
+  }, [queryClient]);
+
   const updateProduct = useMutation(
     async (updatedProduct) => {
       console.log("payload of product:", updatedProduct)

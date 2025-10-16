@@ -108,7 +108,7 @@ function Returns() {
                   {returnItem.returnNumber}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
-                  #{returnItem.sale.billNumber}
+                  #{returnItem.sale?.billNumber || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                   {new Date(returnItem.returnDate).toLocaleDateString('en-GB')}

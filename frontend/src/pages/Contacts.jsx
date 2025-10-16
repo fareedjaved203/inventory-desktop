@@ -13,6 +13,7 @@ import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import { PDFDownloadLink } from '@react-pdf/renderer';
+import DataStorageManager from '../utils/DataStorageManager';
 
 function Contacts() {
   const queryClient = useQueryClient();
@@ -77,6 +78,16 @@ function Contacts() {
       searchInputRef.current.focus();
     }
   }, [contactsData]);
+
+  // Listen for sync events to refresh data
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      queryClient.invalidateQueries(['contacts']);
+    };
+
+    window.addEventListener('contactsSyncComplete', handleSyncComplete);
+    return () => window.removeEventListener('contactsSyncComplete', handleSyncComplete);
+  }, [queryClient]);
 
   // Create contact mutation
   const createContact = useMutation(

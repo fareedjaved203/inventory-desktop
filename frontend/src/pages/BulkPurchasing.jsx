@@ -155,6 +155,16 @@ function BulkPurchasing() {
     }
   }, [purchases]);
 
+  // Listen for sync events to refresh data
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      queryClient.invalidateQueries(['bulk-purchases']);
+    };
+
+    window.addEventListener('bulkPurchasesSyncComplete', handleSyncComplete);
+    return () => window.removeEventListener('bulkPurchasesSyncComplete', handleSyncComplete);
+  }, [queryClient]);
+
   const calculateSubtotal = () => {
     return purchaseItems.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
   };
@@ -429,11 +439,11 @@ function BulkPurchasing() {
     isContactSelected(true);
     
     setPurchaseItems(purchase.items.map(item => ({
-      productId: item.product.id,
-      productName: item.product.name,
-      quantity: item.quantity,
-      purchasePrice: item.purchasePrice,
-      subtotal: item.purchasePrice * item.quantity
+      productId: item.product?.id || item.productId,
+      productName: item.product?.name || 'Unknown Product',
+      quantity: item.quantity || 0,
+      purchasePrice: item.purchasePrice || item.unitPrice || 0,
+      subtotal: (item.purchasePrice || item.unitPrice || 0) * (item.quantity || 0)
     })));
     
     setTotalAmount(purchase.totalAmount);
@@ -930,7 +940,7 @@ function BulkPurchasing() {
                       <div>
                         <div className="font-medium text-primary-700">{item.productName}</div>
                         <div className="text-sm text-gray-600">
-                          {item.quantity} x Rs.{item.purchasePrice.toFixed(2)} = <span className="text-primary-800 font-medium">Rs.{item.subtotal.toFixed(2)}</span>
+                          {item.quantity} x Rs.{(item.purchasePrice || 0).toFixed(2)} = <span className="text-primary-800 font-medium">Rs.{(item.subtotal || 0).toFixed(2)}</span>
                         </div>
                       </div>
                       <button
