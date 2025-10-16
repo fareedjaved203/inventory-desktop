@@ -183,6 +183,25 @@ function createWindow() {
     return false;
   });
 
+  // Handle opening external URLs
+  ipcMain.handle('open-external', (event, url) => {
+    shell.openExternal(url);
+  });
+
+  // Handle saving and opening Urdu invoice
+  ipcMain.handle('save-and-open-urdu-invoice', (event, htmlContent, filename) => {
+    const os = require('os');
+    const tempDir = os.tmpdir();
+    const filePath = path.join(tempDir, filename);
+    
+    try {
+      fs.writeFileSync(filePath, htmlContent, 'utf8');
+      shell.openExternal(`file://${filePath}`);
+    } catch (error) {
+      console.error('Failed to save and open Urdu invoice:', error);
+    }
+  });
+
   // Handle manual update install
   ipcMain.handle('install-update', () => {
     console.log('Install update requested');

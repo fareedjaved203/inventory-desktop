@@ -82,6 +82,7 @@ export const translations = {
     expenses: 'Expenses',
     branches: 'Branches',
     employees: 'Employees',
+    transport: 'Transport',
     settings: 'Settings',
     logout: 'Logout',
     
@@ -223,6 +224,7 @@ export const translations = {
     expenses: 'اخراجات',
     branches: 'برانچز',
     employees: 'ملازمین',
+    transport: 'ٹرانسپورٹ',
     settings: 'سیٹنگز',
     logout: 'لاگ آؤٹ',
     

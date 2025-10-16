@@ -1,6 +1,6 @@
 // IndexedDB Schema for Offline Storage
 export const DB_NAME = 'HisabGharOffline';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const STORES = {
   products: 'products',
@@ -16,6 +16,7 @@ export const STORES = {
   saleReturnItems: 'saleReturnItems',
   loanTransactions: 'loanTransactions',
   shopSettings: 'shopSettings',
+  transport: 'transport',
   settings: 'settings'
 };
 
@@ -117,6 +118,13 @@ export const initDB = () => {
       if (!db.objectStoreNames.contains(STORES.shopSettings)) {
         const settingsStore = db.createObjectStore(STORES.shopSettings, { keyPath: 'id' });
         settingsStore.createIndex('userId', 'userId');
+      }
+      
+      // Transport store
+      if (!db.objectStoreNames.contains(STORES.transport)) {
+        const transportStore = db.createObjectStore(STORES.transport, { keyPath: 'id' });
+        transportStore.createIndex('userId', 'userId');
+        transportStore.createIndex('carNumber', 'carNumber');
       }
       
       // App Settings store

@@ -75,6 +75,16 @@ function Sales() {
   const [createNewContact, setCreateNewContact] = useState(false);
   const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
   const [creatingContact, setCreatingContact] = useState(false);
+  const [description, setDescription] = useState('');
+  const [selectedTransport, setSelectedTransport] = useState(null);
+  const [transportSearchTerm, setTransportSearchTerm] = useState('');
+  const [debouncedTransportSearchTerm, setDebouncedTransportSearchTerm] = useState('');
+  const [createNewTransport, setCreateNewTransport] = useState(false);
+  const [newTransportData, setNewTransportData] = useState({ carNumber: '', driverName: '' });
+  const [creatingTransport, setCreatingTransport] = useState(false);
+  const [transportCost, setTransportCost] = useState('');
+  const [loadingDate, setLoadingDate] = useState('');
+  const [arrivalDate, setArrivalDate] = useState('');
 
   const updateSale = useMutation(
     async (updatedSale) => {
@@ -90,6 +100,14 @@ function Sales() {
         setPriceType("retail");
         setSelectedContact(null);
         setSaleDate("");
+        setDescription('');
+        setSelectedTransport(null);
+        setTransportSearchTerm('');
+        setCreateNewTransport(false);
+        setNewTransportData({ carNumber: '', driverName: '' });
+        setTransportCost('');
+        setLoadingDate('');
+        setArrivalDate('');
         setIsEditMode(false);
         setEditingSale(null);
         toast.success('Sale updated successfully!');
@@ -128,6 +146,19 @@ function Sales() {
     debouncedContactSearch(value);
   };
 
+  // Debounced transport search
+  const debouncedTransportSearch = useCallback(
+    debounce((term) => {
+      setDebouncedTransportSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleTransportSearchChange = (value) => {
+    setTransportSearchTerm(value);
+    debouncedTransportSearch(value);
+  };
+
   // Fetch products for dropdown with search
   const { data: products, isLoading: productsLoading } = useQuery(
     ["products", debouncedProductSearchTerm],
@@ -149,6 +180,19 @@ function Sales() {
         search: debouncedContactSearchTerm
       });
       return result.items;
+    }
+  );
+
+  // Fetch transport for dropdown with search
+  const { data: transport, isLoading: transportLoading } = useQuery(
+    ["transport", debouncedTransportSearchTerm],
+    async () => {
+      if (!debouncedTransportSearchTerm) return [];
+      const result = await API.getTransport({ limit: 100 });
+      return result.items?.filter(t => 
+        t.carNumber?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase()) ||
+        t.driverName?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase())
+      ) || [];
     }
   );
 
@@ -205,6 +249,14 @@ function Sales() {
         setPriceType("retail");
         setSelectedContact(null);
         setSaleDate("");
+        setDescription('');
+        setSelectedTransport(null);
+        setTransportSearchTerm('');
+        setCreateNewTransport(false);
+        setNewTransportData({ carNumber: '', driverName: '' });
+        setTransportCost('');
+        setLoadingDate('');
+        setArrivalDate('');
         setTempStockUpdates({});
         toast.success('Sale created successfully!');
       },
@@ -434,6 +486,14 @@ function Sales() {
     setPaidAmount(sale.paidAmount || 0);
     setSelectedContact(sale.contact || null);
     setSaleDate(new Date(sale.saleDate).toISOString().split("T")[0]);
+    setDescription(sale.description || '');
+    setSelectedTransport(sale.transport || null);
+    setTransportSearchTerm(sale.transport?.carNumber || '');
+    setCreateNewTransport(false);
+    setNewTransportData({ carNumber: '', driverName: '' });
+    setTransportCost(sale.transportCost || '');
+    setLoadingDate(sale.loadingDate?.split('T')[0] || '');
+    setArrivalDate(sale.arrivalDate?.split('T')[0] || '');
     setIsEditMode(true);
     setIsModalOpen(true);
   };
@@ -442,6 +502,7 @@ function Sales() {
     e.preventDefault();
 
     let contactId = selectedContact?.id;
+    let transportId = selectedTransport?.id;
     
     // Create new contact if checkbox is checked
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
@@ -458,6 +519,21 @@ function Sales() {
         return;
       } finally {
         setCreatingContact(false);
+      }
+    }
+
+    // Create new transport if checkbox is checked
+    if (createNewTransport && newTransportData.carNumber) {
+      try {
+        setCreatingTransport(true);
+        const transportResponse = await API.createTransport(newTransportData);
+        transportId = transportResponse.id;
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || 'Failed to create transport';
+        setValidationErrors({ transport: errorMessage });
+        return;
+      } finally {
+        setCreatingTransport(false);
       }
     }
 
@@ -504,6 +580,11 @@ function Sales() {
       paidAmount: parsedPaidAmount,
       ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
+      ...(description && { description }),
+      ...(transportId && { transportId }),
+      ...(transportCost && { transportCost: parseFloat(transportCost) }),
+      ...(loadingDate && { loadingDate }),
+      ...(arrivalDate && { arrivalDate }),
       ...(employeeId && { employeeId }),
     };
     console.log('Sale data being sent:', saleData);
@@ -649,6 +730,14 @@ function Sales() {
                 setDiscount(0);
                 setPaidAmount("");
                 setPriceType("retail");
+                setDescription('');
+                setSelectedTransport(null);
+                setTransportSearchTerm('');
+                setCreateNewTransport(false);
+                setNewTransportData({ carNumber: '', driverName: '' });
+                setTransportCost('');
+                setLoadingDate('');
+                setArrivalDate('');
                 setIsModalOpen(true);
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap w-full sm:w-auto"
@@ -1230,6 +1319,20 @@ function Sales() {
                   </p>
                 </div>
 
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description ({t('optional')})
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter sale description..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
                 {/* Contact Selection */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -1338,6 +1441,151 @@ function Sales() {
                       {validationErrors.contact}
                     </p>
                   )}
+                </div>
+
+                {/* Transport Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Transport ({t('optional')})
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="createNewTransport"
+                        checked={createNewTransport}
+                        onChange={(e) => {
+                          setCreateNewTransport(e.target.checked);
+                          if (e.target.checked) {
+                            setSelectedTransport(null);
+                            setTransportSearchTerm('');
+                          } else {
+                            setNewTransportData({ carNumber: '', driverName: '' });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <label htmlFor="createNewTransport" className="text-sm text-gray-600">
+                        Add New Transport
+                      </label>
+                    </div>
+                  </div>
+                  {createNewTransport ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={newTransportData.carNumber}
+                          onChange={(e) => setNewTransportData({ ...newTransportData, carNumber: e.target.value })}
+                          placeholder="Car number *"
+                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                        <input
+                          type="text"
+                          value={newTransportData.driverName}
+                          onChange={(e) => setNewTransportData({ ...newTransportData, driverName: e.target.value })}
+                          placeholder="Driver name (optional)"
+                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={transportSearchTerm}
+                        onChange={(e) => {
+                          handleTransportSearchChange(e.target.value);
+                          if (!e.target.value) {
+                            setSelectedTransport(null);
+                          }
+                        }}
+                        placeholder="Search transport by car number..."
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {transportSearchTerm && !selectedTransport && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {transportLoading ? (
+                              <div className="px-4 py-3 flex items-center justify-center">
+                                <LoadingSpinner size="w-4 h-4" />
+                                <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                              </div>
+                            ) : transport?.length > 0 ? (
+                              transport.map((transportItem) => (
+                                <div
+                                  key={transportItem.id}
+                                  onClick={() => {
+                                    setSelectedTransport(transportItem);
+                                    setTransportSearchTerm(transportItem.carNumber);
+                                  }}
+                                  className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                                >
+                                  <div className="font-medium">{transportItem.carNumber}</div>
+                                  <div className="text-sm text-gray-600">
+                                    Driver: {transportItem.driverName || 'Not specified'}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-gray-500 text-sm">
+                                No transport found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                    </div>
+                  )}
+                  {selectedTransport && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="text-sm">
+                        <strong>Car:</strong> {selectedTransport.carNumber} | 
+                        <strong>Driver:</strong> {selectedTransport.driverName || 'Not specified'}
+                      </div>
+                    </div>
+                  )}
+                  {validationErrors.transport && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {validationErrors.transport}
+                    </p>
+                  )}
+                </div>
+
+                {/* Transport Details */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Transport Cost ({t('optional')})
+                    </label>
+                    <input
+                      type="number"
+                      value={transportCost}
+                      onChange={(e) => setTransportCost(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Loading Date ({t('optional')})
+                    </label>
+                    <input
+                      type="date"
+                      value={loadingDate}
+                      onChange={(e) => setLoadingDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Arrival Date ({t('optional')})
+                    </label>
+                    <input
+                      type="date"
+                      value={arrivalDate}
+                      onChange={(e) => setArrivalDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Subtotal and Discount */}
@@ -1449,6 +1697,14 @@ function Sales() {
                   setPaidAmount("");
                   setSelectedContact(null);
                   setSaleDate("");
+                  setDescription('');
+                  setSelectedTransport(null);
+                  setTransportSearchTerm('');
+                  setCreateNewTransport(false);
+                  setNewTransportData({ carNumber: '', driverName: '' });
+                  setTransportCost('');
+                  setLoadingDate('');
+                  setArrivalDate('');
                   setValidationErrors({});
                   setTempStockUpdates({});
                 }}
@@ -1459,14 +1715,14 @@ function Sales() {
               <button
                 type="submit"
                 form="sale-form"
-                disabled={createSale.isLoading || updateSale.isLoading || creatingContact}
+                disabled={createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport}
                 className={`px-4 py-2 text-white rounded shadow-sm flex items-center gap-2 ${
-                  createSale.isLoading || updateSale.isLoading || creatingContact
+                  createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
                 }`}
               >
-                {(createSale.isLoading || updateSale.isLoading || creatingContact) && <LoadingSpinner size="w-4 h-4" />}
+                {(createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updateSale') : t('createSale')}
               </button>
             </div>

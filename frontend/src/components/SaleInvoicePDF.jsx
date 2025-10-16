@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
 });
 
-function SaleInvoicePDF({ sale, shopSettings }) {
+function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
   // Create brand array with registered trademark symbols
   const brands = [];
   
@@ -255,13 +255,14 @@ function SaleInvoicePDF({ sale, shopSettings }) {
           <Text style={styles.recipientName}>
             {sale.contact?.name || "Walk-in Customer"}
           </Text>
-          {Number(sale.contact?.phoneNumber) && (
+          {Number(sale.contact?.phoneNumber) && preferences.showContactPhone !== false && (
             <Text>Phone: {sale.contact.phoneNumber}</Text>
           )}
-          {sale.contact?.address && (
+          {sale.contact?.address && preferences.showContactAddress !== false && (
             <Text>{sale.contact.address}</Text>
           )}
         </View>
+
 
         {/* Invoice Box */}
         <View style={styles.invoiceBox}>
@@ -282,6 +283,35 @@ function SaleInvoicePDF({ sale, shopSettings }) {
             {formatPakistaniCurrencyPDF(sale.totalAmount)}
           </Text>
         </View>
+
+                {/* Transport Details */}
+        {preferences.showTransportDetails !== false && (sale.transport || sale.transportCost || sale.loadingDate || sale.arrivalDate) && (
+          <View style={styles.returnsSection}>
+            <Text style={styles.returnsTitle}>TRANSPORT DETAILS</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                {preferences.showCarNumber !== false && <Text style={styles.col1}>Car Number</Text>}
+                {preferences.showLoadingDate !== false && <Text style={styles.col2}>Loading Date</Text>}
+                {preferences.showArrivalDate !== false && <Text style={styles.col3}>Arrival Date</Text>}
+                {preferences.showTransportCost !== false && <Text style={styles.col4}>Transport Cost</Text>}
+              </View>
+              <View style={styles.tableRow}>
+                {preferences.showCarNumber !== false && <Text style={styles.col1}>{sale.transport?.carNumber || '-'}</Text>}
+                {preferences.showLoadingDate !== false && <Text style={styles.col2}>{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</Text>}
+                {preferences.showArrivalDate !== false && <Text style={styles.col3}>{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</Text>}
+                {preferences.showTransportCost !== false && <Text style={styles.col4}>{sale.transportCost ? formatPakistaniCurrencyPDF(sale.transportCost) : '-'}</Text>}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Description */}
+        {preferences.showDescription !== false && sale.description && (
+          <View style={{ marginTop: 15, marginBottom: 15 }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 4 }}>Description:</Text>
+            <Text style={{ fontSize: 10 }}>{sale.description}</Text>
+          </View>
+        )}
 
         {/* Table */}
         <View style={styles.table}>
