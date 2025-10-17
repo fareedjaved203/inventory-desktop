@@ -409,6 +409,55 @@ class API {
   async getDashboardStats() {
     return DataStorageManager.getDashboardStats();
   }
+
+  // Manufacturing - Generic HTTP methods for new endpoints
+  async get(endpoint, config = {}) {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api${endpoint}`, {
+      ...config,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...config.headers
+      }
+    });
+    return response;
+  }
+
+  async post(endpoint, data, config = {}) {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api${endpoint}`, data, {
+      ...config,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...config.headers
+      }
+    });
+    return response.data;
+  }
+
+  async put(endpoint, data, config = {}) {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.put(`${import.meta.env.VITE_API_URL}/api${endpoint}`, data, {
+      ...config,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...config.headers
+      }
+    });
+    return response.data;
+  }
+
+  async delete(endpoint, config = {}) {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.delete(`${import.meta.env.VITE_API_URL}/api${endpoint}`, {
+      ...config,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...config.headers
+      }
+    });
+    return response.data;
+  }
 }
 
 export default new API();

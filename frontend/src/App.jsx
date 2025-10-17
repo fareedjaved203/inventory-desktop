@@ -12,6 +12,7 @@ import ModeIndicator from './components/ModeIndicator';
 import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
 import Products from './pages/Products';
+import Manufacturing from './pages/Manufacturing';
 import ProductLabels from './pages/ProductLabels';
 import Sales from './pages/Sales';
 import Contacts from './pages/Contacts';
@@ -245,6 +246,7 @@ function AppContent() {
               <Route path="/pos" element={<POS />} />
               <Route path="/employee-stats" element={<EmployeeStats />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/manufacturing" element={<Manufacturing />} />
               <Route path="/product-labels" element={<ProductLabels />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/contacts" element={<Contacts />} />
