@@ -318,7 +318,7 @@ export function setupSalesRoutes(app, prisma) {
             }
           }
         },
-        orderBy: { saleDate: 'desc' }
+        orderBy: [{ createdAt: 'desc' }, { saleDate: 'desc' }]
       });
 
       // Add returned quantities to full sales data
@@ -494,7 +494,7 @@ export function setupSalesRoutes(app, prisma) {
           where,
           skip: (page - 1) * limit,
           take: limit,
-          orderBy: { saleDate: 'desc' },
+          orderBy: [{ createdAt: 'desc' }, { saleDate: 'desc' }],
           include: {
             items: {
               include: {

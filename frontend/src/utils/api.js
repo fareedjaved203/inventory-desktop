@@ -96,8 +96,9 @@ class API {
   }
 
   async createSale(data) {
-    // Generate bill number using same mechanism as online mode
+    // Only handle offline mode logic here
     if (DataStorageManager.getOfflineMode()) {
+      // Generate bill number using same mechanism as online mode
       let billNumber;
       let isUnique = false;
       
@@ -114,33 +115,36 @@ class API {
       
       data.billNumber = billNumber;
       data.saleDate = data.saleDate || new Date().toISOString();
-    }
-    
-    const sale = await DataStorageManager.create(STORES.sales, data);
-    
-    // Create sale items with product relationships
-    if (data.items && Array.isArray(data.items)) {
-      const itemsWithProducts = [];
-      for (const item of data.items) {
-        // Get product details for offline mode
-        const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
-        const product = productResult.items?.[0] || productResult;
+      
+      const sale = await DataStorageManager.create(STORES.sales, data);
+      
+      // Create sale items with product relationships (offline only)
+      if (data.items && Array.isArray(data.items)) {
+        const itemsWithProducts = [];
+        for (const item of data.items) {
+          // Get product details for offline mode
+          const productResult = await DataStorageManager.read(STORES.products, { id: item.productId });
+          const product = productResult.items?.[0] || productResult;
+          
+          const saleItem = {
+            ...item,
+            saleId: sale.id,
+            product: product || { id: item.productId, name: 'Unknown Product' }
+          };
+          
+          await DataStorageManager.create(STORES.saleItems, saleItem);
+          itemsWithProducts.push(saleItem);
+        }
         
-        const saleItem = {
-          ...item,
-          saleId: sale.id,
-          product: product || { id: item.productId, name: 'Unknown Product' }
-        };
-        
-        await DataStorageManager.create(STORES.saleItems, saleItem);
-        itemsWithProducts.push(saleItem);
+        // Update sale with populated items
+        sale.items = itemsWithProducts;
       }
       
-      // Update sale with populated items
-      sale.items = itemsWithProducts;
+      return sale;
+    } else {
+      // Online mode - just pass through to DataStorageManager
+      return DataStorageManager.create(STORES.sales, data);
     }
-    
-    return sale;
   }
 
   async updateSale(id, data) {
