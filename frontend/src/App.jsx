@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 import Sidebar from './components/Sidebar';
 import HamburgerMenu from './components/HamburgerMenu';
 import NetworkStatus from './components/NetworkStatus';
@@ -289,11 +290,13 @@ function AppContent() {
 function App() {
   return (
     <LanguageProvider>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <AppContent />
-        </Router>
-      </QueryClientProvider>
+      <SidebarProvider>
+        <QueryClientProvider client={queryClient}>
+          <Router>
+            <AppContent />
+          </Router>
+        </QueryClientProvider>
+      </SidebarProvider>
     </LanguageProvider>
   );
 }
