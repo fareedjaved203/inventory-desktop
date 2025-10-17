@@ -129,7 +129,7 @@ async function downloadData({ userId, apiUrl, authToken }) {
 
 function openDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('HisabGharOffline', 1);
+    const request = indexedDB.open('HisabGharOffline', 2);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
   });
