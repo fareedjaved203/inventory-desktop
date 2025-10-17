@@ -93,14 +93,19 @@ export function setupSalesRoutes(app, prisma) {
           const sale = await prisma.sale.create({
             data: {
               billNumber,
-              totalAmount: req.body.totalAmount,
-              originalTotalAmount: req.body.totalAmount + (req.body.discount || 0),
+              totalAmount: Math.round(req.body.totalAmount),
+              originalTotalAmount: Math.round(req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)),
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount || 0,
               saleDate,
               userId: req.userId,
-              ...(req.body.contactId && { contactId: req.body.contactId }),
-              ...(req.body.employeeId && { employeeId: req.body.employeeId }),
+              contactId: req.body.contactId || null,
+              employeeId: req.body.employeeId || null,
+              transportId: req.body.transportId || null,
+              transportCost: req.body.transportCost || null,
+              loadingDate: req.body.loadingDate ? new Date(req.body.loadingDate) : null,
+              arrivalDate: req.body.arrivalDate ? new Date(req.body.arrivalDate) : null,
+              description: req.body.description || null,
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
@@ -117,7 +122,8 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true
+              contact: true,
+              transport: true
             }
           });
 
@@ -308,6 +314,7 @@ export function setupSalesRoutes(app, prisma) {
             },
           },
           contact: true,
+          transport: true,
           returns: {
             include: {
               items: {
@@ -502,6 +509,7 @@ export function setupSalesRoutes(app, prisma) {
               },
             },
             contact: true,
+            transport: true,
             returns: {
               include: {
                 items: {
@@ -574,6 +582,7 @@ export function setupSalesRoutes(app, prisma) {
             },
           },
           contact: true,
+          transport: true,
           returns: {
             include: {
               items: {
@@ -672,19 +681,26 @@ export function setupSalesRoutes(app, prisma) {
             )
           );
 
+          console.log("req.body is", req.body);
+
           const updatedSale = await prisma.sale.update({
             where: { 
               id: req.params.id,
               userId: req.userId
             },
             data: {
-              totalAmount: req.body.totalAmount,
-              originalTotalAmount: req.body.totalAmount + (req.body.discount || 0),
+              totalAmount: Math.round(req.body.totalAmount),
+              originalTotalAmount: Math.round(req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)),
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount || 0,
               ...(saleDate && { saleDate }),
               contactId: req.body.contactId || null,
               employeeId: req.body.employeeId || null,
+              transportId: req.body.transportId || null,
+              transportCost: req.body.transportCost || null,
+              loadingDate: req.body.loadingDate ? new Date(req.body.loadingDate) : null,
+              arrivalDate: req.body.arrivalDate ? new Date(req.body.arrivalDate) : null,
+              description: req.body.description || null,
               items: {
                 create: req.body.items.map((item, index) => ({
                   quantity: item.quantity,
@@ -703,7 +719,8 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true
+              contact: true,
+              transport: true
             }
           });
 

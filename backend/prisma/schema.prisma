@@ -42,16 +42,22 @@ model Sale {
   billNumber          String       @unique
   totalAmount         BigInt
   originalTotalAmount BigInt?
-  discount            BigInt       @default(0)
+  discount            Decimal      @default(0)
   paidAmount          BigInt       @default(0)
   saleDate            DateTime     @default(now())
   contactId           String?
   employeeId          String?
+  transportId         String?
+  loadingDate         DateTime?
+  arrivalDate         DateTime?
+  description         String?
+  transportCost       Decimal?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   userId              String
   contact             Contact?     @relation(fields: [contactId], references: [id])
   employee            Employee?    @relation(fields: [employeeId], references: [id])
+  transport           Transport?   @relation(fields: [transportId], references: [id])
   items               SaleItem[]
   returns             SaleReturn[]
 
@@ -60,6 +66,7 @@ model Sale {
   @@index([userId, createdAt])
   @@index([contactId])
   @@index([employeeId])
+  @@index([transportId])
 }
 
 model SaleItem {
@@ -291,4 +298,16 @@ model Expense {
   @@index([userId, date])
   @@index([contactId])
   @@index([productId])
+}
+model Transport {
+  id         String   @id @default(uuid())
+  carNumber  String
+  driverName String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  userId     String
+  sales      Sale[]
+
+  @@index([userId])
+  @@index([userId, carNumber])
 }

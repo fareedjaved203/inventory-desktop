@@ -1,29 +1,33 @@
 import React, { useState, useEffect } from 'react';
 
-function PDFPreferencesModal({ isOpen, onClose, onSave }) {
+function StatementPDFPreferencesModal({ isOpen, onClose, onSave }) {
   const [preferences, setPreferences] = useState({
-    showProductName: true,
-    showUnitPrice: true,
-    showQuantity: true,
-    showTotal: true,
-    showCarNumber: true,
+    showDate: true,
+    showDescription: true,
+    showDebit: true,
+    showCredit: true,
+    showBalance: true,
+    showSaleDescription: true,
     showLoadingDate: true,
     showArrivalDate: true,
-    showDescription: true,
+    showQuantity: true,
+    showUnitPrice: true,
+    showCarNumber: true,
     showContactPhone: true,
-    showContactAddress: true
+    showContactAddress: true,
+    urduVersion: false
   });
 
   useEffect(() => {
     // Load saved preferences from localStorage
-    const saved = localStorage.getItem('pdfPreferences');
+    const saved = localStorage.getItem('statementPdfPreferences');
     if (saved) {
       setPreferences(JSON.parse(saved));
     }
   }, [isOpen]);
 
   const handleSave = () => {
-    localStorage.setItem('pdfPreferences', JSON.stringify(preferences));
+    localStorage.setItem('statementPdfPreferences', JSON.stringify(preferences));
     onSave(preferences);
     onClose();
   };
@@ -33,7 +37,7 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white p-6 rounded-lg w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">PDF Display Preferences</h2>
+        <h2 className="text-xl font-bold mb-4">Statement PDF Preferences</h2>
         
         <div className="space-y-3">
           <h3 className="font-medium text-gray-900 mb-2">Table Columns</h3>
@@ -41,23 +45,34 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
           <div className="flex items-center">
             <input
               type="checkbox"
-              id="showProductName"
-              checked={preferences.showProductName}
-              onChange={(e) => setPreferences({...preferences, showProductName: e.target.checked})}
+              id="showDate"
+              checked={preferences.showDate}
+              onChange={(e) => setPreferences({...preferences, showDate: e.target.checked})}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="showProductName" className="ml-2 text-sm">Product Name</label>
+            <label htmlFor="showDate" className="ml-2 text-sm">Date</label>
           </div>
 
           <div className="flex items-center">
             <input
               type="checkbox"
-              id="showUnitPrice"
-              checked={preferences.showUnitPrice}
-              onChange={(e) => setPreferences({...preferences, showUnitPrice: e.target.checked})}
+              id="showDescription"
+              checked={preferences.showDescription}
+              onChange={(e) => setPreferences({...preferences, showDescription: e.target.checked})}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="showUnitPrice" className="ml-2 text-sm">Unit Price</label>
+            <label htmlFor="showDescription" className="ml-2 text-sm">Memo</label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="showSaleDescription"
+              checked={preferences.showSaleDescription}
+              onChange={(e) => setPreferences({...preferences, showSaleDescription: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="showSaleDescription" className="ml-2 text-sm">Sale Description</label>
           </div>
 
           <div className="flex items-center">
@@ -74,12 +89,12 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
           <div className="flex items-center">
             <input
               type="checkbox"
-              id="showTotal"
-              checked={preferences.showTotal}
-              onChange={(e) => setPreferences({...preferences, showTotal: e.target.checked})}
+              id="showUnitPrice"
+              checked={preferences.showUnitPrice}
+              onChange={(e) => setPreferences({...preferences, showUnitPrice: e.target.checked})}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="showTotal" className="ml-2 text-sm">Total</label>
+            <label htmlFor="showUnitPrice" className="ml-2 text-sm">Unit Price</label>
           </div>
 
           <div className="flex items-center">
@@ -118,12 +133,34 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
           <div className="flex items-center">
             <input
               type="checkbox"
-              id="showDescription"
-              checked={preferences.showDescription}
-              onChange={(e) => setPreferences({...preferences, showDescription: e.target.checked})}
+              id="showDebit"
+              checked={preferences.showDebit}
+              onChange={(e) => setPreferences({...preferences, showDebit: e.target.checked})}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="showDescription" className="ml-2 text-sm">Description</label>
+            <label htmlFor="showDebit" className="ml-2 text-sm">Debit</label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="showCredit"
+              checked={preferences.showCredit}
+              onChange={(e) => setPreferences({...preferences, showCredit: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="showCredit" className="ml-2 text-sm">Credit</label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="showBalance"
+              checked={preferences.showBalance}
+              onChange={(e) => setPreferences({...preferences, showBalance: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="showBalance" className="ml-2 text-sm">Balance</label>
           </div>
 
           <h3 className="font-medium text-gray-900 mb-2 mt-4">Contact Information</h3>
@@ -149,6 +186,19 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
             />
             <label htmlFor="showContactAddress" className="ml-2 text-sm">Contact Address</label>
           </div>
+
+          <h3 className="font-medium text-gray-900 mb-2 mt-4">Language</h3>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="urduVersion"
+              checked={preferences.urduVersion}
+              onChange={(e) => setPreferences({...preferences, urduVersion: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="urduVersion" className="ml-2 text-sm">Urdu Version</label>
+          </div>
         </div>
 
         <div className="flex gap-2 mt-6">
@@ -170,4 +220,4 @@ function PDFPreferencesModal({ isOpen, onClose, onSave }) {
   );
 }
 
-export default PDFPreferencesModal;
+export default StatementPDFPreferencesModal;

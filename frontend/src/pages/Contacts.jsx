@@ -7,6 +7,8 @@ import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CustomerStatementPDF from '../components/CustomerStatementPDF';
+import StatementPDFPreferencesModal from '../components/StatementPDFPreferencesModal';
+import UrduStatementHTML from '../components/UrduStatementHTML';
 import { debounce } from 'lodash';
 import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign, FaFileAlt } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
@@ -39,6 +41,9 @@ function Contacts() {
   const [statementData, setStatementData] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
   const [contactTypeFilter, setContactTypeFilter] = useState('');
+  const [showStatementPDFPreferences, setShowStatementPDFPreferences] = useState(false);
+  const [statementPdfPreferences, setStatementPdfPreferences] = useState({});
+  const [generatingStatement, setGeneratingStatement] = useState(false);
 
   const {
     register,
@@ -192,13 +197,16 @@ function Contacts() {
 
   // Fetch customer statement data
   const fetchStatementData = async (contactId, startDate, endDate) => {
-    // Get contact details
-    const contactResult = await API.getContacts({ id: contactId });
-    const contact = contactResult.items?.[0] || contactResult;
+    // Get contact details - use the selectedContact directly since we already have it
+    const contact = selectedContact;
     
     // Get all sales for this contact
     const salesResult = await API.getSales({ limit: 1000 });
     const contactSales = salesResult.items.filter(sale => sale.contactId === contactId);
+    
+    // Get all transports to link with sales
+    const transportsResult = await API.getTransport({ limit: 1000 });
+    const transports = transportsResult.items || [];
     
     // Get loan transactions for this contact
     const loanResult = await API.getLoanTransactions({ contactId });
@@ -223,14 +231,25 @@ function Contacts() {
     
     // Combine and sort transactions by date
     const allTransactions = [
-      ...filteredSales.map(sale => ({
-        date: sale.saleDate,
-        type: 'sale',
-        description: `Sale #${sale.billNumber}`,
-        debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
-        credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
-        balance: 0 // Will be calculated
-      })),
+      ...filteredSales.map(sale => {
+        // Find the transport for this sale
+        const transport = transports.find(t => t.id === sale.transportId);
+        
+        return {
+          date: sale.saleDate,
+          type: 'sale',
+          description: `Sale #${sale.billNumber}`,
+          saleDescription: sale.description || '',
+          quantity: sale.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+          unitPrice: sale.items?.[0]?.price || 0,
+          carNumber: transport?.carNumber || '',
+          loadingDate: sale.loadingDate || '',
+          arrivalDate: sale.arrivalDate || '',
+          debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
+          credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
+          balance: 0 // Will be calculated
+        };
+      }),
       ...filteredLoans.map(loan => {
         let debit = 0, credit = 0;
         if (loan.type === 'GIVEN') {
@@ -308,11 +327,15 @@ function Contacts() {
     if (!selectedContact) return;
     
     try {
+      setGeneratingStatement(true);
       const data = await fetchStatementData(selectedContact.id, statementStartDate, statementEndDate);
       setStatementData(data);
       setShopSettings(shopSettingsData);
     } catch (error) {
       console.error('Error fetching statement data:', error);
+      toast.error('Failed to generate statement');
+    } finally {
+      setGeneratingStatement(false);
     }
   };
 
@@ -454,6 +477,11 @@ function Contacts() {
                         setStatementStartDate('');
                         setStatementEndDate('');
                         setStatementData(null);
+                        // Load PDF preferences
+                        const saved = localStorage.getItem('statementPdfPreferences');
+                        if (saved) {
+                          setStatementPdfPreferences(JSON.parse(saved));
+                        }
                       }}
                       className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
                     >
@@ -989,39 +1017,68 @@ function Contacts() {
               </div>
               
               <div className="flex justify-between items-center pt-4">
-                <button
-                  onClick={handleGenerateStatement}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <FaFileAlt />
-                  {t('generateStatement')}
-                </button>
-                
-                {statementData && shopSettings && (
-                  <PDFDownloadLink
-                    document={
-                      <CustomerStatementPDF 
-                        statementData={statementData}
-                        shopSettings={shopSettings}
-                        startDate={statementStartDate}
-                        endDate={statementEndDate}
-                      />
-                    }
-                    fileName={`${selectedContact.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement_${new Date().toISOString().split('T')[0]}.pdf`}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleGenerateStatement}
+                    disabled={generatingStatement}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {({ loading }) => (
-                      loading ? t('preparingPDF') : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                          </svg>
-                          {t('downloadPDF')}
-                        </>
-                      )
-                    )}
-                  </PDFDownloadLink>
-                )}
+                    {generatingStatement ? <LoadingSpinner size="w-4 h-4" /> : <FaFileAlt />}
+                    {generatingStatement ? 'Generating...' : t('generateStatement')}
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowStatementPDFPreferences(true)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    PDF Settings
+                  </button>
+                </div>
+                
+                <div className="flex gap-2">
+                  {statementData && shopSettings && (
+                    <>
+                      {statementPdfPreferences.urduVersion ? (
+                        <UrduStatementHTML
+                          statementData={statementData}
+                          shopSettings={shopSettings}
+                          startDate={statementStartDate}
+                          endDate={statementEndDate}
+                          preferences={statementPdfPreferences}
+                        />
+                      ) : (
+                        <PDFDownloadLink
+                          document={
+                            <CustomerStatementPDF 
+                              statementData={statementData}
+                              shopSettings={shopSettings}
+                              startDate={statementStartDate}
+                              endDate={statementEndDate}
+                              preferences={statementPdfPreferences}
+                            />
+                          }
+                          fileName={`${selectedContact.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement_${new Date().toISOString().split('T')[0]}.pdf`}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                        >
+                          {({ loading }) => (
+                            loading ? t('preparingPDF') : (
+                              <>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                {t('downloadPDF')}
+                              </>
+                            )
+                          )}
+                        </PDFDownloadLink>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               
               {statementData && (
@@ -1072,6 +1129,12 @@ function Contacts() {
           </div>
         </div>
       )}
+      
+      <StatementPDFPreferencesModal
+        isOpen={showStatementPDFPreferences}
+        onClose={() => setShowStatementPDFPreferences(false)}
+        onSave={(prefs) => setStatementPdfPreferences(prefs)}
+      />
     </div>
   );
 }

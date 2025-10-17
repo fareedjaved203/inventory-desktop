@@ -134,11 +134,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     fontSize: 9,
   },
-  col1: { flex: 2 }, // Date
-  col2: { flex: 4 }, // Description
-  col3: { flex: 2, textAlign: "right" }, // Debit
-  col4: { flex: 2, textAlign: "right" }, // Credit
-  col5: { flex: 2, textAlign: "right" }, // Balance
+  col1: { flex: 1.5, paddingRight: 8 }, // Date
+  col2: { flex: 2.5, paddingRight: 8 }, // Memo
+  col3: { flex: 1.5, textAlign: "right", paddingRight: 8 }, // Various columns
+  col4: { flex: 1.5, textAlign: "right", paddingRight: 8 }, // Various columns
+  col5: { flex: 1.5, textAlign: "right" }, // Balance
   closingBalance: {
     marginTop: 10,
     padding: 10,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   },
 });
 
-function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate }) {
+function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate, preferences = {} }) {
   const { contact, openingBalance, closingBalance, transactions } = statementData;
 
   // Create brand array with registered trademark symbols
@@ -256,10 +256,10 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate 
         <View style={styles.customerBox}>
           <Text style={styles.customerTitle}>CUSTOMER DETAILS:</Text>
           <Text style={styles.customerName}>{contact.name}</Text>
-          {Number(contact.phoneNumber) && (
+          {Number(contact.phoneNumber) && preferences.showContactPhone !== false && (
             <Text>Phone: {contact.phoneNumber}</Text>
           )}
-          {contact.address && (
+          {contact.address && preferences.showContactAddress !== false && (
             <Text>Address: {contact.address}</Text>
           )}
         </View>
@@ -281,44 +281,53 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate 
         {transactions && transactions.length > 0 ? (
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={styles.col1}>DATE</Text>
-              <Text style={styles.col2}>DESCRIPTION</Text>
-              <Text style={styles.col3}>DEBIT</Text>
-              <Text style={styles.col4}>CREDIT</Text>
-              <Text style={styles.col5}>BALANCE</Text>
+              {preferences.showDate !== false && <Text style={styles.col1}>DATE</Text>}
+              {preferences.showDescription !== false && <Text style={styles.col2}>MEMO</Text>}
+              {preferences.showSaleDescription !== false && <Text style={styles.col3}>SALE DESC</Text>}
+              {preferences.showQuantity !== false && <Text style={styles.col3}>QTY</Text>}
+              {preferences.showUnitPrice !== false && <Text style={styles.col3}>UNIT PRICE</Text>}
+              {preferences.showCarNumber !== false && <Text style={styles.col3}>CAR NO</Text>}
+              {preferences.showLoadingDate !== false && <Text style={styles.col3}>LOADING</Text>}
+              {preferences.showArrivalDate !== false && <Text style={styles.col3}>ARRIVAL</Text>}
+              {preferences.showDebit !== false && <Text style={styles.col4}>DEBIT</Text>}
+              {preferences.showCredit !== false && <Text style={styles.col4}>CREDIT</Text>}
+              {preferences.showBalance !== false && <Text style={styles.col5}>BALANCE</Text>}
             </View>
 
             {transactions.map((transaction, index) => {
               const getTransactionIcon = (type) => {
                 switch(type) {
-                  case 'SALE': return '📄';
-                  case 'PURCHASE': return '📦';
-                  case 'PURCHASE_PAYMENT': return '💳';
-                  case 'LOAN': return '💰';
-                  case 'RETURN': return '↩️';
+                  case 'sale': return '📄';
+                  case 'loan': return '💰';
                   default: return '📋';
                 }
               };
               
               return (
                 <View style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt} key={index}>
-                  <Text style={styles.col1}>{formatDate(transaction.date)}</Text>
-                  <Text style={styles.col2}>
+                  {preferences.showDate !== false && <Text style={styles.col1}>{formatDate(transaction.date)}</Text>}
+                  {preferences.showDescription !== false && <Text style={styles.col2}>
                     {getTransactionIcon(transaction.type)} {transaction.description}
-                  </Text>
-                  <Text style={styles.col3}>
+                  </Text>}
+                  {preferences.showSaleDescription !== false && <Text style={styles.col3}>{transaction.saleDescription || '-'}</Text>}
+                  {preferences.showQuantity !== false && <Text style={styles.col3}>{transaction.quantity || '-'}</Text>}
+                  {preferences.showUnitPrice !== false && <Text style={styles.col3}>{transaction.unitPrice ? formatPakistaniCurrencyPDF(transaction.unitPrice) : '-'}</Text>}
+                  {preferences.showCarNumber !== false && <Text style={styles.col3}>{transaction.carNumber || '-'}</Text>}
+                  {preferences.showLoadingDate !== false && <Text style={styles.col3}>{transaction.loadingDate ? formatDate(transaction.loadingDate) : '-'}</Text>}
+                  {preferences.showArrivalDate !== false && <Text style={styles.col3}>{transaction.arrivalDate ? formatDate(transaction.arrivalDate) : '-'}</Text>}
+                  {preferences.showDebit !== false && <Text style={styles.col4}>
                     {transaction.debit > 0 ? formatPakistaniCurrencyPDF(transaction.debit) : '-'}
-                  </Text>
-                  <Text style={styles.col4}>
+                  </Text>}
+                  {preferences.showCredit !== false && <Text style={styles.col4}>
                     {transaction.credit > 0 ? formatPakistaniCurrencyPDF(transaction.credit) : '-'}
-                  </Text>
-                  <Text style={[styles.col5, { 
+                  </Text>}
+                  {preferences.showBalance !== false && <Text style={[styles.col5, { 
                     color: transaction.balance >= 0 ? "#2d3748" : "#4a5568",
                     fontWeight: "bold"
                   }]}>
                     {formatPakistaniCurrencyPDF(Math.abs(transaction.balance))}
                     {transaction.balance >= 0 ? " Dr" : " Cr"}
-                  </Text>
+                  </Text>}
                 </View>
               );
             })}
@@ -327,21 +336,7 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate 
           <Text style={styles.noTransactions}>No transactions found for the selected period.</Text>
         )}
 
-        {/* Transaction Legend */}
-        {transactions && transactions.length > 0 && (
-          <View style={{
-            marginTop: 10,
-            padding: 8,
-            backgroundColor: "#f8f9fa",
-            borderRadius: 4,
-            fontSize: 8
-          }}>
-            <Text style={{ fontWeight: "bold", marginBottom: 4 }}>Transaction Types:</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <Text>📄 Sales • 📦 Purchases • 💳 Payments • 💰 Loans • ↩️ Returns</Text>
-            </View>
-          </View>
-        )}
+
 
         {/* Closing Balance */}
         <View style={styles.closingBalance}>

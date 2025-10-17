@@ -112,15 +112,17 @@ function generateUrduInvoiceHTML(sale, shopSettings, preferences = {}) {
         }
         
         th, td {
-          padding: 12px;
+          padding: 6px;
           text-align: right;
           border-bottom: 1px solid #ddd;
+          font-size: 10px;
         }
         
         th {
           background-color: #f3f4f6;
           font-weight: bold;
           border-bottom: 2px solid #ccc;
+          font-size: 9px;
         }
         
         .summary {
@@ -200,43 +202,31 @@ function generateUrduInvoiceHTML(sale, shopSettings, preferences = {}) {
           `<div><strong>پتہ:</strong> ${sale.contact.address}</div>` : ''}
       </div>
 
-      ${preferences.showDescription !== false && sale.description ? `
-        <div class="customer-info">
-          <div><strong>تفصیل:</strong> ${sale.description}</div>
-        </div>
-      ` : ''}
-
-      ${preferences.showTransportDetails !== false && (sale.transport || sale.transportCost || sale.loadingDate || sale.arrivalDate) ? `
-        <div class="transport-section">
-          <div class="transport-title">ٹرانسپورٹ کی تفصیلات</div>
-          ${preferences.showCarNumber !== false && sale.transport?.carNumber ? 
-            `<div><strong>گاڑی نمبر:</strong> ${sale.transport.carNumber}</div>` : ''}
-          ${preferences.showLoadingDate !== false && sale.loadingDate ? 
-            `<div><strong>لوڈنگ کی تاریخ:</strong> ${new Date(sale.loadingDate).toLocaleDateString()}</div>` : ''}
-          ${preferences.showArrivalDate !== false && sale.arrivalDate ? 
-            `<div><strong>پہنچنے کی تاریخ:</strong> ${new Date(sale.arrivalDate).toLocaleDateString()}</div>` : ''}
-          ${preferences.showTransportCost !== false && sale.transportCost ? 
-            `<div><strong>ٹرانسپورٹ کی لاگت:</strong> ${formatPakistaniCurrency(sale.transportCost)}</div>` : ''}
-        </div>
-      ` : ''}
-
-      <!-- Items Table -->
+      <!-- Single Table with All Data -->
       <table>
         <thead>
           <tr>
-            <th>پروڈکٹ</th>
-            <th>ریٹ</th>
-            <th>مقدار</th>
-            <th>کل</th>
+            ${preferences.showProductName !== false ? '<th>پروڈکٹ</th>' : ''}
+            ${preferences.showUnitPrice !== false ? '<th>ریٹ</th>' : ''}
+            ${preferences.showQuantity !== false ? '<th>تعداد</th>' : ''}
+            ${preferences.showTotal !== false ? '<th>کل</th>' : ''}
+            ${preferences.showCarNumber !== false ? '<th>گاڑی نمبر</th>' : ''}
+            ${preferences.showLoadingDate !== false ? '<th>لوڈنگ تاریخ</th>' : ''}
+            ${preferences.showArrivalDate !== false ? '<th>تاریخ</th>' : ''}
+            ${preferences.showDescription !== false ? '<th>تفصیل</th>' : ''}
           </tr>
         </thead>
         <tbody>
           ${sale.items.map(item => `
             <tr>
-              <td>${item.product.name}</td>
-              <td>${formatPakistaniCurrency(item.price, false)}</td>
-              <td>${item.quantity}</td>
-              <td>${formatPakistaniCurrency(item.price * item.quantity, false)}</td>
+              ${preferences.showProductName !== false ? `<td>${item.product.name}</td>` : ''}
+              ${preferences.showUnitPrice !== false ? `<td>${formatPakistaniCurrency(item.price, false)}</td>` : ''}
+              ${preferences.showQuantity !== false ? `<td>${item.quantity}</td>` : ''}
+              ${preferences.showTotal !== false ? `<td>${formatPakistaniCurrency(item.price * item.quantity, false)}</td>` : ''}
+              ${preferences.showCarNumber !== false ? `<td>${sale.transport?.carNumber || '-'}</td>` : ''}
+              ${preferences.showLoadingDate !== false ? `<td>${sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</td>` : ''}
+              ${preferences.showArrivalDate !== false ? `<td>${sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</td>` : ''}
+              ${preferences.showDescription !== false ? `<td>${sale.description || '-'}</td>` : ''}
             </tr>
           `).join('')}
         </tbody>

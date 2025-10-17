@@ -697,15 +697,17 @@ function createPrintableInvoice(sale, shopSettings) {
         }
         
         th, td {
-          padding: 6px;
+          padding: 4px;
           text-align: left;
           border-bottom: 1px solid #eee;
+          font-size: 9px;
         }
         
         th {
           background-color: #f3f4f6;
           font-weight: bold;
           border-bottom: 1px solid #ccc;
+          font-size: 8px;
         }
         
         .text-right {
@@ -804,7 +806,7 @@ function createPrintableInvoice(sale, shopSettings) {
         <div class="invoice-total">${formatPakistaniCurrency(sale.totalAmount)}</div>
       </div>
 
-      <!-- Items Table -->
+      <!-- Single Table with All Data -->
       <table>
         <thead>
           <tr>
@@ -812,6 +814,10 @@ function createPrintableInvoice(sale, shopSettings) {
             <th class="text-right">UNIT PRICE</th>
             <th class="text-right">QTY</th>
             <th class="text-right">TOTAL</th>
+            <th class="text-right">CAR NUMBER</th>
+            <th class="text-right">LOADING DATE</th>
+            <th class="text-right">ARRIVAL DATE</th>
+            <th class="text-right">DESCRIPTION</th>
           </tr>
         </thead>
         <tbody>
@@ -821,6 +827,10 @@ function createPrintableInvoice(sale, shopSettings) {
               <td class="text-right">${formatPakistaniCurrency(item.price)}</td>
               <td class="text-right">${item.quantity}</td>
               <td class="text-right">${formatPakistaniCurrency(item.price * item.quantity)}</td>
+              <td class="text-right">${sale.transport?.carNumber || '-'}</td>
+              <td class="text-right">${sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</td>
+              <td class="text-right">${sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</td>
+              <td class="text-right">${sale.description || '-'}</td>
             </tr>
           `).join('')}
         </tbody>

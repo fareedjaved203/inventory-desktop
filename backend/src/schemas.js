@@ -34,7 +34,13 @@ export const saleSchema = z.object({
   saleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
   discount: z.number().min(0),
   customerName: z.string().optional(),
-  customerPhone: z.string().optional()
+  customerPhone: z.string().optional(),
+  transportId: z.string().optional(),
+  transportCost: z.number().min(0).optional(),
+  loadingDate: z.string().optional(),
+  arrivalDate: z.string().optional(),
+  description: z.string().optional(),
+  originalTotalAmount: z.number().min(0).optional()
 });
 
 export const bulkPurchaseItemSchema = z.object({

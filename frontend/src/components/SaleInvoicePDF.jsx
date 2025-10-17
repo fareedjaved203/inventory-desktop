@@ -103,13 +103,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f3f4f6",
     fontWeight: "bold",
-    padding: 6,
+    padding: 4,
     borderBottom: "1px solid #ccc",
+    fontSize: 8,
   },
   tableRow: {
     flexDirection: "row",
-    padding: 6,
+    padding: 4,
     borderBottom: "1px solid #eee",
+    fontSize: 8,
   },
   col1: { flex: 2 },
   col2: { flex: 1, textAlign: "right" },
@@ -284,52 +286,29 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
           </Text>
         </View>
 
-                {/* Transport Details */}
-        {preferences.showTransportDetails !== false && (sale.transport || sale.transportCost || sale.loadingDate || sale.arrivalDate) && (
-          <View style={styles.returnsSection}>
-            <Text style={styles.returnsTitle}>TRANSPORT DETAILS</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                {preferences.showCarNumber !== false && <Text style={styles.col1}>Car Number</Text>}
-                {preferences.showLoadingDate !== false && <Text style={styles.col2}>Loading Date</Text>}
-                {preferences.showArrivalDate !== false && <Text style={styles.col3}>Arrival Date</Text>}
-                {preferences.showTransportCost !== false && <Text style={styles.col4}>Transport Cost</Text>}
-              </View>
-              <View style={styles.tableRow}>
-                {preferences.showCarNumber !== false && <Text style={styles.col1}>{sale.transport?.carNumber || '-'}</Text>}
-                {preferences.showLoadingDate !== false && <Text style={styles.col2}>{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</Text>}
-                {preferences.showArrivalDate !== false && <Text style={styles.col3}>{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</Text>}
-                {preferences.showTransportCost !== false && <Text style={styles.col4}>{sale.transportCost ? formatPakistaniCurrencyPDF(sale.transportCost) : '-'}</Text>}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Description */}
-        {preferences.showDescription !== false && sale.description && (
-          <View style={{ marginTop: 15, marginBottom: 15 }}>
-            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 4 }}>Description:</Text>
-            <Text style={{ fontSize: 10 }}>{sale.description}</Text>
-          </View>
-        )}
-
-        {/* Table */}
+                {/* Single Table with All Data */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>PRODUCT</Text>
-            <Text style={styles.col2}>UNIT PRICE</Text>
-            <Text style={styles.col3}>QTY</Text>
-            <Text style={styles.col4}>TOTAL</Text>
+            {preferences.showProductName !== false && <Text style={styles.col1}>PRODUCT</Text>}
+            {preferences.showUnitPrice !== false && <Text style={styles.col2}>UNIT PRICE</Text>}
+            {preferences.showQuantity !== false && <Text style={styles.col3}>QTY</Text>}
+            {preferences.showTotal !== false && <Text style={styles.col4}>TOTAL</Text>}
+            {preferences.showCarNumber !== false && <Text style={styles.col2}>CAR NUMBER</Text>}
+            {preferences.showLoadingDate !== false && <Text style={styles.col3}>LOADING DATE</Text>}
+            {preferences.showArrivalDate !== false && <Text style={styles.col3}>ARRIVAL DATE</Text>}
+            {preferences.showDescription !== false && <Text style={styles.col4}>DESCRIPTION</Text>}
           </View>
 
           {sale.items.map((item, i) => (
             <View style={styles.tableRow} key={i}>
-              <Text style={styles.col1}>{item.product.name}</Text>
-              <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.price)}</Text>
-              <Text style={styles.col3}>{item.quantity}</Text>
-              <Text style={styles.col4}>
-                {formatPakistaniCurrencyPDF(item.price * item.quantity)}
-              </Text>
+              {preferences.showProductName !== false && <Text style={styles.col1}>{item.product.name}</Text>}
+              {preferences.showUnitPrice !== false && <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.price)}</Text>}
+              {preferences.showQuantity !== false && <Text style={styles.col3}>{item.quantity}</Text>}
+              {preferences.showTotal !== false && <Text style={styles.col4}>{formatPakistaniCurrencyPDF(item.price * item.quantity)}</Text>}
+              {preferences.showCarNumber !== false && <Text style={styles.col2}>{sale.transport?.carNumber || '-'}</Text>}
+              {preferences.showLoadingDate !== false && <Text style={styles.col3}>{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</Text>}
+              {preferences.showArrivalDate !== false && <Text style={styles.col3}>{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</Text>}
+              {preferences.showDescription !== false && <Text style={styles.col4}>{sale.description || '-'}</Text>}
             </View>
           ))}
         </View>

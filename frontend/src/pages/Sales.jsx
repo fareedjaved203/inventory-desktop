@@ -440,7 +440,7 @@ function Sales() {
     const subtotal = calculateTotal();
     const discountPercentage = parseFloat(discount) || 0;
     const discountAmount = (subtotal * discountPercentage) / 100;
-    setTotalAmount(subtotal - discountAmount);
+    setTotalAmount(Math.round(subtotal - discountAmount));
   }, [saleItems, discount]);
 
   // Global function for opening return modal from SaleDetailsModal
@@ -575,16 +575,17 @@ function Sales() {
         price: item.price,
         priceType: item.priceType || "retail",
       })),
-      totalAmount: totalAmount,
+      totalAmount: Math.round(totalAmount),
+      originalTotalAmount: Math.round(calculateTotal()),
       discount: discountAmount,
       paidAmount: parsedPaidAmount,
       ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
-      ...(description && { description }),
-      ...(transportId && { transportId }),
-      ...(transportCost && { transportCost: parseFloat(transportCost) }),
-      ...(loadingDate && { loadingDate }),
-      ...(arrivalDate && { arrivalDate }),
+      description: description || null,
+      transportId: transportId || null,
+      transportCost: transportCost ? parseFloat(transportCost) : null,
+      loadingDate: loadingDate || null,
+      arrivalDate: arrivalDate || null,
       ...(employeeId && { employeeId }),
     };
     console.log('Sale data being sent:', saleData);
@@ -1281,6 +1282,7 @@ function Sales() {
                               onChange={(e) =>
                                 handlePriceChange(index, e.target.value)
                               }
+                              onWheel={(e) => e.target.blur()}
                               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
                             />
                           </div>
