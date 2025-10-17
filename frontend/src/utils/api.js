@@ -332,6 +332,16 @@ class API {
 
   // Loan Transactions
   async getLoanTransactions(params = {}) {
+    // For online mode, use direct API call to handle contactId properly
+    if (!DataStorageManager.getOfflineMode()) {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/loans?${new URLSearchParams(params)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.json();
+    }
+    
+    // For offline mode, use existing logic
     const result = await DataStorageManager.read(STORES.loanTransactions, params);
     
     // If contactId is provided, filter and calculate summary

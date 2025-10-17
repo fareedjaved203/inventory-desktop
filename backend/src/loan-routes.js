@@ -1,3 +1,4 @@
+import express from 'express';
 import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 
@@ -7,67 +8,90 @@ const loanTransactionSchema = z.object({
   description: z.string().optional(),
 });
 
-export function setupLoanRoutes(app, prisma) {
-  // Get loan transactions and summary for a contact
-  app.get('/api/contacts/:contactId/loans', authenticateToken, async (req, res) => {
+let prisma;
+
+function createLoanRoutes(prismaInstance) {
+  prisma = prismaInstance;
+  const router = express.Router();
+  // Get loans - all or filtered by contactId
+  router.get('/', authenticateToken, async (req, res) => {
     try {
-      const { contactId } = req.params;
+      const { contactId } = req.query;
+      
+      const where = {
+        userId: req.userId,
+        ...(contactId && { contactId })
+      };
       
       const transactions = await prisma.loanTransaction.findMany({
-        where: { 
-          contactId,
-          userId: req.userId
+        where,
+        include: {
+          contact: {
+            select: { id: true, name: true }
+          }
         },
         orderBy: { date: 'desc' }
       });
       
-      // Calculate totals
-      const totals = transactions.reduce((acc, transaction) => {
-        const amount = Number(transaction.amount);
-        switch (transaction.type) {
-          case 'GIVEN':
-            acc.totalGiven += amount;
-            break;
-          case 'TAKEN':
-            acc.totalTaken += amount;
-            break;
-          case 'RETURNED_BY_CONTACT':
-            acc.totalReturnedByContact += amount;
-            break;
-          case 'RETURNED_TO_CONTACT':
-            acc.totalReturnedToContact += amount;
-            break;
-        }
-        return acc;
-      }, {
-        totalGiven: 0,
-        totalTaken: 0,
-        totalReturnedByContact: 0,
-        totalReturnedToContact: 0
-      });
-      
-      res.json({
-        ...totals,
-        transactions: transactions.map(t => ({
-          ...t,
-          amount: Number(t.amount)
-        }))
-      });
+      // If contactId is provided, calculate totals
+      if (contactId) {
+        const totals = transactions.reduce((acc, transaction) => {
+          const amount = Number(transaction.amount);
+          switch (transaction.type) {
+            case 'GIVEN':
+              acc.totalGiven += amount;
+              break;
+            case 'TAKEN':
+              acc.totalTaken += amount;
+              break;
+            case 'RETURNED_BY_CONTACT':
+              acc.totalReturnedByContact += amount;
+              break;
+            case 'RETURNED_TO_CONTACT':
+              acc.totalReturnedToContact += amount;
+              break;
+          }
+          return acc;
+        }, {
+          totalGiven: 0,
+          totalTaken: 0,
+          totalReturnedByContact: 0,
+          totalReturnedToContact: 0
+        });
+        
+        res.json({
+          ...totals,
+          transactions: transactions.map(t => ({
+            ...t,
+            amount: Number(t.amount)
+          }))
+        });
+      } else {
+        res.json({
+          transactions: transactions.map(t => ({
+            ...t,
+            amount: Number(t.amount)
+          }))
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
   // Create a new loan transaction
-  app.post('/api/contacts/:contactId/loans', authenticateToken, validateRequest({ body: loanTransactionSchema }), async (req, res) => {
+  router.post('/', authenticateToken, validateRequest({ body: loanTransactionSchema.extend({ contactId: z.string() }) }), async (req, res) => {
     try {
-      const { contactId } = req.params;
-      
       const transaction = await prisma.loanTransaction.create({
         data: {
           ...req.body,
-          contactId,
+          date: new Date(),
           userId: req.userId
+        },
+        include: {
+          contact: {
+            select: { id: true, name: true }
+          }
         }
       });
       
@@ -81,22 +105,9 @@ export function setupLoanRoutes(app, prisma) {
   });
 
   // Delete a loan transaction
-  app.delete('/api/contacts/:contactId/loans/:transactionId', authenticateToken, async (req, res) => {
+  router.delete('/:transactionId', authenticateToken, async (req, res) => {
     try {
-      const { contactId, transactionId } = req.params;
-      
-      // Verify transaction belongs to the contact
-      const transaction = await prisma.loanTransaction.findFirst({
-        where: {
-          id: transactionId,
-          contactId,
-          userId: req.userId
-        }
-      });
-      
-      if (!transaction) {
-        return res.status(404).json({ error: 'Transaction not found' });
-      }
+      const { transactionId } = req.params;
       
       await prisma.loanTransaction.delete({
         where: { 
@@ -110,4 +121,12 @@ export function setupLoanRoutes(app, prisma) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  return router;
 }
+
+export function setupLoanRoutes(app, prismaInstance) {
+  app.use('/api/loans', createLoanRoutes(prismaInstance));
+}
+
+export default createLoanRoutes;

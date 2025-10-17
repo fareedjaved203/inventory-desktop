@@ -1,9 +1,12 @@
+import express from 'express';
 import { validateRequest } from './middleware.js';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+let prisma;
 
 // Middleware to get current user ID
 const getCurrentUserId = async (req, res, next) => {
@@ -47,19 +50,22 @@ const updateEmailSchema = z.object({
   password: z.string().min(4, 'Password must be at least 4 characters'),
 });
 
-export function setupAuthRoutes(app, prisma) {
+function createAuthRoutes(prismaInstance) {
+  prisma = prismaInstance;
+  const router = express.Router();
   // Check if any user exists (always allow signup now)
-  app.get('/api/auth/check', async (req, res) => {
+  router.get('/check', async (req, res) => {
     try {
       const userCount = await prisma.user.count();
       res.json({ hasUser: userCount > 0, allowSignup: true });
     } catch (error) {
+      console.error('Auth check error:', error);
       res.json({ hasUser: false, allowSignup: true });
     }
   });
 
   // Signup (allow multiple users now)
-  app.post('/api/auth/signup', validateRequest({ body: signupSchema }), async (req, res) => {
+  router.post('/signup', validateRequest({ body: signupSchema }), async (req, res) => {
     try {
       const { email, password } = req.body;
       
@@ -114,7 +120,7 @@ export function setupAuthRoutes(app, prisma) {
   });
 
   // Login
-  app.post('/api/auth/login', validateRequest({ body: authSchema }), async (req, res) => {
+  router.post('/login', validateRequest({ body: authSchema }), async (req, res) => {
     try {
       const { email, password } = req.body;
       
@@ -163,12 +169,17 @@ export function setupAuthRoutes(app, prisma) {
       return res.status(401).json({ error: 'Invalid credentials' });
     } catch (error) {
       console.error('Login error:', error);
+      // Ensure connection is properly handled on error
+      if (error.code === 'P1001' || error.code === 'P1017') {
+        console.error('Database connection issue during login');
+        return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+      }
       res.status(500).json({ error: error.message || 'Login failed' });
     }
   });
 
   // Forgot Password - Send OTP
-  app.post('/api/auth/forgot-password', validateRequest({ body: forgotPasswordSchema }), async (req, res) => {
+  router.post('/forgot-password', validateRequest({ body: forgotPasswordSchema }), async (req, res) => {
     try {
       const { email } = req.body;
       
@@ -202,12 +213,15 @@ export function setupAuthRoutes(app, prisma) {
       }
     } catch (error) {
       console.error('Forgot password error:', error);
+      if (error.code === 'P1001' || error.code === 'P1017') {
+        return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+      }
       res.status(500).json({ error: error.message || 'Failed to send OTP' });
     }
   });
 
   // Reset Password with OTP
-  app.post('/api/auth/reset-password', validateRequest({ body: resetPasswordSchema }), async (req, res) => {
+  router.post('/reset-password', validateRequest({ body: resetPasswordSchema }), async (req, res) => {
     try {
       const { email, otp, newPassword } = req.body;
       
@@ -240,12 +254,16 @@ export function setupAuthRoutes(app, prisma) {
 
       res.json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
+      console.error('Reset password error:', error);
+      if (error.code === 'P1001' || error.code === 'P1017') {
+        return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+      }
       res.status(500).json({ error: 'Failed to reset password' });
     }
   });
 
   // Update Email
-  app.post('/api/auth/update-email', validateRequest({ body: updateEmailSchema }), async (req, res) => {
+  router.post('/update-email', validateRequest({ body: updateEmailSchema }), async (req, res) => {
     try {
       const { currentEmail, newEmail, password } = req.body;
       
@@ -274,7 +292,19 @@ export function setupAuthRoutes(app, prisma) {
 
       res.json({ success: true, message: 'Email updated successfully' });
     } catch (error) {
+      console.error('Update email error:', error);
+      if (error.code === 'P1001' || error.code === 'P1017') {
+        return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+      }
       res.status(500).json({ error: 'Failed to update email' });
     }
   });
+
+  return router;
 }
+
+export function setupAuthRoutes(app, prismaInstance) {
+  app.use('/api/auth', createAuthRoutes(prismaInstance));
+}
+
+export default createAuthRoutes;

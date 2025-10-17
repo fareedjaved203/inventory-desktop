@@ -85,7 +85,7 @@ class SyncManager {
       
       // Clear all data for current user
       const index = store.index('userId');
-      const cursor = await index.openCursor(this.userId);
+      let cursor = await index.openCursor(this.userId);
       
       while (cursor) {
         await cursor.delete();
