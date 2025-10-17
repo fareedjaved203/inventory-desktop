@@ -84,6 +84,20 @@ function Contacts() {
     }
   }, [contactsData]);
 
+  // Fetch shop settings with stale time to ensure they're always available
+  const { data: shopSettingsData } = useQuery(
+    ['shop-settings'],
+    async () => {
+      return await API.getShopSettings();
+    },
+    {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 30 * 60 * 1000, // 30 minutes
+      refetchOnWindowFocus: false,
+      retry: 3
+    }
+  );
+
   // Listen for sync events to refresh data
   useEffect(() => {
     const handleSyncComplete = () => {
@@ -93,6 +107,13 @@ function Contacts() {
     window.addEventListener('contactsSyncComplete', handleSyncComplete);
     return () => window.removeEventListener('contactsSyncComplete', handleSyncComplete);
   }, [queryClient]);
+
+  // Cache shop settings in localStorage whenever they're loaded
+  useEffect(() => {
+    if (shopSettingsData) {
+      localStorage.setItem('shopSettings', JSON.stringify(shopSettingsData));
+    }
+  }, [shopSettingsData]);
 
   // Create contact mutation
   const createContact = useMutation(
@@ -184,14 +205,6 @@ function Contacts() {
       onSuccess: () => {
         queryClient.invalidateQueries(['loan-transactions', selectedContact?.id]);
       }
-    }
-  );
-
-  // Fetch shop settings
-  const { data: shopSettingsData } = useQuery(
-    ['shop-settings'],
-    async () => {
-      return await API.getShopSettings();
     }
   );
 
@@ -328,9 +341,42 @@ function Contacts() {
     
     try {
       setGeneratingStatement(true);
+      
+      // Ensure shop settings are loaded - try multiple sources
+      let currentShopSettings = shopSettingsData;
+      if (!currentShopSettings) {
+        try {
+          // Try API first
+          currentShopSettings = await API.getShopSettings();
+        } catch (error) {
+          console.warn('Could not fetch shop settings from API, trying cache');
+          try {
+            // Try from query cache
+            const cachedSettings = queryClient.getQueryData(['shop-settings']);
+            if (cachedSettings) {
+              currentShopSettings = cachedSettings;
+            } else {
+              // Try localStorage as fallback
+              const localSettings = localStorage.getItem('shopSettings');
+              if (localSettings) {
+                currentShopSettings = JSON.parse(localSettings);
+              }
+            }
+          } catch (cacheError) {
+            console.warn('Could not get shop settings from cache either');
+            currentShopSettings = null;
+          }
+        }
+      }
+      
+      // Cache settings in localStorage for offline use
+      if (currentShopSettings) {
+        localStorage.setItem('shopSettings', JSON.stringify(currentShopSettings));
+      }
+      
       const data = await fetchStatementData(selectedContact.id, statementStartDate, statementEndDate);
       setStatementData(data);
-      setShopSettings(shopSettingsData);
+      setShopSettings(currentShopSettings);
     } catch (error) {
       console.error('Error fetching statement data:', error);
       toast.error('Failed to generate statement');
