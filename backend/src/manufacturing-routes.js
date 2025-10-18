@@ -347,10 +347,12 @@ export function setupManufacturingRoutes(app, prisma) {
           manufacturingCost = recipe.ingredients.reduce((total, ingredient) => {
             const rawMaterial = ingredient.rawMaterial;
             const ingredientAmount = Number(ingredient.quantity) * Number(req.body.quantityProduced);
-            const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
+            const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
             const ingredientCost = ingredientAmount * perUnitCost;
+            console.log(`Ingredient ${rawMaterial.name}: ${ingredientAmount} units × ${perUnitCost} = ${ingredientCost}`);
             return total + ingredientCost;
           }, 0);
+          console.log(`Total calculated manufacturing cost: ${manufacturingCost}`);
         }
 
         // Create manufacturing record
@@ -377,6 +379,17 @@ export function setupManufacturingRoutes(app, prisma) {
           }
         });
 
+        // Update the manufactured product's per unit cost based on manufacturing cost
+        if (manufacturingCost > 0) {
+          const perUnitManufacturingCost = manufacturingCost / Number(req.body.quantityProduced);
+          await prisma.product.update({
+            where: { id: recipe.productId },
+            data: {
+              perUnitPurchasePrice: Math.round(perUnitManufacturingCost * 100) // Convert to cents for BigInt storage
+            }
+          });
+        }
+
 
 
         return manufacturing;
@@ -385,6 +398,59 @@ export function setupManufacturingRoutes(app, prisma) {
       res.status(201).json(manufacturing);
     } catch (error) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get manufacturing cost estimation
+  app.post('/api/manufacturing/estimate-cost', authenticateToken, async (req, res) => {
+    try {
+      const { recipeId, quantityProduced } = req.body;
+      
+      const recipe = await prisma.recipe.findUnique({
+        where: { id: recipeId },
+        include: {
+          ingredients: {
+            include: {
+              rawMaterial: true
+            }
+          }
+        }
+      });
+
+      if (!recipe) {
+        return res.status(404).json({ error: 'Recipe not found' });
+      }
+
+      const estimatedCost = recipe.ingredients.reduce((total, ingredient) => {
+        const rawMaterial = ingredient.rawMaterial;
+        const ingredientAmount = Number(ingredient.quantity) * Number(quantityProduced);
+        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
+        const ingredientCost = ingredientAmount * perUnitCost;
+        return total + ingredientCost;
+      }, 0);
+
+      const costBreakdown = recipe.ingredients.map(ingredient => {
+        const rawMaterial = ingredient.rawMaterial;
+        const ingredientAmount = Number(ingredient.quantity) * Number(quantityProduced);
+        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
+        const ingredientCost = ingredientAmount * perUnitCost;
+        
+        return {
+          materialName: rawMaterial.name,
+          quantity: ingredientAmount,
+          unit: ingredient.unit,
+          perUnitCost: perUnitCost,
+          totalCost: ingredientCost
+        };
+      });
+
+      res.json({
+        estimatedCost: Math.round(estimatedCost),
+        costPerUnit: Math.round(estimatedCost / Number(quantityProduced) * 100) / 100,
+        breakdown: costBreakdown
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -23,6 +23,7 @@ const productSchema = z.object({
   retailPrice: z.number().positive("Retail price must be positive").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
   wholesalePrice: z.number().positive("Wholesale price must be positive").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
+  perUnitPurchasePrice: z.number().min(0, "Per unit cost must be non-negative").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().min(0, "Quantity must be non-negative"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
@@ -256,7 +257,7 @@ function Products() {
       wholesalePrice: formData.wholesalePrice && formData.wholesalePrice.trim() ? parseFloat(formData.wholesalePrice) : null,
       unitValue: formData.unitValue && formData.unitValue.trim() ? parseFloat(formData.unitValue) : null,
       purchasePrice: formData.purchasePrice && formData.purchasePrice.trim() ? parseFloat(formData.purchasePrice) : null,
-      perUnitPurchasePrice: formData.perUnitPurchasePrice && formData.perUnitPurchasePrice.trim() ? parseFloat(formData.perUnitPurchasePrice) : null,
+      perUnitPurchasePrice: formData.perUnitPurchasePrice && formData.perUnitPurchasePrice.toString().trim() ? Math.round(parseFloat(formData.perUnitPurchasePrice) * 100) : null,
       quantity: parseFloat(formData.quantity),
       lowStockThreshold: parseFloat(formData.lowStockThreshold),
       isRawMaterial: formData.isRawMaterial,
@@ -483,6 +484,7 @@ function Products() {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{language === 'ur' ? 'ریٹیل قیمت' : 'Retail Price'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden xl:table-cell">{language === 'ur' ? 'ہول سیل قیمت' : 'Wholesale Price'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden xl:table-cell">Per Unit Cost</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden sm:table-cell">{t('quantity')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
             </tr>
@@ -490,7 +492,7 @@ function Products() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && (debouncedSearchTerm || showLowStock || showDamaged || showRawMaterials) ? (
               <tr>
-                <td colSpan="7" className="px-6 py-8 text-center">
+                <td colSpan="8" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -510,6 +512,15 @@ function Products() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-blue-800">
                     {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden xl:table-cell font-medium text-purple-800">
+                    {product.perUnitPurchasePrice ? (
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                        {formatPakistaniCurrency(product.perUnitPurchasePrice)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">Not set</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                     <span className={`${
@@ -806,7 +817,6 @@ function Products() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر درج کریں، اعشاریہ نہیں' : 'Enter whole numbers only, no decimals. Retail price is used by default in sales.'}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
@@ -826,6 +836,13 @@ function Products() {
                           setValidationErrors({...validationErrors, purchasePrice: undefined});
                         }
                         setFormData({ ...formData, purchasePrice: e.target.value });
+                        
+                        // Auto-calculate per unit cost when purchase price or quantity changes
+                        const quantity = parseFloat(formData.quantity);
+                        if (value && quantity && quantity > 0) {
+                          const perUnitCost = value / quantity;
+                          setFormData(prev => ({ ...prev, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) }));
+                        }
                       }}
                       onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -849,6 +866,7 @@ function Products() {
                       className="w-full px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                       placeholder="Cost per unit"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price ÷ quantity</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Purchase price for profit calculation. Per unit cost for manufacturing cost calculation.'}</p>
@@ -870,6 +888,13 @@ function Products() {
                           setValidationErrors({...validationErrors, quantity: undefined});
                         }
                         setFormData({ ...formData, quantity: e.target.value });
+                        
+                        // Auto-calculate per unit cost when quantity changes
+                        const purchasePrice = parseFloat(formData.purchasePrice);
+                        if (purchasePrice && value && value > 0) {
+                          const perUnitCost = purchasePrice / value;
+                          setFormData(prev => ({ ...prev, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) }));
+                        }
                       }}
                       onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"

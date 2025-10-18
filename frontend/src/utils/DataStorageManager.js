@@ -220,8 +220,8 @@ class DataStorageManager {
                 }
               }
             }
-          } else {
-            // Fallback: if items not included, try to fetch from separate store (for backward compatibility)
+          } else if (this.getOfflineMode()) {
+            // Only try to fetch from separate store in offline mode (for backward compatibility)
             try {
               const purchaseItemsResult = await this.readOffline('bulkPurchaseItems', { limit: 10000 });
               const purchaseItems = purchaseItemsResult.items.filter(purchaseItem => purchaseItem.bulkPurchaseId === item.id);
@@ -243,6 +243,9 @@ class DataStorageManager {
               console.error('Error fetching purchase items:', error);
               item.items = [];
             }
+          } else {
+            // In online mode, if items are missing, set empty array
+            item.items = [];
           }
         }
         

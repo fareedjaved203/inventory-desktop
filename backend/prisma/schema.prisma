@@ -11,9 +11,9 @@ model Product {
   id                String             @id @default(uuid())
   name              String
   description       String
-  price             BigInt?
-  purchasePrice     BigInt?            @default(0)
-  perUnitPurchasePrice BigInt?         @default(0)
+  price             Decimal?
+  purchasePrice     Decimal?           @default(0)
+  perUnitPurchasePrice Decimal?        @default(0)
   sku               String?
   quantity          Decimal
   damagedQuantity   Decimal            @default(0)
@@ -23,8 +23,8 @@ model Product {
   unit              String             @default("pcs")
   userId            String
   isRawMaterial     Boolean            @default(false)
-  retailPrice       BigInt?
-  wholesalePrice    BigInt?
+  retailPrice       Decimal?
+  wholesalePrice    Decimal?
   unitValue         Decimal?
   BulkPurchaseItem  BulkPurchaseItem[]
   expenses          Expense[]
@@ -43,10 +43,10 @@ model Product {
 model Sale {
   id                  String       @id @default(uuid())
   billNumber          String       @unique
-  totalAmount         BigInt
-  originalTotalAmount BigInt?
+  totalAmount         Decimal
+  originalTotalAmount Decimal?
   discount            Decimal      @default(0)
-  paidAmount          BigInt       @default(0)
+  paidAmount          Decimal      @default(0)
   saleDate            DateTime     @default(now())
   contactId           String?
   employeeId          String?
@@ -75,8 +75,8 @@ model Sale {
 model SaleItem {
   id            String   @id @default(uuid())
   quantity      Decimal
-  price         BigInt
-  purchasePrice BigInt   @default(0)
+  price         Decimal
+  purchasePrice Decimal  @default(0)
   saleId        String
   productId     String
   createdAt     DateTime @default(now())
@@ -109,15 +109,15 @@ model Contact {
 model BulkPurchase {
   id            String             @id @default(uuid())
   invoiceNumber String?            @unique
-  totalAmount   BigInt
-  paidAmount    BigInt
+  totalAmount   Decimal
+  paidAmount    Decimal
   purchaseDate  DateTime           @default(now())
   contactId     String
   transportCost Decimal?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   userId        String
-  discount      BigInt             @default(0)
+  discount      Decimal            @default(0)
   contact       Contact            @relation(fields: [contactId], references: [id])
   items         BulkPurchaseItem[]
 
@@ -128,7 +128,7 @@ model BulkPurchase {
 model BulkPurchaseItem {
   id             String       @id @default(uuid())
   quantity       Decimal
-  purchasePrice  BigInt
+  purchasePrice  Decimal
   bulkPurchaseId String
   productId      String
   createdAt      DateTime     @default(now())
@@ -140,10 +140,10 @@ model BulkPurchaseItem {
 model SaleReturn {
   id           String           @id @default(uuid())
   returnNumber String           @unique
-  totalAmount  BigInt
+  totalAmount  Decimal
   returnDate   DateTime         @default(now())
   reason       String?
-  refundAmount BigInt           @default(0)
+  refundAmount Decimal         @default(0)
   refundPaid   Boolean          @default(false)
   refundDate   DateTime?
   saleId       String
@@ -160,7 +160,7 @@ model SaleReturn {
 model SaleReturnItem {
   id           String     @id @default(uuid())
   quantity     Decimal
-  price        BigInt
+  price        Decimal
   saleReturnId String
   productId    String
   createdAt    DateTime   @default(now())
@@ -171,7 +171,7 @@ model SaleReturnItem {
 
 model LoanTransaction {
   id          String   @id @default(uuid())
-  amount      BigInt
+  amount      Decimal
   type        String
   description String?
   date        DateTime @default(now())
@@ -284,7 +284,7 @@ model Employee {
 
 model Expense {
   id            String   @id @default(uuid())
-  amount        BigInt
+  amount        Decimal
   date          DateTime @default(now())
   category      String
   description   String?
@@ -351,7 +351,7 @@ model Manufacturing {
   id               String   @id @default(uuid())
   recipeId         String
   quantityProduced   Decimal
-  manufacturingCost  BigInt   @default(0)
+  manufacturingCost  Decimal  @default(0)
   productionDate   DateTime @default(now())
   notes            String?
   userId           String

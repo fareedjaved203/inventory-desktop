@@ -189,6 +189,10 @@ function BulkPurchasing() {
         resetForm();
         toast.success('Purchase created successfully!');
       },
+      onError: (error) => {
+        console.error('Create purchase error:', error);
+        toast.error(error.response?.data?.error || 'Failed to create purchase');
+      }
     }
   );
 
@@ -285,7 +289,7 @@ function BulkPurchasing() {
     if (createNewProduct) {
       try {
         setCreatingProduct(true);
-        const productResponse = await api.post('/api/products', {
+        const productResponse = await API.post('/api/products', {
           name: newProductData.name,
           quantity: 0,
           description: '',
@@ -348,12 +352,13 @@ function BulkPurchasing() {
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
       try {
         setCreatingContact(true);
-        const contactResponse = await api.post('/api/contacts', {
+        const contactResponse = await API.post('/contacts', {
           ...newContactData,
           contactType: 'supplier'
         });
-        contactId = contactResponse.data.id;
+        contactId = contactResponse.id;
       } catch (error) {
+        console.error('Contact creation error:', error);
         const errorMessage = error.response?.data?.error || 'Failed to create contact';
         setValidationErrors({ contact: errorMessage });
         return;
@@ -441,16 +446,16 @@ function BulkPurchasing() {
     setPurchaseItems(purchase.items.map(item => ({
       productId: item.product?.id || item.productId,
       productName: item.product?.name || 'Unknown Product',
-      quantity: item.quantity || 0,
-      purchasePrice: item.purchasePrice || item.unitPrice || 0,
-      subtotal: (item.purchasePrice || item.unitPrice || 0) * (item.quantity || 0)
+      quantity: Number(item.quantity) || 0,
+      purchasePrice: Number(item.purchasePrice || item.unitPrice) || 0,
+      subtotal: (Number(item.purchasePrice || item.unitPrice) || 0) * (Number(item.quantity) || 0)
     })));
     
-    setTotalAmount(purchase.totalAmount);
-    const subtotal = purchase.items?.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0) || 0;
-    const discountPercentage = subtotal > 0 ? ((purchase.discount || 0) / subtotal) * 100 : 0;
+    setTotalAmount(Number(purchase.totalAmount));
+    const subtotal = purchase.items?.reduce((sum, item) => sum + (Number(item.purchasePrice) * Number(item.quantity)), 0) || 0;
+    const discountPercentage = subtotal > 0 ? ((Number(purchase.discount) || 0) / subtotal) * 100 : 0;
     setDiscount(discountPercentage.toFixed(1));
-    setPaidAmount(purchase.paidAmount);
+    setPaidAmount(Number(purchase.paidAmount));
     setIsEditMode(true);
     setIsModalOpen(true);
   };
@@ -906,7 +911,7 @@ function BulkPurchasing() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت *' : 'Purchase Price *'}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت *' : 'Purchase Unit Price *'}</label>
                       <input
                         type="number"
                         step="1"
@@ -928,7 +933,6 @@ function BulkPurchasing() {
                       {validationErrors.purchasePrice && (
                         <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
                       )}
-                      <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'صرف پورے نمبر، اعشاریہ نہیں' : 'Whole numbers only, no decimals'}</p>
                     </div>
                     <div className="self-end">
                       <button
@@ -956,7 +960,7 @@ function BulkPurchasing() {
                       <div>
                         <div className="font-medium text-primary-700">{item.productName}</div>
                         <div className="text-sm text-gray-600">
-                          {item.quantity} x Rs.{(item.purchasePrice || 0).toFixed(2)} = <span className="text-primary-800 font-medium">Rs.{(item.subtotal || 0).toFixed(2)}</span>
+                          {item.quantity} x Rs.{Number(item.purchasePrice || 0).toFixed(2)} = <span className="text-primary-800 font-medium">Rs.{Number(item.subtotal || 0).toFixed(2)}</span>
                         </div>
                       </div>
                       <button
@@ -1020,7 +1024,7 @@ function BulkPurchasing() {
                   </label>
                   <input
                     type="text"
-                    value={`Rs.${totalAmount.toFixed(2)}`}
+                    value={`Rs.${Number(totalAmount).toFixed(2)}`}
                     disabled
                     className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-primary-800 font-medium"
                   />

@@ -129,10 +129,10 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                         {item.quantity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        Rs.{item.purchasePrice.toFixed(2)}
+                        Rs.{Number(item.purchasePrice).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        Rs.{(item.purchasePrice * item.quantity).toFixed(2)}
+                        Rs.{(Number(item.purchasePrice) * Number(item.quantity)).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -145,7 +145,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                           Subtotal
                         </td>
                         <td className="px-6 py-4 text-right font-medium">
-                          Rs.{(purchase.totalAmount + (purchase.discount || 0)).toFixed(2)}
+                          Rs.{(Number(purchase.totalAmount) + Number(purchase.discount || 0)).toFixed(2)}
                         </td>
                       </tr>
                       <tr>
@@ -153,7 +153,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                           Discount
                         </td>
                         <td className="px-6 py-4 text-right font-medium text-green-600">
-                          -Rs.{(purchase.discount || 0).toFixed(2)}
+                          -Rs.{Number(purchase.discount || 0).toFixed(2)}
                         </td>
                       </tr>
                     </>
@@ -163,7 +163,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                       Total
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
-                      Rs.{purchase.totalAmount.toFixed(2)}
+                      Rs.{Number(purchase.totalAmount).toFixed(2)}
                     </td>
                   </tr>
                   <tr>
@@ -171,16 +171,16 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                       Paid Amount
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
-                      Rs.{purchase.paidAmount.toFixed(2)}
+                      Rs.{Number(purchase.paidAmount).toFixed(2)}
                     </td>
                   </tr>
                   <tr>
                     <td colSpan="3" className="px-6 py-4 text-right font-medium">
                       Balance
                     </td>
-                    <td className={`px-6 py-4 text-right font-medium ${purchase.totalAmount > purchase.paidAmount ? 'text-yellow-600' : ''}`}>
-                      Rs.{(purchase.totalAmount - purchase.paidAmount).toFixed(2)}
-                      {purchase.totalAmount > purchase.paidAmount && (
+                    <td className={`px-6 py-4 text-right font-medium ${Number(purchase.totalAmount) > Number(purchase.paidAmount) ? 'text-yellow-600' : ''}`}>
+                      Rs.{(Number(purchase.totalAmount) - Number(purchase.paidAmount)).toFixed(2)}
+                      {Number(purchase.totalAmount) > Number(purchase.paidAmount) && (
                         <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
                           Payment Due
                         </span>

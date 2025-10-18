@@ -1,6 +1,8 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { bulkPurchaseSchema, querySchema } from './schemas.js';
 import { withTransaction } from './db-utils.js';
+import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
 
 export function setupBulkPurchaseRoutes(app, prisma) {
   // Get bulk purchases with pending payments
@@ -160,29 +162,25 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
           }
 
-          // Create the bulk purchase
-          const purchase = await prisma.bulkPurchase.create({
-            data: {
-              invoiceNumber,
-              totalAmount: req.body.totalAmount,
-              discount: req.body.discount || 0,
-              paidAmount: req.body.paidAmount,
-              purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
-              transportCost: req.body.transportCost || null,
-              userId: req.userId,
-              contact: {
-                connect: { id: req.body.contactId }
-              },
-              items: {
-                create: req.body.items.map(item => ({
-                  quantity: item.quantity,
-                  purchasePrice: item.purchasePrice,
-                  product: {
-                    connect: { id: item.productId }
-                  }
-                }))
-              }
-            },
+          // Create the bulk purchase using raw SQL
+          const purchaseId = crypto.randomUUID();
+          await prisma.$executeRaw`
+            INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "transportCost", "contactId", "userId", "createdAt", "updatedAt")
+            VALUES (${purchaseId}, ${invoiceNumber}, ${req.body.totalAmount}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount}::decimal, ${req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date()}, ${req.body.transportCost}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
+          `;
+          
+          // Create purchase items
+          for (const item of req.body.items) {
+            const itemId = crypto.randomUUID();
+            await prisma.$executeRaw`
+              INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
+              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${purchaseId}, ${item.productId}, NOW(), NOW())
+            `;
+          }
+          
+          // Get the created purchase with relations
+          const purchase = await prisma.bulkPurchase.findUnique({
+            where: { id: purchaseId },
             include: {
               contact: true,
               items: {
@@ -195,15 +193,13 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Update product quantities and purchase prices
           for (const item of req.body.items) {
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: {
-                quantity: {
-                  increment: item.quantity
-                },
-                purchasePrice: item.purchasePrice
-              }
-            });
+            await prisma.$executeRaw`
+              UPDATE "Product" 
+              SET quantity = quantity + ${item.quantity}::decimal, 
+                  "purchasePrice" = ${item.purchasePrice}::decimal,
+                  "updatedAt" = NOW()
+              WHERE id = ${item.productId}
+            `;
           }
 
           return purchase;
@@ -264,9 +260,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               userId: req.userId
             },
             data: {
-              totalAmount: req.body.totalAmount,
-              discount: req.body.discount || 0,
-              paidAmount: req.body.paidAmount,
+              totalAmount: new Prisma.Decimal(req.body.totalAmount),
+              discount: new Prisma.Decimal(req.body.discount || 0),
+              paidAmount: new Prisma.Decimal(req.body.paidAmount),
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
               transportCost: req.body.transportCost || null,
               contact: {
@@ -275,7 +271,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               items: {
                 create: req.body.items.map(item => ({
                   quantity: item.quantity,
-                  purchasePrice: item.purchasePrice,
+                  purchasePrice: new Prisma.Decimal(item.purchasePrice),
                   product: {
                     connect: { id: item.productId }
                   }
@@ -300,7 +296,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 quantity: {
                   increment: item.quantity
                 },
-                purchasePrice: item.purchasePrice
+                purchasePrice: new Prisma.Decimal(item.purchasePrice)
               }
             });
           }

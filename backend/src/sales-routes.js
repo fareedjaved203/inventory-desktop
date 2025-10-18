@@ -1,5 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
 import { saleSchema, querySchema } from './schemas.js';
 import { withTransaction, safeQuery } from './db-utils.js';
 
@@ -90,32 +91,25 @@ export function setupSalesRoutes(app, prisma) {
             )
           );
 
-          const sale = await prisma.sale.create({
-            data: {
-              billNumber,
-              totalAmount: Math.round(req.body.totalAmount),
-              originalTotalAmount: Math.round(req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)),
-              discount: req.body.discount || 0,
-              paidAmount: req.body.paidAmount || 0,
-              saleDate,
-              userId: req.userId,
-              contactId: req.body.contactId || null,
-              employeeId: req.body.employeeId || null,
-              transportId: req.body.transportId || null,
-              transportCost: req.body.transportCost || null,
-              loadingDate: req.body.loadingDate ? new Date(req.body.loadingDate) : null,
-              arrivalDate: req.body.arrivalDate ? new Date(req.body.arrivalDate) : null,
-              description: req.body.description || null,
-              items: {
-                create: req.body.items.map((item, index) => ({
-                  quantity: item.quantity,
-                  price: item.price,
-                  priceType: item.priceType || "retail",
-                  purchasePrice: productDetails[index]?.purchasePrice || 0,
-                  productId: item.productId
-                }))
-              }
-            },
+          // Create sale using raw SQL
+          const saleId = crypto.randomUUID();
+          await prisma.$executeRaw`
+            INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "employeeId", "transportId", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
+            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.employeeId}, ${req.body.transportId}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
+          `;
+          
+          // Create sale items
+          for (const [index, item] of req.body.items.entries()) {
+            const itemId = crypto.randomUUID();
+            await prisma.$executeRaw`
+              INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
+              VALUES (${itemId}, ${item.quantity}::decimal, ${item.price}::decimal, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}::decimal, ${saleId}, ${item.productId}, NOW(), NOW())
+            `;
+          }
+          
+          // Get the created sale with relations
+          const sale = await prisma.sale.findUnique({
+            where: { id: saleId },
             include: {
               items: {
                 include: {
@@ -687,36 +681,37 @@ export function setupSalesRoutes(app, prisma) {
 
           console.log("req.body is", req.body);
 
-          const updatedSale = await prisma.sale.update({
-            where: { 
-              id: req.params.id,
-              userId: req.userId
-            },
-            data: {
-              totalAmount: Math.round(req.body.totalAmount),
-              originalTotalAmount: Math.round(req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)),
-              discount: req.body.discount || 0,
-              paidAmount: req.body.paidAmount || 0,
-              ...(saleDate && { saleDate }),
-              contactId: req.body.contactId || null,
-              employeeId: req.body.employeeId || null,
-              transportId: req.body.transportId || null,
-              transportCost: req.body.transportCost || null,
-              loadingDate: req.body.loadingDate ? new Date(req.body.loadingDate) : null,
-              arrivalDate: req.body.arrivalDate ? new Date(req.body.arrivalDate) : null,
-              description: req.body.description || null,
-              items: {
-                create: req.body.items.map((item, index) => ({
-                  quantity: item.quantity,
-                  price: item.price,
-                  priceType: item.priceType || "retail",
-                  purchasePrice: productDetails[index]?.purchasePrice || 0,
-                  product: {
-                    connect: { id: item.productId }
-                  }
-                }))
-              }
-            },
+          // Update sale using raw SQL
+          await prisma.$executeRaw`
+            UPDATE "Sale" 
+            SET "totalAmount" = ${req.body.totalAmount}::decimal,
+                "originalTotalAmount" = ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal,
+                discount = ${req.body.discount || 0}::decimal,
+                "paidAmount" = ${req.body.paidAmount || 0}::decimal,
+                ${saleDate ? Prisma.sql`"saleDate" = ${saleDate},` : Prisma.empty}
+                "contactId" = ${req.body.contactId},
+                "employeeId" = ${req.body.employeeId},
+                "transportId" = ${req.body.transportId},
+                "transportCost" = ${req.body.transportCost},
+                "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},
+                "arrivalDate" = ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null},
+                description = ${req.body.description},
+                "updatedAt" = NOW()
+            WHERE id = ${req.params.id} AND "userId" = ${req.userId}
+          `;
+          
+          // Create new sale items
+          for (const [index, item] of req.body.items.entries()) {
+            const itemId = crypto.randomUUID();
+            await prisma.$executeRaw`
+              INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
+              VALUES (${itemId}, ${item.quantity}::decimal, ${item.price}::decimal, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}::decimal, ${req.params.id}, ${item.productId}, NOW(), NOW())
+            `;
+          }
+          
+          // Get the updated sale with relations
+          const updatedSale = await prisma.sale.findUnique({
+            where: { id: req.params.id },
             include: {
               items: {
                 include: {

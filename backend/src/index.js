@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { productSchema, productUpdateSchema, querySchema } from './schemas.js';
 import { setupContactRoutes } from './contact-routes.js';
 import { setupSalesRoutes } from './sales-routes.js';
@@ -229,6 +229,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
         unitValue: item.unitValue ? Number(item.unitValue) : null,
         quantity: Number(item.quantity)
       })),
@@ -276,6 +277,7 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
         quantity: Number(item.quantity),
         lowStockThreshold: Number(item.lowStockThreshold || 10)
       })),
@@ -323,6 +325,7 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -505,6 +508,7 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
       retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
       wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
       purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+      perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
       unitValue: product.unitValue ? Number(product.unitValue) : null,
       quantity: Number(product.quantity)
     });
@@ -535,6 +539,12 @@ app.post(
       const product = await prisma.product.create({
         data: {
           ...req.body,
+          price: req.body.price ? new Prisma.Decimal(req.body.price) : null,
+          retailPrice: req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice) : null,
+          wholesalePrice: req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice) : null,
+          purchasePrice: req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice) : null,
+          perUnitPurchasePrice: req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice) : null,
+          unitValue: req.body.unitValue ? new Prisma.Decimal(req.body.unitValue) : null,
           userId: req.userId
         },
       });
@@ -545,7 +555,7 @@ app.post(
         if (expenseAmount > 0) {
           await prisma.expense.create({
             data: {
-              amount: expenseAmount,
+              amount: new Prisma.Decimal(expenseAmount),
               date: new Date(),
               category: 'Raw Materials',
               description: `Direct addition of raw material: ${req.body.name}`,
@@ -563,6 +573,7 @@ app.post(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
         unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });
@@ -611,12 +622,20 @@ app.put(
         where: { id: req.params.id, userId: req.userId }
       });
       
+      const updateData = { ...req.body };
+      if (req.body.price !== undefined) updateData.price = req.body.price ? new Prisma.Decimal(req.body.price) : null;
+      if (req.body.retailPrice !== undefined) updateData.retailPrice = req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice) : null;
+      if (req.body.wholesalePrice !== undefined) updateData.wholesalePrice = req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice) : null;
+      if (req.body.purchasePrice !== undefined) updateData.purchasePrice = req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice) : null;
+      if (req.body.perUnitPurchasePrice !== undefined) updateData.perUnitPurchasePrice = req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice) : null;
+      if (req.body.unitValue !== undefined) updateData.unitValue = req.body.unitValue ? new Prisma.Decimal(req.body.unitValue) : null;
+      
       const product = await prisma.product.update({
         where: { 
           id: req.params.id,
           userId: req.userId
         },
-        data: req.body,
+        data: updateData,
       });
       
       // Auto-create expense entry if converting to raw material or updating raw material cost
@@ -630,7 +649,7 @@ app.put(
           // Converting to raw material - create new expense
           await prisma.expense.create({
             data: {
-              amount: newCost,
+              amount: new Prisma.Decimal(newCost),
               date: new Date(),
               category: 'Raw Materials',
               description: `Converted to raw material: ${product.name}`,
@@ -642,7 +661,7 @@ app.put(
           // Raw material cost increased - create expense for difference
           await prisma.expense.create({
             data: {
-              amount: costDifference,
+              amount: new Prisma.Decimal(costDifference),
               date: new Date(),
               category: 'Raw Materials',
               description: `Raw material cost adjustment: ${product.name}`,
@@ -660,6 +679,7 @@ app.put(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
         unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });

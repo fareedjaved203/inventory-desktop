@@ -539,11 +539,14 @@ function Manufacturing() {
       {/* Recipe Modal */}
       {showRecipeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-              {selectedItem ? 'Edit Recipe' : 'Add New Recipe'}
-            </h2>
-            <form onSubmit={handleSubmit(onSubmitRecipe)} className="space-y-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl h-[90vh] shadow-xl border border-gray-200 flex flex-col">
+            <div className="flex-shrink-0">
+              <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
+                {selectedItem ? 'Edit Recipe' : 'Add New Recipe'}
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-1 py-2">
+              <form id="recipe-form" onSubmit={handleSubmit(onSubmitRecipe)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Recipe Name
@@ -602,78 +605,138 @@ function Manufacturing() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Specify how much of each raw material is needed to make 1 unit of the final product
+                  Specify how much of each raw material is needed to make 1 unit of the final product. Set per unit costs in Products section for cost estimation.
                 </p>
-                {ingredients.map((ingredient, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <select
-                      value={ingredient.rawMaterialId}
-                      onChange={(e) => updateIngredient(index, 'rawMaterialId', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">Select Raw Material</option>
-                      {rawMaterialsData?.data?.items?.map((material) => (
-                        <option key={material.id} value={material.id}>
-                          {material.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Amount per unit"
-                      value={ingredient.quantity}
-                      onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
-                      className="w-32 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      title="Amount needed per 1 unit of final product"
-                    />
-                    <select
-                      value={ingredient.unit}
-                      onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                      className="w-20 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="pcs">pcs</option>
-                      <option value="kg">kg</option>
-                      <option value="gram">g</option>
-                      <option value="ltr">ltr</option>
-                      <option value="ml">ml</option>
-                    </select>
-                    {ingredients.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeIngredient(index)}
-                        className="text-red-600 hover:text-red-800 px-2"
-                      >
-                        ×
-                      </button>
-                    )}
+                {ingredients.map((ingredient, index) => {
+                  const selectedMaterial = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
+                  const ingredientCost = selectedMaterial?.perUnitPurchasePrice && ingredient.quantity 
+                    ? parseFloat(selectedMaterial.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
+                    : 0;
+                  
+                  return (
+                    <div key={index} className="mb-3">
+                      <div className="flex gap-2 mb-1">
+                        <select
+                          value={ingredient.rawMaterialId}
+                          onChange={(e) => updateIngredient(index, 'rawMaterialId', e.target.value)}
+                          className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="">Select Raw Material</option>
+                          {rawMaterialsData?.data?.items?.map((material) => (
+                            <option key={material.id} value={material.id}>
+                              {material.name} {material.perUnitPurchasePrice ? `(${formatPakistaniCurrency(material.perUnitPurchasePrice)}/unit)` : '(No cost set)'}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Amount per unit"
+                          value={ingredient.quantity}
+                          onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+                          className="w-32 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          title="Amount needed per 1 unit of final product"
+                        />
+                        <select
+                          value={ingredient.unit}
+                          onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                          className="w-20 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="pcs">pcs</option>
+                          <option value="kg">kg</option>
+                          <option value="gram">g</option>
+                          <option value="ltr">ltr</option>
+                          <option value="ml">ml</option>
+                        </select>
+                        {ingredients.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeIngredient(index)}
+                            className="text-red-600 hover:text-red-800 px-2"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      {selectedMaterial && ingredient.quantity && (
+                        <div className="text-xs text-blue-600 ml-2">
+                          {selectedMaterial.perUnitPurchasePrice > 0 
+                            ? `Cost per unit: ${formatPakistaniCurrency(ingredientCost)}`
+                            : 'Set per unit cost in Products section for cost calculation'
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* Recipe Cost Summary */}
+                {ingredients.some(ing => ing.rawMaterialId && ing.quantity) && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <h5 className="font-medium text-green-800 mb-2">Estimated Cost per Unit Produced:</h5>
+                    <div className="space-y-1">
+                      {ingredients
+                        .filter(ing => ing.rawMaterialId && ing.quantity)
+                        .map((ingredient, idx) => {
+                          const material = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
+                          const cost = material?.perUnitPurchasePrice && ingredient.quantity 
+                            ? parseFloat(material.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
+                            : 0;
+                          return (
+                            <div key={idx} className="flex justify-between text-sm text-green-700">
+                              <span>{material?.name}: {ingredient.quantity} {ingredient.unit}</span>
+                              <span>{cost > 0 ? formatPakistaniCurrency(cost) : 'No cost set'}</span>
+                            </div>
+                          );
+                        })}
+                      <div className="border-t border-green-300 pt-1 mt-2">
+                        <div className="flex justify-between font-medium text-green-800">
+                          <span>Total Cost per Unit:</span>
+                          <span>
+                            {formatPakistaniCurrency(
+                              ingredients
+                                .filter(ing => ing.rawMaterialId && ing.quantity)
+                                .reduce((total, ingredient) => {
+                                  const material = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
+                                  const cost = material?.perUnitPurchasePrice && ingredient.quantity 
+                                    ? parseFloat(material.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
+                                    : 0;
+                                  return total + cost;
+                                }, 0)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
 
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowRecipeModal(false);
-                    setSelectedItem(null);
-                    reset();
-                    setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }]);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createRecipe.isLoading || updateRecipe.isLoading}
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {(createRecipe.isLoading || updateRecipe.isLoading) && <LoadingSpinner size="w-4 h-4" />}
-                  {selectedItem ? 'Update' : 'Save'}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
+            <div className="flex-shrink-0 mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRecipeModal(false);
+                  setSelectedItem(null);
+                  reset();
+                  setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }]);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="recipe-form"
+                disabled={createRecipe.isLoading || updateRecipe.isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {(createRecipe.isLoading || updateRecipe.isLoading) && <LoadingSpinner size="w-4 h-4" />}
+                {selectedItem ? 'Update' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -681,11 +744,14 @@ function Manufacturing() {
       {/* Production Modal */}
       {showProductionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl border border-gray-200">
-            <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-              Start Production
-            </h2>
-            <form onSubmit={handleSubmit(onSubmitProduction)} className="space-y-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md h-[90vh] shadow-xl border border-gray-200 flex flex-col">
+            <div className="flex-shrink-0">
+              <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
+                Start Production
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-1 py-2">
+              <form id="production-form" onSubmit={handleSubmit(onSubmitProduction)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Recipe
@@ -740,6 +806,7 @@ function Manufacturing() {
                       calculateProductionMetrics(selectedRecipe, parseFloat(e.target.value) || 1);
                     }
                   }}
+                  onWheel={(e) => e.target.blur()}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {errors.quantityProduced && (
@@ -747,16 +814,27 @@ function Manufacturing() {
                 )}
               </div>
 
-              {/* Ingredient Stock Levels */}
+              {/* Ingredient Stock Levels and Cost Breakdown */}
               {selectedRecipe && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2">Ingredient Stock Status</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                <div className={`border rounded-lg p-4 ${
+                  maxProduction === 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <h4 className={`font-medium mb-2 ${
+                    maxProduction === 0 ? 'text-red-800' : 'text-blue-800'
+                  }`}>Ingredient Stock Status & Cost Breakdown</h4>
+                  {maxProduction === 0 && (
+                    <div className="mb-3 p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm font-medium">
+                      ⚠️ Production cannot be completed - insufficient raw materials
+                    </div>
+                  )}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
                     {recipesData?.data?.items?.find(r => r.id === selectedRecipe)?.ingredients?.map((ingredient, idx) => {
                       const rawMaterial = rawMaterialsData?.data?.items?.find(rm => rm.id === ingredient.rawMaterialId);
-                      const needed = parseFloat(ingredient.quantity) * (parseFloat(watch('quantityProduced')) || 1);
-                      
+                      const quantityToProduce = parseFloat(watch('quantityProduced')) || 1;
+                      const needed = parseFloat(ingredient.quantity) * quantityToProduce;
                       const available = rawMaterial?.quantity || 0;
+                      const perUnitCost = rawMaterial?.perUnitPurchasePrice || 0;
+                      const ingredientCost = needed * perUnitCost;
                       
                       // Convert to base units for comparison
                       const neededInBaseUnit = convertToBaseUnit(needed, ingredient.unit);
@@ -770,21 +848,33 @@ function Manufacturing() {
                       const sufficient = unitsCompatible && availableInBaseUnit >= neededInBaseUnit;
                       
                       return (
-                        <div key={idx} className={`flex justify-between items-center text-sm ${
-                          sufficient ? 'text-green-700' : 'text-red-700'
+                        <div key={idx} className={`p-2 rounded border ${
+                          sufficient ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                         }`}>
-                          <span>{rawMaterial?.name}</span>
-                          <span>
-                            Need: {needed} {ingredient.unit} | 
-                            Available: {available} {rawMaterial?.unit || 'pcs'}
-                            {unitsCompatible && availableBaseUnit !== neededBaseUnit && (
-                              <span className="text-xs text-blue-600 ml-1">
-                                ({availableInBaseUnit} {availableBaseUnit} vs {neededInBaseUnit} {neededBaseUnit})
-                              </span>
-                            )}
-                            {!sufficient && <span className="ml-1 text-red-600">⚠️</span>}
-                            {!unitsCompatible && <span className="ml-1 text-orange-600">(Unit mismatch)</span>}
-                          </span>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className={`font-medium ${
+                                sufficient ? 'text-green-700' : 'text-red-700'
+                              }`}>
+                                {rawMaterial?.name}
+                                {!sufficient && <span className="ml-1 text-red-600">⚠️</span>}
+                                {!unitsCompatible && <span className="ml-1 text-orange-600">(Unit mismatch)</span>}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                Need: {parseFloat(ingredient.quantity)} {ingredient.unit} per unit × {quantityToProduce} = {needed} {ingredient.unit} | Available: {available} {rawMaterial?.unit || 'pcs'}
+                              </div>
+                              {perUnitCost > 0 && (
+                                <div className="text-xs text-blue-600">
+                                  Cost: {formatPakistaniCurrency(perUnitCost)}/unit × {needed} = {formatPakistaniCurrency(ingredientCost)}
+                                </div>
+                              )}
+                              {perUnitCost === 0 && (
+                                <div className="text-xs text-orange-600">
+                                  No unit cost set - update product's per unit cost for accurate calculation
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -792,8 +882,18 @@ function Manufacturing() {
                   {productionCost > 0 && (
                     <div className="mt-3 pt-2 border-t border-blue-200">
                       <div className="flex justify-between items-center font-medium text-blue-800">
-                        <span>Estimated Production Cost:</span>
+                        <span>Total Estimated Production Cost:</span>
                         <span>{formatPakistaniCurrency(productionCost)}</span>
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        Cost per unit produced: {formatPakistaniCurrency(productionCost / (parseFloat(watch('quantityProduced')) || 1))}
+                      </div>
+                    </div>
+                  )}
+                  {productionCost === 0 && (
+                    <div className="mt-3 pt-2 border-t border-orange-200 bg-orange-50 rounded p-2">
+                      <div className="text-orange-700 text-sm">
+                        💡 To see production costs, set "Per Unit Cost" for raw materials in the Products section
                       </div>
                     </div>
                   )}
@@ -820,10 +920,11 @@ function Manufacturing() {
                   step="1"
                   placeholder={productionCost > 0 ? `Estimated: ${Math.round(productionCost)}` : 'Enter cost'}
                   {...register('manufacturingCost')}
+                  onWheel={(e) => e.target.blur()}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Leave empty to use estimated cost based on raw material prices
+                  Leave empty to use estimated cost: {productionCost > 0 ? formatPakistaniCurrency(productionCost) : 'Set per unit costs for raw materials'}
                 </p>
               </div>
 
@@ -838,30 +939,32 @@ function Manufacturing() {
                 />
               </div>
 
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowProductionModal(false);
-                    setSelectedRecipe(null);
-                    setMaxProduction(0);
-                    setProductionCost(0);
-                    reset();
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createManufacturing.isLoading}
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {createManufacturing.isLoading && <LoadingSpinner size="w-4 h-4" />}
-                  Start Production
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
+            <div className="flex-shrink-0 mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProductionModal(false);
+                  setSelectedRecipe(null);
+                  setMaxProduction(0);
+                  setProductionCost(0);
+                  reset();
+                }}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="production-form"
+                disabled={createManufacturing.isLoading || maxProduction === 0}
+                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded hover:from-primary-700 hover:to-primary-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {createManufacturing.isLoading && <LoadingSpinner size="w-4 h-4" />}
+                Start Production
+              </button>
+            </div>
           </div>
         </div>
       )}

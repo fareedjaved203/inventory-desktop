@@ -7,6 +7,7 @@ export const productSchema = z.object({
   retailPrice: z.number().positive("Retail price must be positive").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
   wholesalePrice: z.number().positive("Wholesale price must be positive").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
+  perUnitPurchasePrice: z.number().min(0, "Per unit cost must be non-negative").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().min(0, "Quantity must be non-negative").max(1000000000, "Quantity cannot exceed 1 billion"),
   unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
