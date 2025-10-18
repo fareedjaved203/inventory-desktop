@@ -35,11 +35,11 @@ export const saleSchema = z.object({
   discount: z.number().min(0),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
-  transportId: z.string().optional(),
-  transportCost: z.number().min(0).optional(),
-  loadingDate: z.string().optional(),
-  arrivalDate: z.string().optional(),
-  description: z.string().optional(),
+  transportId: z.string().nullable().optional(),
+  transportCost: z.number().min(0).nullable().optional(),
+  loadingDate: z.string().nullable().optional(),
+  arrivalDate: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
   originalTotalAmount: z.number().min(0).optional()
 });
 

@@ -97,8 +97,13 @@ function Sales() {
         setSaleItems([]);
         setSelectedProduct(null);
         setQuantity("");
+        setProductSearchTerm("");
+        isProductSelected(false);
         setPriceType("retail");
         setSelectedContact(null);
+        setContactSearchTerm("");
+        setCreateNewContact(false);
+        setNewContactData({ name: '', phoneNumber: '', address: '' });
         setSaleDate("");
         setDescription('');
         setSelectedTransport(null);
@@ -108,6 +113,11 @@ function Sales() {
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
+        setValidationErrors({});
+        setTempStockUpdates({});
+        setTotalAmount(0);
+        setDiscount(0);
+        setPaidAmount("");
         setIsEditMode(false);
         setEditingSale(null);
         toast.success('Sale updated successfully!');
@@ -246,8 +256,13 @@ function Sales() {
         setSaleItems([]);
         setSelectedProduct(null);
         setQuantity("");
+        setProductSearchTerm("");
+        isProductSelected(false);
         setPriceType("retail");
         setSelectedContact(null);
+        setContactSearchTerm("");
+        setCreateNewContact(false);
+        setNewContactData({ name: '', phoneNumber: '', address: '' });
         setSaleDate("");
         setDescription('');
         setSelectedTransport(null);
@@ -257,7 +272,13 @@ function Sales() {
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
+        setValidationErrors({});
         setTempStockUpdates({});
+        setTotalAmount(0);
+        setDiscount(0);
+        setPaidAmount("");
+        setIsEditMode(false);
+        setEditingSale(null);
         toast.success('Sale created successfully!');
       },
     }
@@ -571,35 +592,47 @@ function Sales() {
     const saleData = {
       items: saleItems?.map((item) => ({
         productId: item.productId,
-        quantity: item.quantity,
-        price: item.price,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
         priceType: item.priceType || "retail",
       })),
-      totalAmount: Math.round(totalAmount),
-      originalTotalAmount: Math.round(calculateTotal()),
-      discount: discountAmount,
-      paidAmount: parsedPaidAmount,
+      totalAmount: Number(Math.round(totalAmount)),
+      originalTotalAmount: Number(Math.round(calculateTotal())),
+      discount: Number(discountAmount),
+      paidAmount: Number(parsedPaidAmount),
       ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
       description: description || null,
       transportId: transportId || null,
-      transportCost: transportCost ? parseFloat(transportCost) : null,
+      transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
       loadingDate: loadingDate || null,
       arrivalDate: arrivalDate || null,
       ...(employeeId && { employeeId }),
     };
     console.log('Sale data being sent:', saleData);
 
+    // Validate that we have at least one item
+    if (!saleItems || saleItems.length === 0) {
+      setValidationErrors({
+        items: "At least one item is required"
+      });
+      return;
+    }
+
     try {
       saleSchema.parse(saleData);
       setValidationErrors({});
 
       if (isEditMode) {
+        console.log('Calling updateSale.mutate with:', { ...saleData, id: editingSale.id });
+        console.log('EditingSale ID:', editingSale.id);
         updateSale.mutate({ ...saleData, id: editingSale.id });
       } else {
+        console.log('Calling createSale.mutate with:', saleData);
         createSale.mutate(saleData);
       }
     } catch (error) {
+      console.error('Validation error:', error);
       if (error instanceof z.ZodError) {
         const errors = {};
         error.errors.forEach((err) => {
@@ -728,9 +761,22 @@ function Sales() {
             )}
             <button
               onClick={() => {
+                // Reset all form states for new sale
+                setIsEditMode(false);
+                setEditingSale(null);
+                setSaleItems([]);
+                setSelectedProduct(null);
+                setQuantity("");
+                setProductSearchTerm("");
+                isProductSelected(false);
                 setDiscount(0);
                 setPaidAmount("");
                 setPriceType("retail");
+                setSelectedContact(null);
+                setContactSearchTerm("");
+                setCreateNewContact(false);
+                setNewContactData({ name: '', phoneNumber: '', address: '' });
+                setSaleDate("");
                 setDescription('');
                 setSelectedTransport(null);
                 setTransportSearchTerm('');
@@ -739,6 +785,9 @@ function Sales() {
                 setTransportCost('');
                 setLoadingDate('');
                 setArrivalDate('');
+                setValidationErrors({});
+                setTempStockUpdates({});
+                setTotalAmount(0);
                 setIsModalOpen(true);
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap w-full sm:w-auto"
@@ -1691,13 +1740,20 @@ function Sales() {
                 type="button"
                 onClick={() => {
                   setIsModalOpen(false);
+                  setIsEditMode(false);
+                  setEditingSale(null);
                   setSaleItems([]);
                   setSelectedProduct(null);
                   setQuantity("");
+                  setProductSearchTerm("");
+                  isProductSelected(false);
                   setPriceType("retail");
                   setDiscount(0);
                   setPaidAmount("");
                   setSelectedContact(null);
+                  setContactSearchTerm("");
+                  setCreateNewContact(false);
+                  setNewContactData({ name: '', phoneNumber: '', address: '' });
                   setSaleDate("");
                   setDescription('');
                   setSelectedTransport(null);
@@ -1709,6 +1765,7 @@ function Sales() {
                   setArrivalDate('');
                   setValidationErrors({});
                   setTempStockUpdates({});
+                  setTotalAmount(0);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
