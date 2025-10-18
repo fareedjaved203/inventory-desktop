@@ -451,13 +451,15 @@ export function setupSalesRoutes(app, prisma) {
               OR: [
                 {
                   billNumber: {
-                    contains: search
+                    contains: search,
+                    mode: 'insensitive'
                   }
                 },
                 {
                   contact: {
                     name: {
-                      contains: search
+                      contains: search,
+                      mode: 'insensitive'
                     }
                   }
                 }
@@ -471,13 +473,15 @@ export function setupSalesRoutes(app, prisma) {
             OR: [
               {
                 billNumber: {
-                  contains: search
+                  contains: search,
+                  mode: 'insensitive'
                 }
               },
               {
                 contact: {
                   name: {
-                    contains: search
+                    contains: search,
+                    mode: 'insensitive'
                   }
                 }
               }

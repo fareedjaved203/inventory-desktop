@@ -640,4 +640,119 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+  // Day Book Report
+  app.get('/api/dashboard/day-book', authenticateToken, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Start date and end date are required' });
+      }
+      
+      const reportStartDate = new Date(startDate);
+      const reportEndDate = new Date(endDate);
+      reportStartDate.setHours(0, 0, 0, 0);
+      reportEndDate.setHours(23, 59, 59, 999);
+      
+      // Get all sales and purchases in the date range
+      const [sales, purchases] = await Promise.all([
+        prisma.sale.findMany({
+          where: {
+            userId: req.userId,
+            saleDate: { gte: reportStartDate, lte: reportEndDate }
+          },
+          include: {
+            items: {
+              include: { product: true }
+            },
+            contact: true
+          }
+        }),
+        prisma.bulkPurchase.findMany({
+          where: {
+            userId: req.userId,
+            purchaseDate: { gte: reportStartDate, lte: reportEndDate }
+          },
+          include: {
+            items: {
+              include: { product: true }
+            },
+            contact: true
+          }
+        })
+      ]);
+      
+      const dayBookEntries = [];
+      
+      // Process purchases
+      purchases.forEach(purchase => {
+        purchase.items.forEach(item => {
+          dayBookEntries.push({
+            date: purchase.purchaseDate,
+            type: 'purchase',
+            productDescription: item.product.description || '',
+            productName: item.product.name,
+            purchaseQuantity: Number(item.quantity),
+            purchasePrice: Number(item.purchasePrice),
+            transportCost: Number(purchase.transportCost || 0),
+            supplierName: purchase.contact?.name || '',
+            totalPurchaseCost: Number(item.quantity) * Number(item.purchasePrice),
+            customerName: '',
+            saleQuantity: 0,
+            saleUnitPrice: 0,
+            totalSalePrice: 0,
+            profitLoss: 0
+          });
+        });
+      });
+      
+      // Process sales
+      sales.forEach(sale => {
+        sale.items.forEach(item => {
+          const purchasePrice = Number(item.purchasePrice || 0);
+          const salePrice = Number(item.price);
+          const quantity = Number(item.quantity);
+          const profit = purchasePrice > 0 ? (salePrice - purchasePrice) * quantity : 0;
+          
+          dayBookEntries.push({
+            date: sale.saleDate,
+            type: 'sale',
+            productDescription: item.product.description || '',
+            productName: item.product.name,
+            purchaseQuantity: 0,
+            purchasePrice: purchasePrice,
+            transportCost: 0,
+            supplierName: '',
+            totalPurchaseCost: 0,
+            customerName: sale.contact?.name || 'Walk-in Customer',
+            saleQuantity: quantity,
+            saleUnitPrice: salePrice,
+            totalSalePrice: salePrice * quantity,
+            profitLoss: profit
+          });
+        });
+      });
+      
+      // Sort by date
+      dayBookEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Calculate summary totals
+      const summary = {
+        totalPurchaseAmount: dayBookEntries.reduce((sum, item) => sum + item.totalPurchaseCost, 0),
+        totalSaleAmount: dayBookEntries.reduce((sum, item) => sum + item.totalSalePrice, 0),
+        totalProfit: dayBookEntries.reduce((sum, item) => sum + item.profitLoss, 0),
+        totalEntries: dayBookEntries.length
+      };
+      
+      res.json({
+        data: dayBookEntries,
+        summary,
+        dateRange: { startDate, endDate }
+      });
+    } catch (error) {
+      console.error('Day book report error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

@@ -213,9 +213,13 @@ function Contacts() {
     // Get contact details - use the selectedContact directly since we already have it
     const contact = selectedContact;
     
-    // Get all sales for this contact
+    // Get all sales for this contact (for customers)
     const salesResult = await API.getSales({ limit: 1000 });
     const contactSales = salesResult.items.filter(sale => sale.contactId === contactId);
+    
+    // Get all bulk purchases for this contact (for suppliers)
+    const bulkPurchasesResult = await API.getBulkPurchases({ limit: 1000 });
+    const contactPurchases = bulkPurchasesResult.items.filter(purchase => purchase.contactId === contactId);
     
     // Get all transports to link with sales
     const transportsResult = await API.getTransport({ limit: 1000 });
@@ -227,11 +231,13 @@ function Contacts() {
     
     // Filter by date range if provided
     let filteredSales = contactSales;
+    let filteredPurchases = contactPurchases;
     let filteredLoans = loanTransactions;
     
     if (startDate) {
       const start = new Date(startDate);
       filteredSales = filteredSales.filter(sale => new Date(sale.saleDate) >= start);
+      filteredPurchases = filteredPurchases.filter(purchase => new Date(purchase.purchaseDate) >= start);
       filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) >= start);
     }
     
@@ -239,6 +245,7 @@ function Contacts() {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // End of day
       filteredSales = filteredSales.filter(sale => new Date(sale.saleDate) <= end);
+      filteredPurchases = filteredPurchases.filter(purchase => new Date(purchase.purchaseDate) <= end);
       filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) <= end);
     }
     
@@ -260,6 +267,22 @@ function Contacts() {
           arrivalDate: sale.arrivalDate || '',
           debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
           credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
+          balance: 0 // Will be calculated
+        };
+      }),
+      ...filteredPurchases.map(purchase => {
+        return {
+          date: purchase.purchaseDate,
+          type: 'purchase',
+          description: `Purchase #${purchase.invoiceNumber || purchase.id}`,
+          saleDescription: purchase.description || '',
+          quantity: purchase.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+          unitPrice: purchase.items?.[0]?.price || 0,
+          carNumber: '',
+          loadingDate: '',
+          arrivalDate: '',
+          debit: Number(purchase.paidAmount) || 0, // Amount paid to supplier reduces our debt to them
+          credit: Number(purchase.totalAmount) || 0, // Total purchase amount increases our debt to supplier
           balance: 0 // Will be calculated
         };
       }),

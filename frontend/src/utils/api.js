@@ -223,6 +223,23 @@ class API {
     return DataStorageManager.delete(STORES.transport, id);
   }
 
+  // Purchases
+  async getPurchases(params = {}) {
+    return DataStorageManager.read(STORES.purchases, params);
+  }
+
+  async createPurchase(data) {
+    return DataStorageManager.create(STORES.purchases, data);
+  }
+
+  async updatePurchase(id, data) {
+    return DataStorageManager.update(STORES.purchases, id, data);
+  }
+
+  async deletePurchase(id) {
+    return DataStorageManager.delete(STORES.purchases, id);
+  }
+
   // Bulk Purchases
   async getBulkPurchases(params = {}) {
     const purchasesResult = await DataStorageManager.read(STORES.bulkPurchases, params);

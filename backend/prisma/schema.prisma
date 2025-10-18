@@ -113,6 +113,7 @@ model BulkPurchase {
   paidAmount    BigInt
   purchaseDate  DateTime           @default(now())
   contactId     String
+  transportCost Decimal?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   userId        String

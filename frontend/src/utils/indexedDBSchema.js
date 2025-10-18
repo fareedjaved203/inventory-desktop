@@ -1,12 +1,14 @@
 // IndexedDB Schema for Offline Storage
 export const DB_NAME = 'HisabGharOffline';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export const STORES = {
   products: 'products',
   contacts: 'contacts',
   sales: 'sales',
   saleItems: 'saleItems',
+  purchases: 'purchases',
+  purchaseItems: 'purchaseItems',
   bulkPurchases: 'bulkPurchases',
   bulkPurchaseItems: 'bulkPurchaseItems',
   branches: 'branches',
@@ -57,6 +59,21 @@ export const initDB = () => {
         const saleItemsStore = db.createObjectStore(STORES.saleItems, { keyPath: 'id' });
         saleItemsStore.createIndex('saleId', 'saleId');
         saleItemsStore.createIndex('productId', 'productId');
+      }
+      
+      // Purchases store
+      if (!db.objectStoreNames.contains(STORES.purchases)) {
+        const purchaseStore = db.createObjectStore(STORES.purchases, { keyPath: 'id' });
+        purchaseStore.createIndex('userId', 'userId');
+        purchaseStore.createIndex('supplierId', 'supplierId');
+        purchaseStore.createIndex('date', 'date');
+      }
+      
+      // Purchase Items store
+      if (!db.objectStoreNames.contains(STORES.purchaseItems)) {
+        const purchaseItemsStore = db.createObjectStore(STORES.purchaseItems, { keyPath: 'id' });
+        purchaseItemsStore.createIndex('purchaseId', 'purchaseId');
+        purchaseItemsStore.createIndex('productId', 'productId');
       }
       
       // Bulk Purchases store

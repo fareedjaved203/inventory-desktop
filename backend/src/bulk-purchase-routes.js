@@ -32,9 +32,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       // Add search filter for ID, invoice number and contact name
       if (search) {
         where.OR = [
-          { id: { contains: search } },
-          { invoiceNumber: { contains: search } },
-          { contact: { name: { contains: search } } }
+          { id: { contains: search, mode: 'insensitive' } },
+          { invoiceNumber: { contains: search, mode: 'insensitive' } },
+          { contact: { name: { contains: search, mode: 'insensitive' } } }
         ];
       }
 
@@ -78,9 +78,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       // Add search filter for ID, invoice number and contact name
       if (search) {
         where.OR = [
-          { id: { contains: search } },
-          { invoiceNumber: { contains: search } },
-          { contact: { name: { contains: search } } }
+          { id: { contains: search, mode: 'insensitive' } },
+          { invoiceNumber: { contains: search, mode: 'insensitive' } },
+          { contact: { name: { contains: search, mode: 'insensitive' } } }
         ];
       }
       
@@ -168,6 +168,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
+              transportCost: req.body.transportCost || null,
               userId: req.userId,
               contact: {
                 connect: { id: req.body.contactId }
@@ -267,6 +268,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               discount: req.body.discount || 0,
               paidAmount: req.body.paidAmount,
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
+              transportCost: req.body.transportCost || null,
               contact: {
                 connect: { id: req.body.contactId }
               },

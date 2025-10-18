@@ -52,7 +52,7 @@ class DataStorageManager {
     console.log(`PostProcessResults called for ${storeName}, results count:`, results.length);
     
     // For stores that don't need processing, return results as-is
-    if (storeName !== 'sales' && storeName !== 'bulkPurchases') {
+    if (storeName !== 'sales' && storeName !== 'purchases' && storeName !== 'bulkPurchases') {
       return results;
     }
     
@@ -69,12 +69,13 @@ class DataStorageManager {
     for (const item of results) {
       let shouldInclude = true;
       
-      // Handle contact name search for sales and bulk purchases
+      // Handle contact name search for sales, purchases and bulk purchases
       if (item._needsContactCheck && searchTerm) {
         shouldInclude = false;
-        if (item.contactId) {
+        const contactId = item.contactId || item.supplierId;
+        if (contactId) {
           try {
-            const contactResult = await this.readOffline('contacts', { id: item.contactId });
+            const contactResult = await this.readOffline('contacts', { id: contactId });
             const contact = contactResult.items?.[0];
             if (contact && contact.name && contact.name.toLowerCase().includes(searchTerm)) {
               shouldInclude = true;
@@ -136,6 +137,58 @@ class DataStorageManager {
               item.items = saleItems;
             } catch (error) {
               console.error('Error fetching sale items:', error);
+              item.items = [];
+            }
+          }
+        }
+        
+        // Populate relationships for purchases
+        if (storeName === 'purchases') {
+          // Get supplier contact if not already populated
+          if (item.supplierId && !item.contact) {
+            try {
+              const contactResult = await this.readOffline('contacts', { id: item.supplierId });
+              item.contact = contactResult.items?.[0];
+            } catch (error) {
+              console.error('Error fetching supplier contact:', error);
+            }
+          }
+          
+          // Items are already included in the downloaded data, no need to fetch separately
+          // Just ensure products are populated if missing
+          if (item.items && Array.isArray(item.items)) {
+            for (const purchaseItem of item.items) {
+              if (purchaseItem.productId && !purchaseItem.product) {
+                try {
+                  const productResult = await this.readOffline('products', { id: purchaseItem.productId });
+                  purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+                } catch (error) {
+                  console.error('Error fetching product for purchase item:', error);
+                  purchaseItem.product = { id: purchaseItem.productId, name: 'Unknown Product' };
+                }
+              }
+            }
+          } else {
+            // Fallback: if items not included, try to fetch from separate store (for backward compatibility)
+            try {
+              const purchaseItemsResult = await this.readOffline('purchaseItems', { limit: 10000 });
+              const purchaseItems = purchaseItemsResult.items.filter(purchaseItem => purchaseItem.purchaseId === item.id);
+              
+              for (const purchaseItem of purchaseItems) {
+                if (purchaseItem.productId && !purchaseItem.product) {
+                  try {
+                    const productResult = await this.readOffline('products', { id: purchaseItem.productId });
+                    purchaseItem.product = productResult.items?.[0] || { id: purchaseItem.productId, name: 'Unknown Product' };
+                  } catch (error) {
+                    console.error('Error fetching product for purchase item:', error);
+                    purchaseItem.product = { id: purchaseItem.productId, name: 'Unknown Product' };
+                  }
+                }
+              }
+              
+              item.items = purchaseItems;
+            } catch (error) {
+              console.error('Error fetching purchase items:', error);
               item.items = [];
             }
           }
@@ -387,8 +440,8 @@ class DataStorageManager {
               (item.invoiceNumber && item.invoiceNumber.toLowerCase().includes(searchLower)) ||
               (item.id && item.id.toLowerCase().includes(searchLower));
             
-            // For sales and bulk purchases, also search by contact name
-            if ((storeName === 'sales' || storeName === 'bulkPurchases') && item.contactId && !matchesSearch) {
+            // For sales, purchases and bulk purchases, also search by contact name
+            if ((storeName === 'sales' || storeName === 'purchases' || storeName === 'bulkPurchases') && (item.contactId || item.supplierId) && !matchesSearch) {
               // We'll need to check contact name - add to results for now and filter later
               results.push({ ...item, _needsContactCheck: true, _searchTerm: searchLower });
             } else if (matchesSearch) {
@@ -618,6 +671,7 @@ class DataStorageManager {
       [STORES.products]: 'products',
       [STORES.contacts]: 'contacts',
       [STORES.sales]: 'sales',
+      [STORES.purchases]: 'purchases',
       [STORES.bulkPurchases]: 'bulk-purchases',
       [STORES.branches]: 'branches',
       [STORES.employees]: 'employees',
