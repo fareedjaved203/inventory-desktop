@@ -539,12 +539,6 @@ app.post(
       const product = await prisma.product.create({
         data: {
           ...req.body,
-          price: req.body.price ? new Prisma.Decimal(req.body.price) : null,
-          retailPrice: req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice) : null,
-          wholesalePrice: req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice) : null,
-          purchasePrice: req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice) : null,
-          perUnitPurchasePrice: req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice) : null,
-          unitValue: req.body.unitValue ? new Prisma.Decimal(req.body.unitValue) : null,
           userId: req.userId
         },
       });

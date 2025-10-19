@@ -1,5 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { withTransaction } from './db-utils.js';
 
 const recipeItemSchema = z.object({
@@ -355,16 +356,17 @@ export function setupManufacturingRoutes(app, prisma) {
           console.log(`Total calculated manufacturing cost: ${manufacturingCost}`);
         }
 
-        // Create manufacturing record
-        const manufacturing = await prisma.manufacturing.create({
-          data: {
-            recipeId: req.body.recipeId,
-            quantityProduced: req.body.quantityProduced,
-            manufacturingCost: Math.round(manufacturingCost),
-            productionDate: req.body.productionDate ? new Date(req.body.productionDate) : new Date(),
-            notes: req.body.notes,
-            userId: req.userId
-          },
+        // Create manufacturing record using raw SQL
+        const manufacturingId = crypto.randomUUID();
+        const productionDate = req.body.productionDate ? new Date(req.body.productionDate) : new Date();
+        
+        await prisma.$executeRaw`
+          INSERT INTO "Manufacturing" (id, "recipeId", "quantityProduced", "manufacturingCost", "productionDate", notes, "userId", "createdAt", "updatedAt")
+          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}::decimal, ${Number(Math.round(manufacturingCost))}::decimal, ${productionDate}, ${req.body.notes || null}, ${req.userId}, NOW(), NOW())
+        `;
+        
+        const manufacturing = await prisma.manufacturing.findUnique({
+          where: { id: manufacturingId },
           include: {
             recipe: {
               include: {
