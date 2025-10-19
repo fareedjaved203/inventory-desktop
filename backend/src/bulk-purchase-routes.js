@@ -260,9 +260,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               userId: req.userId
             },
             data: {
-              totalAmount: new Prisma.Decimal(req.body.totalAmount.toString()),
-              discount: new Prisma.Decimal((req.body.discount || 0).toString()),
-              paidAmount: new Prisma.Decimal(req.body.paidAmount.toString()),
+              totalAmount: new Prisma.Decimal(req.body.totalAmount),
+              discount: new Prisma.Decimal(req.body.discount || 0),
+              paidAmount: new Prisma.Decimal(req.body.paidAmount),
               purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
               transportCost: req.body.transportCost || null,
               contact: {
@@ -271,7 +271,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               items: {
                 create: req.body.items.map(item => ({
                   quantity: item.quantity,
-                  purchasePrice: new Prisma.Decimal(item.purchasePrice.toString()),
+                  purchasePrice: new Prisma.Decimal(item.purchasePrice),
                   product: {
                     connect: { id: item.productId }
                   }
@@ -296,7 +296,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 quantity: {
                   increment: item.quantity
                 },
-                purchasePrice: new Prisma.Decimal(item.purchasePrice.toString())
+                purchasePrice: new Prisma.Decimal(item.purchasePrice)
               }
             });
           }

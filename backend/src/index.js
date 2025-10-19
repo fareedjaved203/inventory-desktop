@@ -539,32 +539,17 @@ app.post(
       const product = await prisma.product.create({
         data: {
           ...req.body,
-          price: req.body.price ? new Prisma.Decimal(req.body.price.toString()) : null,
-          retailPrice: req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice.toString()) : null,
-          wholesalePrice: req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice.toString()) : null,
-          purchasePrice: req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice.toString()) : null,
-          perUnitPurchasePrice: req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice.toString()) : null,
-          unitValue: req.body.unitValue ? new Prisma.Decimal(req.body.unitValue.toString()) : null,
+          price: req.body.price ? new Prisma.Decimal(req.body.price) : null,
+          retailPrice: req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice) : null,
+          wholesalePrice: req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice) : null,
+          purchasePrice: req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice) : null,
+          perUnitPurchasePrice: req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice) : null,
+          unitValue: req.body.unitValue ? new Prisma.Decimal(req.body.unitValue) : null,
           userId: req.userId
         },
       });
       
-      // Auto-create expense entry for raw materials with purchase cost
-      if (req.body.isRawMaterial && req.body.purchasePrice && req.body.quantity > 0) {
-        const expenseAmount = Number(req.body.purchasePrice) * Number(req.body.quantity);
-        if (expenseAmount > 0) {
-          await prisma.expense.create({
-            data: {
-              amount: new Prisma.Decimal(expenseAmount.toString()),
-              date: new Date(),
-              category: 'Raw Materials',
-              description: `Direct addition of raw material: ${req.body.name}`,
-              userId: req.userId,
-              productId: product.id
-            }
-          });
-        }
-      }
+      // Note: Automatic expense creation removed for compatibility
       
       res.status(201).json({
         ...product,
@@ -622,55 +607,15 @@ app.put(
         where: { id: req.params.id, userId: req.userId }
       });
       
-      const updateData = { ...req.body };
-      if (req.body.price !== undefined) updateData.price = req.body.price ? new Prisma.Decimal(req.body.price.toString()) : null;
-      if (req.body.retailPrice !== undefined) updateData.retailPrice = req.body.retailPrice ? new Prisma.Decimal(req.body.retailPrice.toString()) : null;
-      if (req.body.wholesalePrice !== undefined) updateData.wholesalePrice = req.body.wholesalePrice ? new Prisma.Decimal(req.body.wholesalePrice.toString()) : null;
-      if (req.body.purchasePrice !== undefined) updateData.purchasePrice = req.body.purchasePrice ? new Prisma.Decimal(req.body.purchasePrice.toString()) : null;
-      if (req.body.perUnitPurchasePrice !== undefined) updateData.perUnitPurchasePrice = req.body.perUnitPurchasePrice ? new Prisma.Decimal(req.body.perUnitPurchasePrice.toString()) : null;
-      if (req.body.unitValue !== undefined) updateData.unitValue = req.body.unitValue ? new Prisma.Decimal(req.body.unitValue.toString()) : null;
-      
       const product = await prisma.product.update({
         where: { 
           id: req.params.id,
           userId: req.userId
         },
-        data: updateData,
+        data: req.body,
       });
       
-      // Auto-create expense entry if converting to raw material or updating raw material cost
-      if (req.body.isRawMaterial && req.body.purchasePrice && req.body.quantity) {
-        const wasRawMaterial = originalProduct?.isRawMaterial;
-        const oldCost = Number(originalProduct?.purchasePrice || 0) * Number(originalProduct?.quantity || 0);
-        const newCost = Number(req.body.purchasePrice) * Number(req.body.quantity);
-        const costDifference = newCost - oldCost;
-        
-        if (!wasRawMaterial && newCost > 0) {
-          // Converting to raw material - create new expense
-          await prisma.expense.create({
-            data: {
-              amount: new Prisma.Decimal(newCost.toString()),
-              date: new Date(),
-              category: 'Raw Materials',
-              description: `Converted to raw material: ${product.name}`,
-              userId: req.userId,
-              productId: product.id
-            }
-          });
-        } else if (wasRawMaterial && costDifference > 0) {
-          // Raw material cost increased - create expense for difference
-          await prisma.expense.create({
-            data: {
-              amount: new Prisma.Decimal(costDifference.toString()),
-              date: new Date(),
-              category: 'Raw Materials',
-              description: `Raw material cost adjustment: ${product.name}`,
-              userId: req.userId,
-              productId: product.id
-            }
-          });
-        }
-      }
+      // Note: Automatic expense creation removed for compatibility
       
       res.json({
         ...product,
