@@ -17,6 +17,7 @@ const bulkPurchaseItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().int().positive("Quantity must be positive"),
   purchasePrice: z.number().positive("Purchase price must be positive"),
+  perUnitCost: z.number().positive().optional(),
 });
 
 const bulkPurchaseSchema = z.object({
@@ -63,6 +64,8 @@ function BulkPurchasing() {
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [showPendingPayments, setShowPendingPayments] = useState(location.state?.showPendingPayments || false);
+  const [priceInputMode, setPriceInputMode] = useState('perUnit'); // 'perUnit' or 'totalCost'
+  const [totalCost, setTotalCost] = useState('');
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -166,7 +169,7 @@ function BulkPurchasing() {
   }, [queryClient]);
 
   const calculateSubtotal = () => {
-    return purchaseItems.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
+    return purchaseItems.reduce((sum, item) => sum + item.subtotal, 0);
   };
 
   // Update total amount when purchase items or discount change
@@ -180,11 +183,13 @@ function BulkPurchasing() {
   // Create bulk purchase mutation
   const createPurchase = useMutation(
     async (purchaseData) => {
+      console.log(purchaseData)
       return await API.createBulkPurchase(purchaseData);
     },
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['bulk-purchases']);
+        queryClient.invalidateQueries({ queryKey: ['products'] });
         setIsModalOpen(false);
         resetForm();
         toast.success('Purchase created successfully!');
@@ -204,6 +209,7 @@ function BulkPurchasing() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['bulk-purchases']);
+        queryClient.invalidateQueries({ queryKey: ['products'] });
         setIsModalOpen(false);
         resetForm();
         toast.success('Purchase updated successfully!');
@@ -239,6 +245,8 @@ function BulkPurchasing() {
     setSelectedProduct(null);
     setQuantity("");
     setPurchasePrice("");
+    setTotalCost("");
+    setPriceInputMode('perUnit');
     setContactSearchTerm("");
     setProductSearchTerm("");
     setTotalAmount(0);
@@ -257,11 +265,12 @@ function BulkPurchasing() {
 
   const handleAddItem = async () => {
     // Validate inputs first
-    if (!quantity || !purchasePrice) {
+    const priceValue = priceInputMode === 'perUnit' ? purchasePrice : totalCost;
+    if (!quantity || !priceValue) {
       setValidationErrors({
         ...validationErrors,
         quantity: !quantity ? t('quantityIsRequired') : undefined,
-        purchasePrice: !purchasePrice ? t('purchasePriceIsRequired') : undefined
+        purchasePrice: !priceValue ? (priceInputMode === 'perUnit' ? t('purchasePriceIsRequired') : 'Total cost is required') : undefined
       });
       return;
     }
@@ -289,7 +298,7 @@ function BulkPurchasing() {
     if (createNewProduct) {
       try {
         setCreatingProduct(true);
-        const productResponse = await API.post('/api/products', {
+        const productResponse = await API.post('/products', {
           name: newProductData.name,
           quantity: 0,
           description: '',
@@ -317,20 +326,39 @@ function BulkPurchasing() {
     }
 
     const quantityNum = parseInt(quantity);
-    const priceNum = parseFloat(purchasePrice);
+    let priceNum, subtotal, itemPurchasePrice;
+    
+    if (priceInputMode === 'perUnit') {
+      priceNum = parseFloat(purchasePrice);
+      subtotal = priceNum * quantityNum;
+      itemPurchasePrice = priceNum;
+    } else {
+      // Total cost mode - calculate per unit price
+      const totalCostNum = parseFloat(totalCost);
+      priceNum = totalCostNum / quantityNum;
+      subtotal = totalCostNum;
+      itemPurchasePrice = totalCostNum; // Use total cost as purchase price for weighted items
+    }
     
     const newItem = {
       productId: productToAdd.id,
       productName: productToAdd.name,
       quantity: quantityNum,
-      purchasePrice: priceNum,
-      subtotal: priceNum * quantityNum
+      purchasePrice: itemPurchasePrice,
+      subtotal: subtotal,
+      isTotalCostItem: priceInputMode === 'totalCost',
+      ...(priceInputMode === 'totalCost' && { perUnitCost: priceNum })
     };
+    
+    console.log('Adding item with mode:', priceInputMode, 'isTotalCostItem:', priceInputMode === 'totalCost');
+
+
 
     setPurchaseItems([...purchaseItems, newItem]);
     setSelectedProduct(null);
     setQuantity("");
     setPurchasePrice("");
+    setTotalCost("");
     setProductSearchTerm("");
     setValidationErrors({});
     isProductSelected(false);
@@ -409,13 +437,23 @@ function BulkPurchasing() {
       items: purchaseItems.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        purchasePrice: item.purchasePrice
+        purchasePrice: item.purchasePrice,
+        ...(item.perUnitCost && { perUnitCost: item.perUnitCost })
       })),
       totalAmount: totalAmount,
       discount: discountAmount,
       paidAmount: parsedPaidAmount,
       purchaseDate: new Date().toISOString()
     };
+
+    // Debug logging
+    console.log('Purchase data being sent:', {
+      contactId,
+      itemsCount: purchaseItems.length,
+      totalAmount,
+      paidAmount: parsedPaidAmount,
+      purchaseData
+    });
 
     try {
       bulkPurchaseSchema.parse(purchaseData);
@@ -427,6 +465,7 @@ function BulkPurchasing() {
         createPurchase.mutate(purchaseData);
       }
     } catch (error) {
+      console.error('Validation error:', error);
       if (error instanceof z.ZodError) {
         const errors = {};
         error.errors.forEach((err) => {
@@ -443,13 +482,24 @@ function BulkPurchasing() {
     setContactSearchTerm(purchase.contact.name);
     isContactSelected(true);
     
-    setPurchaseItems(purchase.items.map(item => ({
-      productId: item.product?.id || item.productId,
-      productName: item.product?.name || 'Unknown Product',
-      quantity: Number(item.quantity) || 0,
-      purchasePrice: Number(item.purchasePrice || item.unitPrice) || 0,
-      subtotal: (Number(item.purchasePrice || item.unitPrice) || 0) * (Number(item.quantity) || 0)
-    })));
+    setPurchaseItems(purchase.items.map(item => {
+      const quantity = Number(item.quantity) || 0;
+      const purchasePrice = Number(item.purchasePrice || item.unitPrice) || 0;
+      
+      // Check if it's a total cost item
+      const isTotalCostItem = item.isTotalCostItem;
+      const subtotal = isTotalCostItem ? purchasePrice : (purchasePrice * quantity);
+      
+      return {
+        productId: item.product?.id || item.productId,
+        productName: item.product?.name || 'Unknown Product',
+        quantity: quantity,
+        purchasePrice: purchasePrice,
+        subtotal: subtotal,
+        product: item.product, // Include product info for unit checking
+        ...(isTotalCostItem && { isTotalCostItem: true })
+      };
+    }));
     
     setTotalAmount(Number(purchase.totalAmount));
     const subtotal = purchase.items?.reduce((sum, item) => sum + (Number(item.purchasePrice) * Number(item.quantity)), 0) || 0;
@@ -887,7 +937,7 @@ function BulkPurchasing() {
                   </div>
                   <div className="flex gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('quantity')}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{priceInputMode === 'totalCost' ? 'Weight' : t('quantity')}</label>
                       <input
                         type="number"
                         min="1"
@@ -910,26 +960,71 @@ function BulkPurchasing() {
                         <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'خریداری کی قیمت *' : 'Purchase Unit Price *'}</label>
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={purchasePrice}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value);
-                          if (value <= 0) {
-                            setValidationErrors({...validationErrors, purchasePrice: t('priceMustBePositive')});
-                          } else {
-                            setValidationErrors({...validationErrors, purchasePrice: undefined});
-                          }
-                          setPurchasePrice(e.target.value);
-                        }}
-                        onWheel={(e) => e.target.blur()}
-                        placeholder={t('price')}
-                        className="w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {priceInputMode === 'perUnit' ? (language === 'ur' ? 'فی یونٹ قیمت *' : 'Per Unit Price *') : (language === 'ur' ? 'کل لاگت *' : 'Total Cost *')}
+                        </label>
+                        <div className="relative group">
+                          <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                            {priceInputMode === 'perUnit' 
+                              ? 'Mode A: Enter price per unit (e.g., 0.1 per gram)' 
+                              : 'Mode B: Enter total amount paid (e.g., 500 for 5000 grams)'}
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={priceInputMode === 'perUnit' ? purchasePrice : totalCost}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value);
+                              if (value <= 0) {
+                                setValidationErrors({...validationErrors, purchasePrice: t('priceMustBePositive')});
+                              } else {
+                                setValidationErrors({...validationErrors, purchasePrice: undefined});
+                              }
+                              if (priceInputMode === 'perUnit') {
+                                setPurchasePrice(e.target.value);
+                              } else {
+                                setTotalCost(e.target.value);
+                                // Auto-calculate per unit price
+                                if (quantity && e.target.value) {
+                                  const perUnit = parseFloat(e.target.value) / parseFloat(quantity);
+                                  setPurchasePrice(perUnit.toFixed(4));
+                                }
+                              }
+                            }}
+                            onWheel={(e) => e.target.blur()}
+                            placeholder={priceInputMode === 'perUnit' ? t('price') : 'Total cost'}
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPriceInputMode(priceInputMode === 'perUnit' ? 'totalCost' : 'perUnit');
+                            setPurchasePrice('');
+                            setTotalCost('');
+                          }}
+                          className="px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 text-xs whitespace-nowrap"
+                          title={priceInputMode === 'perUnit' ? 'Switch to total cost mode' : 'Switch to per-unit mode'}
+                        >
+                          {priceInputMode === 'perUnit' ? '⇄ Total' : '⇄ Unit'}
+                        </button>
+                      </div>
+                      {priceInputMode === 'totalCost' && quantity && totalCost && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Per unit: Rs.{(parseFloat(totalCost) / parseFloat(quantity)).toFixed(4)}
+                        </p>
+                      )}
                       {validationErrors.purchasePrice && (
                         <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
                       )}
@@ -960,7 +1055,20 @@ function BulkPurchasing() {
                       <div>
                         <div className="font-medium text-primary-700">{item.productName}</div>
                         <div className="text-sm text-gray-600">
-                          {item.quantity} x Rs.{Number(item.purchasePrice || 0).toFixed(2)} = <span className="text-primary-800 font-medium">Rs.{Number(item.subtotal || 0).toFixed(2)}</span>
+                          {(() => {
+                            const quantity = item.quantity;
+                            const purchasePrice = Number(item.purchasePrice || 0);
+                            
+                            // Check if it's a total cost item (for weighted products)
+                            if (item.isTotalCostItem) {
+                              const perUnit = purchasePrice / quantity;
+                              return `${quantity} x Rs.${perUnit.toFixed(2)} = `;
+                            }
+                            
+                            // Otherwise show purchase price directly (per-unit items)
+                            return `${quantity} x Rs.${purchasePrice.toFixed(2)} = `;
+                          })()}
+                          <span className="text-primary-800 font-medium">Rs.{Number(item.subtotal || 0).toFixed(2)}</span>
                         </div>
                       </div>
                       <button

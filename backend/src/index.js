@@ -229,7 +229,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
-        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
         unitValue: item.unitValue ? Number(item.unitValue) : null,
         quantity: Number(item.quantity)
       })),
@@ -277,7 +277,7 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
-        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
         quantity: Number(item.quantity),
         lowStockThreshold: Number(item.lowStockThreshold || 10)
       })),
@@ -325,7 +325,7 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
         retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
         wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
         purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
-        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) / 100 : null,
+        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
         quantity: Number(item.quantity)
       })),
       total,
@@ -508,7 +508,7 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
       retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
       wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
       purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
-      perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
+      perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
       unitValue: product.unitValue ? Number(product.unitValue) : null,
       quantity: Number(product.quantity)
     });
@@ -552,7 +552,7 @@ app.post(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
-        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
+        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
         unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });
@@ -618,7 +618,7 @@ app.put(
         retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
         wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
         purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
-        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) / 100 : null,
+        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
         unitValue: product.unitValue ? Number(product.unitValue) : null,
         quantity: Number(product.quantity)
       });

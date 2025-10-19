@@ -263,10 +263,18 @@ function PurchaseInvoicePDF({ purchase, shopSettings }) {
           {purchase.items.map((item, i) => (
             <View style={styles.tableRow} key={i}>
               <Text style={styles.col1}>{item.product.name}</Text>
-              <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.purchasePrice)}</Text>
+              <Text style={styles.col2}>
+                {item.isTotalCostItem ? 
+                  formatPakistaniCurrencyPDF(item.purchasePrice / item.quantity) :
+                  formatPakistaniCurrencyPDF(item.purchasePrice)
+                }
+              </Text>
               <Text style={styles.col3}>{item.quantity}</Text>
               <Text style={styles.col4}>
-                {formatPakistaniCurrencyPDF(item.purchasePrice * item.quantity)}
+                {item.isTotalCostItem ? 
+                  formatPakistaniCurrencyPDF(item.purchasePrice) :
+                  formatPakistaniCurrencyPDF(item.purchasePrice * item.quantity)
+                }
               </Text>
             </View>
           ))}

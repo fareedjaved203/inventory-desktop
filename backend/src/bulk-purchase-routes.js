@@ -154,6 +154,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
     validateRequest({ body: bulkPurchaseSchema }),
     async (req, res) => {
       try {
+        console.log('=== BULK PURCHASE REQUEST ===');
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+        
         // Start a transaction
         const purchase = await withTransaction(prisma, async (prisma) => {
           // Generate a unique invoice number if not provided
@@ -172,9 +175,11 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           // Create purchase items
           for (const item of req.body.items) {
             const itemId = crypto.randomUUID();
+            const isTotalCostItem = item.perUnitCost ? true : false;
+            
             await prisma.$executeRaw`
-              INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${purchaseId}, ${item.productId}, NOW(), NOW())
+              INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
+              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${isTotalCostItem}, ${purchaseId}, ${item.productId}, NOW(), NOW())
             `;
           }
           
@@ -190,22 +195,52 @@ export function setupBulkPurchaseRoutes(app, prisma) {
               }
             }
           });
+          
+          if (!purchase) {
+            throw new Error('Failed to retrieve created purchase');
+          }
 
           // Update product quantities and purchase prices
           for (const item of req.body.items) {
-            await prisma.$executeRaw`
-              UPDATE "Product" 
-              SET quantity = quantity + ${item.quantity}::decimal, 
-                  "purchasePrice" = ${item.purchasePrice}::decimal,
-                  "updatedAt" = NOW()
-              WHERE id = ${item.productId}
-            `;
+            console.log('Updating product:', item.productId, 'perUnitCost:', item.perUnitCost);
+            
+            if (item.perUnitCost) {
+              await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: { increment: item.quantity },
+                  purchasePrice: item.purchasePrice,
+                  perUnitPurchasePrice: item.perUnitCost
+                }
+              });
+            } else {
+              await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: { increment: item.quantity },
+                  purchasePrice: item.purchasePrice
+                }
+              });
+            }
           }
 
           return purchase;
         });
 
-        res.status(201).json(purchase);
+        // Convert Decimal fields to numbers for JSON response
+        const responseData = {
+          ...purchase,
+          totalAmount: Number(purchase.totalAmount),
+          discount: Number(purchase.discount || 0),
+          paidAmount: Number(purchase.paidAmount),
+          items: purchase.items?.map(item => ({
+            ...item,
+            quantity: Number(item.quantity),
+            purchasePrice: Number(item.purchasePrice)
+          })) || []
+        };
+        
+        res.status(201).json(responseData);
       } catch (error) {
         console.error('Error creating bulk purchase:', error);
         res.status(400).json({ error: error.message });
@@ -219,6 +254,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
     authenticateToken,
     validateRequest({ body: bulkPurchaseSchema }),
     async (req, res) => {
+      console.log(bulkPurchaseSchema)
+      console.log("body is",req.body);
       try {
         const purchase = await withTransaction(prisma, async (prisma) => {
           // Get the existing purchase
@@ -232,12 +269,16 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             }
           });
 
+          console.log(existingPurchase)
+
           if (!existingPurchase) {
             throw new Error('Bulk purchase not found');
           }
 
           // Revert quantities from old purchase items
           for (const item of existingPurchase.items) {
+            console.log('Updating product:', item.productId, 'perUnitCost:', item.perUnitCost);
+
             await prisma.product.update({
               where: { id: item.productId },
               data: {
@@ -253,31 +294,31 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             where: { bulkPurchaseId: req.params.id }
           });
 
-          // Update the purchase with new items
-          const updatedPurchase = await prisma.bulkPurchase.update({
-            where: { 
-              id: req.params.id,
-              userId: req.userId
-            },
-            data: {
-              totalAmount: new Prisma.Decimal(req.body.totalAmount),
-              discount: new Prisma.Decimal(req.body.discount || 0),
-              paidAmount: new Prisma.Decimal(req.body.paidAmount),
-              purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
-              transportCost: req.body.transportCost || null,
-              contact: {
-                connect: { id: req.body.contactId }
-              },
-              items: {
-                create: req.body.items.map(item => ({
-                  quantity: item.quantity,
-                  purchasePrice: new Prisma.Decimal(item.purchasePrice),
-                  product: {
-                    connect: { id: item.productId }
-                  }
-                }))
-              }
-            },
+          // Update the purchase using raw SQL
+          await prisma.$executeRaw`
+            UPDATE "BulkPurchase" 
+            SET "totalAmount" = ${req.body.totalAmount}::decimal,
+                discount = ${req.body.discount || 0}::decimal,
+                "paidAmount" = ${req.body.paidAmount}::decimal,
+                "purchaseDate" = ${req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date()},
+                "transportCost" = ${req.body.transportCost || null},
+                "contactId" = ${req.body.contactId},
+                "updatedAt" = NOW()
+            WHERE id = ${req.params.id} AND "userId" = ${req.userId}
+          `;
+          
+          // Create new purchase items
+          for (const item of req.body.items) {
+            const itemId = crypto.randomUUID();
+            const isTotalCostItem = item.perUnitCost ? true : false;
+            await prisma.$executeRaw`
+              INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
+              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${isTotalCostItem}, ${req.params.id}, ${item.productId}, NOW(), NOW())
+            `;
+          }
+          
+          const updatedPurchase = await prisma.bulkPurchase.findUnique({
+            where: { id: req.params.id },
             include: {
               contact: true,
               items: {
@@ -290,15 +331,27 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Update product quantities and purchase prices for new items
           for (const item of req.body.items) {
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: {
-                quantity: {
-                  increment: item.quantity
-                },
-                purchasePrice: new Prisma.Decimal(item.purchasePrice)
-              }
-            });
+            console.log("real culprit:", item)
+            if (item.perUnitCost) {
+              const data = await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: { increment: item.quantity },
+                  purchasePrice: item.purchasePrice,
+                  perUnitPurchasePrice: item.perUnitCost
+                }
+
+              });
+              console.log("data is", data);
+            } else {
+              await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: { increment: item.quantity },
+                  purchasePrice: item.purchasePrice
+                }
+              });
+            }
           }
 
           return updatedPurchase;

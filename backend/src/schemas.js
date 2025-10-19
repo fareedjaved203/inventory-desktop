@@ -48,6 +48,7 @@ export const bulkPurchaseItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().positive("Quantity must be positive"),
   purchasePrice: z.number().positive("Purchase price must be positive").max(100000000, "Purchase price cannot exceed Rs.10 Crores"),
+  perUnitCost: z.number().positive().optional(),
 });
 
 export const bulkPurchaseSchema = z.object({

@@ -131,6 +131,7 @@ model BulkPurchaseItem {
   purchasePrice  Decimal
   bulkPurchaseId String
   productId      String
+  isTotalCostItem Boolean     @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   bulkPurchase   BulkPurchase @relation(fields: [bulkPurchaseId], references: [id])

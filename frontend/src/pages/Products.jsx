@@ -257,7 +257,7 @@ function Products() {
       wholesalePrice: formData.wholesalePrice && formData.wholesalePrice.trim() ? parseFloat(formData.wholesalePrice) : null,
       unitValue: formData.unitValue && formData.unitValue.trim() ? parseFloat(formData.unitValue) : null,
       purchasePrice: formData.purchasePrice && formData.purchasePrice.trim() ? parseFloat(formData.purchasePrice) : null,
-      perUnitPurchasePrice: formData.perUnitPurchasePrice && formData.perUnitPurchasePrice.toString().trim() ? Math.round(parseFloat(formData.perUnitPurchasePrice) * 100) : null,
+      perUnitPurchasePrice: formData.perUnitPurchasePrice && formData.perUnitPurchasePrice.toString().trim() ? parseFloat(formData.perUnitPurchasePrice) : null,
       quantity: parseFloat(formData.quantity),
       lowStockThreshold: parseFloat(formData.lowStockThreshold),
       isRawMaterial: formData.isRawMaterial,
@@ -670,7 +670,7 @@ function Products() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md h-[90vh] shadow-xl border border-gray-200 flex flex-col">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
                 <FaBoxOpen className="text-primary-600" />
@@ -680,6 +680,19 @@ function Products() {
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="product-form" onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <input
+                    type="checkbox"
+                    id="isRawMaterial"
+                    checked={formData.isRawMaterial}
+                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="isRawMaterial" className="text-base font-medium text-blue-800">
+                    Raw Material
+                  </label>
+                  <span className="text-sm text-blue-600">(Used for manufacturing)</span>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <FaBoxOpen className="text-primary-500" /> {language === 'ur' ? 'نام *' : 'Name *'}
@@ -765,6 +778,15 @@ function Products() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                       <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'ریٹیل قیمت (اختیاری)' : 'Retail Price (Optional)'}
+                      <div className="relative group">
+                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Price for individual customers (MRP)
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                      </div>
                     </label>
                     <input
                       type="number"
@@ -792,6 +814,15 @@ function Products() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                       <FaDollarSign className="text-green-500" /> {language === 'ur' ? 'ہول سیل قیمت (اختیاری)' : 'Wholesale Price (Optional)'}
+                      <div className="relative group">
+                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Bulk/wholesale price for resellers
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                      </div>
                     </label>
                     <input
                       type="number"
@@ -821,6 +852,15 @@ function Products() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                       <FaDollarSign className="text-blue-500" /> {language === 'ur' ? 'خریداری کی قیمت (اختیاری)' : 'Purchase Price (Optional)'}
+                      <div className="relative group">
+                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Total cost paid to supplier for this quantity
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                      </div>
                     </label>
                     <input
                       type="number"
@@ -835,13 +875,13 @@ function Products() {
                         } else {
                           setValidationErrors({...validationErrors, purchasePrice: undefined});
                         }
-                        setFormData({ ...formData, purchasePrice: e.target.value });
-                        
-                        // Auto-calculate per unit cost when purchase price or quantity changes
+                        // Auto-calculate per unit cost when purchase price changes
                         const quantity = parseFloat(formData.quantity);
                         if (value && quantity && quantity > 0) {
                           const perUnitCost = value / quantity;
-                          setFormData(prev => ({ ...prev, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) }));
+                          setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                        } else {
+                          setFormData({ ...formData, purchasePrice: e.target.value });
                         }
                       }}
                       onWheel={(e) => e.target.blur()}
@@ -855,10 +895,19 @@ function Products() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                       <FaDollarSign className="text-purple-500" /> Per Unit Cost
+                      <div className="relative group">
+                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Cost per single unit for weighted items (Purchase Price / Quantity)
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                      </div>
                     </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.1"
                       min="0"
                       value={formData.perUnitPurchasePrice || ''}
                       onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
@@ -866,7 +915,7 @@ function Products() {
                       className="w-full px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                       placeholder="Cost per unit"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price ÷ quantity</p>
+                    <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price / quantity</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Purchase price for profit calculation. Per unit cost for manufacturing cost calculation.'}</p>
@@ -887,13 +936,13 @@ function Products() {
                         } else {
                           setValidationErrors({...validationErrors, quantity: undefined});
                         }
-                        setFormData({ ...formData, quantity: e.target.value });
-                        
                         // Auto-calculate per unit cost when quantity changes
                         const purchasePrice = parseFloat(formData.purchasePrice);
                         if (purchasePrice && value && value > 0) {
                           const perUnitCost = purchasePrice / value;
-                          setFormData(prev => ({ ...prev, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) }));
+                          setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                        } else {
+                          setFormData({ ...formData, quantity: e.target.value });
                         }
                       }}
                       onWheel={(e) => e.target.blur()}
@@ -976,18 +1025,6 @@ function Products() {
                     <p>{language === 'ur' ? 'جب مقدار اس قیمت سے کم یا برابر ہو تو الرٹ آئے گا' : 'Low stock alert threshold'}</p>
 
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isRawMaterial"
-                    checked={formData.isRawMaterial}
-                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <label htmlFor="isRawMaterial" className="text-sm text-gray-700">
-                    Raw Material
-                  </label>
                 </div>
               </div>
               </form>

@@ -129,10 +129,16 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                         {item.quantity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        Rs.{Number(item.purchasePrice).toFixed(2)}
+                        {item.isTotalCostItem ? 
+                          `Rs.${(Number(item.purchasePrice) / Number(item.quantity)).toFixed(2)}` :
+                          `Rs.${Number(item.purchasePrice).toFixed(2)}`
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        Rs.{(Number(item.purchasePrice) * Number(item.quantity)).toFixed(2)}
+                        {item.isTotalCostItem ? 
+                          `Rs.${Number(item.purchasePrice).toFixed(2)}` :
+                          `Rs.${(Number(item.purchasePrice) * Number(item.quantity)).toFixed(2)}`
+                        }
                       </td>
                     </tr>
                   ))}
@@ -444,9 +450,15 @@ function createPrintablePurchaseInvoice(purchase, shopSettings) {
           ${purchase.items.map(item => `
             <tr>
               <td>${item.product.name}</td>
-              <td class="text-right">${formatPakistaniCurrency(item.purchasePrice)}</td>
+              <td class="text-right">${item.isTotalCostItem ? 
+                formatPakistaniCurrency(item.purchasePrice / item.quantity) :
+                formatPakistaniCurrency(item.purchasePrice)
+              }</td>
               <td class="text-right">${item.quantity}</td>
-              <td class="text-right">${formatPakistaniCurrency(item.purchasePrice * item.quantity)}</td>
+              <td class="text-right">${item.isTotalCostItem ? 
+                formatPakistaniCurrency(item.purchasePrice) :
+                formatPakistaniCurrency(item.purchasePrice * item.quantity)
+              }</td>
             </tr>
           `).join('')}
         </tbody>

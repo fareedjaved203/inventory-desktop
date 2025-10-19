@@ -287,13 +287,34 @@ class API {
   }
 
   async createBulkPurchase(data) {
-    // Generate invoice number using same mechanism as backend
-    if (DataStorageManager.getOfflineMode()) {
-      if (!data.invoiceNumber) {
-        data.invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
+    console.log('🔥 API.createBulkPurchase() called with data:', data);
+    console.log('🔍 Offline mode:', DataStorageManager.getOfflineMode());
+    
+    // For online mode, make direct API call
+    if (!DataStorageManager.getOfflineMode()) {
+      console.log('🌐 Online mode - making direct API call');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/bulk-purchases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      data.purchaseDate = data.purchaseDate || new Date().toISOString();
+      
+      return response.json();
     }
+    
+    // Offline mode logic
+    if (!data.invoiceNumber) {
+      data.invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
+    }
+    data.purchaseDate = data.purchaseDate || new Date().toISOString();
     
     const purchase = await DataStorageManager.create(STORES.bulkPurchases, data);
     

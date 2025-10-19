@@ -561,6 +561,8 @@ class DataStorageManager {
     try {
       const endpoint = this.getEndpoint(storeName);
       const token = localStorage.getItem('authToken');
+      console.log(`🌐 readOnline(${storeName}) - endpoint:`, endpoint, 'token exists:', !!token);
+      
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
@@ -573,10 +575,16 @@ class DataStorageManager {
         }
       });
       
+      console.log(`🌐 Making API call to: ${import.meta.env.VITE_API_URL}/api/${endpoint}`);
+      console.log(`🌐 Clean params:`, cleanParams);
+      
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/${endpoint}`, { 
         params: cleanParams,
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log(`🌐 API Response status:`, response.status);
+      console.log(`🌐 API Response data:`, response.data);
       
       // Ensure response has proper structure
       const data = response.data || {};
@@ -615,8 +623,10 @@ class DataStorageManager {
         };
       }
       
+      console.log(`🌐 Final processed data for ${storeName}:`, data);
       return data;
     } catch (error) {
+      console.error(`❌ Error in readOnline(${storeName}):`, error);
       if (error.response?.status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userId');
@@ -676,6 +686,7 @@ class DataStorageManager {
       [STORES.sales]: 'sales',
       [STORES.purchases]: 'purchases',
       [STORES.bulkPurchases]: 'bulk-purchases',
+      [STORES.bulkPurchaseItems]: 'bulk-purchases', // Map items to main endpoint
       [STORES.branches]: 'branches',
       [STORES.employees]: 'employees',
       [STORES.expenses]: 'expenses',
