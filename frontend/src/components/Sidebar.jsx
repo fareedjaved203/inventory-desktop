@@ -65,6 +65,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
     { path: '/pos', label: t('pos'), icon: <FaCashRegister />, permission: 'pos' },
     { path: '/employee-stats', label: t('employeeStats'), icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
     { path: '/products', label: t('products'), icon: <FaBoxOpen />, permission: 'products' },
+    { path: '/categories', label: 'Categories', icon: <FaTag />, permission: 'categories' },
     { path: '/manufacturing', label: 'Manufacturing', icon: <FaIndustry />, permission: 'manufacturing' },
     { path: '/product-labels', label: t('productLabels'), icon: <FaTag />, permission: 'products' },
     { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave />, permission: 'sales' },

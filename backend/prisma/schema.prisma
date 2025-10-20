@@ -26,18 +26,21 @@ model Product {
   retailPrice       Decimal?
   wholesalePrice    Decimal?
   unitValue         Decimal?
+  categoryId        String?
   BulkPurchaseItem  BulkPurchaseItem[]
   expenses          Expense[]
   SaleItem          SaleItem[]
   SaleReturnItem    SaleReturnItem[]
   recipe            Recipe?
   recipeIngredients RecipeItem[] @relation("RecipeRawMaterial")
+  category          Category?          @relation(fields: [categoryId], references: [id])
 
   @@unique([userId, name])
   @@index([userId])
   @@index([userId, name])
   @@index([userId, quantity])
   @@index([userId, createdAt])
+  @@index([categoryId])
 }
 
 model Sale {
@@ -363,4 +366,20 @@ model Manufacturing {
   @@index([userId])
   @@index([recipeId])
   @@index([userId, productionDate])
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  color       String?   @default("#3B82F6")
+  icon        String?   @default("📦")
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([userId, name])
 }

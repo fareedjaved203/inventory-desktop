@@ -76,6 +76,18 @@ function POS() {
     }
   );
 
+  // Fetch categories with products for POS
+  const { data: categoriesWithProducts = [], isLoading: categoriesLoading } = useQuery(
+    ['pos-categories'],
+    async () => {
+      const response = await API.get('/categories/with-products');
+      return response.data || [];
+    },
+    {
+      enabled: !debouncedSearchTerm // Only fetch when not searching
+    }
+  );
+
   // Fetch customers for search
   const { data: customers = [], isLoading: customersLoading } = useQuery(
     ['pos-customers', debouncedCustomerSearchTerm],
@@ -513,31 +525,74 @@ function POS() {
         {/* Product Grid */}
         <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 flex-1 overflow-auto">
           <h3 className="text-base lg:text-lg font-semibold mb-3 lg:mb-4">Products</h3>
-          {productsLoading ? (
+          {(productsLoading || categoriesLoading) ? (
             <div className="flex justify-center items-center h-32">
               <LoadingSpinner size="w-8 h-8" />
             </div>
-          ) : products.length === 0 && debouncedSearchTerm ? (
-            <div className="text-center text-gray-500 py-8">
-              <p>No products found</p>
-            </div>
+          ) : debouncedSearchTerm ? (
+            // Show search results
+            products.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <p>No products found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 lg:gap-3">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
+                  >
+                    <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
+                    <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                    <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                    {product.sku && (
+                      <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 lg:gap-3">
-              {products.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
-                >
-                  <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
-                  <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                  <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
-                  {product.sku && (
-                    <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            // Show categories with products
+            categoriesWithProducts.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <p>No products available</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {categoriesWithProducts.map((category) => (
+                  <div key={category.id} className="">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+                        style={{ backgroundColor: category.color }}
+                      >
+                        {category.icon}
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-800">{category.name}</h4>
+                      <span className="text-sm text-gray-500">({category.products.length} items)</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 lg:gap-3">
+                      {category.products.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => addToCart(product)}
+                          className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
+                        >
+                          <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
+                          <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                          {product.sku && (
+                            <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>

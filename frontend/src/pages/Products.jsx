@@ -30,6 +30,7 @@ const productSchema = z.object({
   unitValue: z.union([z.number().positive("Unit value must be positive"), z.null(), z.undefined()]).optional(),
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative"),
   isRawMaterial: z.boolean().optional(),
+  categoryId: z.string().nullable().optional(),
 });
 
 function Products() {
@@ -66,6 +67,7 @@ function Products() {
     lowStockThreshold: '10',
     isRawMaterial: false,
     perUnitPurchasePrice: '',
+    categoryId: '',
   });
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -105,6 +107,13 @@ function Products() {
     }
   );
 
+  const { data: categories } = useQuery(
+    ['categories'],
+    async () => {
+      return await DataStorageManager.read(STORES.categories, { limit: 100 });
+    }
+  );
+
     // Maintain search input focus
   useEffect(() => {
     if (searchInputRef.current) {
@@ -131,7 +140,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '' });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '' });
         setIsEditMode(false);
         setValidationErrors({});
         toast.success('Product updated successfully!');
@@ -173,7 +182,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '' });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '' });
         setValidationErrors({});
         toast.success('Product created successfully!');
       },
@@ -261,6 +270,7 @@ function Products() {
       quantity: parseFloat(formData.quantity),
       lowStockThreshold: parseFloat(formData.lowStockThreshold),
       isRawMaterial: formData.isRawMaterial,
+      categoryId: formData.categoryId || null,
     };
     
     console.log('Form data:', formData);
@@ -317,6 +327,7 @@ function Products() {
       lowStockThreshold: (product.lowStockThreshold || 10).toString(),
       isRawMaterial: product.isRawMaterial || false,
       perUnitPurchasePrice: product.perUnitPurchasePrice ? product.perUnitPurchasePrice.toString() : '',
+      categoryId: product.categoryId || '',
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -451,7 +462,8 @@ function Products() {
                   unitValue: '',
                   lowStockThreshold: '10',
                   isRawMaterial: false,
-                  perUnitPurchasePrice: ''
+                  perUnitPurchasePrice: '',
+                  categoryId: ''
                 });
                 setValidationErrors({});
                 setIsModalOpen(true);
@@ -680,18 +692,38 @@ function Products() {
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="product-form" onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <input
-                    type="checkbox"
-                    id="isRawMaterial"
-                    checked={formData.isRawMaterial}
-                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
-                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="isRawMaterial" className="text-base font-medium text-blue-800">
-                    Raw Material
-                  </label>
-                  <span className="text-sm text-blue-600">(Used for manufacturing)</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <input
+                      type="checkbox"
+                      id="isRawMaterial"
+                      checked={formData.isRawMaterial}
+                      onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="isRawMaterial" className="text-base font-medium text-blue-800">
+                      Raw Material
+                    </label>
+                    <span className="text-sm text-blue-600">(Manufacturing)</span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <FaTag className="text-primary-500" /> Category (Optional)
+                    </label>
+                    <select
+                      value={formData.categoryId}
+                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">No Category</option>
+                      {categories?.items?.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.icon} {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Organize products for better POS navigation</p>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
