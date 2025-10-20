@@ -504,8 +504,7 @@ function Sales() {
     setSelectedContact(sale.contact || null);
     setSaleDate(new Date(sale.saleDate).toISOString().split("T")[0]);
     setDescription(sale.description || '');
-    setSelectedTransport(sale.transport || null);
-    setTransportSearchTerm(sale.transport?.carNumber || '');
+    setTransportSearchTerm(sale.carNumber || '');
     setTransportCost(sale.transportCost || '');
     setLoadingDate(sale.loadingDate?.split('T')[0] || '');
     setArrivalDate(sale.arrivalDate?.split('T')[0] || '');
@@ -517,7 +516,6 @@ function Sales() {
     e.preventDefault();
 
     let contactId = selectedContact?.id;
-    let transportId = selectedTransport?.id;
     
     // Create new contact if checkbox is checked
     if (createNewContact && newContactData.name && newContactData.phoneNumber) {
@@ -584,7 +582,7 @@ function Sales() {
       ...(contactId && { contactId }),
       ...(saleDate && { saleDate }),
       description: description || null,
-      transportId: transportId || null,
+      carNumber: transportSearchTerm || null,
       transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
       loadingDate: loadingDate || null,
       arrivalDate: arrivalDate || null,
@@ -871,9 +869,9 @@ function Sales() {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                  {sale.transport?.carNumber ? (
+                  {sale.carNumber ? (
                     <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      {sale.transport.carNumber}
+                      {sale.carNumber}
                     </span>
                   ) : (
                     <span className="text-gray-400 text-sm">-</span>

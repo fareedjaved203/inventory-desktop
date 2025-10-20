@@ -252,8 +252,6 @@ function Contacts() {
     // Combine and sort transactions by date
     const allTransactions = [
       ...filteredSales.map(sale => {
-        // Find the transport for this sale
-        const transport = transports.find(t => t.id === sale.transportId);
         
         return {
           date: sale.saleDate,
@@ -262,7 +260,7 @@ function Contacts() {
           saleDescription: sale.description || '',
           quantity: sale.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
           unitPrice: sale.items?.[0]?.price || 0,
-          carNumber: transport?.carNumber || '',
+          carNumber: sale?.carNumber || '',
           loadingDate: sale.loadingDate || '',
           arrivalDate: sale.arrivalDate || '',
           debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
