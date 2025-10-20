@@ -42,7 +42,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white p-6 rounded-lg w-full max-w-2xl h-[90vh] flex flex-col">
+      <div className="bg-white p-6 rounded-lg w-full max-w-7xl h-[90vh] flex flex-col">
         <div className="flex-shrink-0">
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-bold">Purchase Details</h2>
@@ -95,7 +95,7 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
           <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium mb-2">Purchase Information</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-gray-600">Date</p>
                 <p className="font-medium">{new Date(purchase.purchaseDate).toLocaleDateString()}</p>
@@ -104,6 +104,40 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                 <p className="text-gray-600">Contact</p>
                 <p className="font-medium">{purchase.contact?.name || 'N/A'}</p>
               </div>
+              <div>
+                <p className="text-gray-600">Car Number</p>
+                <p className="font-medium">
+                  {purchase.carNumber ? (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
+                      {purchase.carNumber}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600">Transport Cost</p>
+                <p className="font-medium">
+                  {purchase.transportCost ? `Rs.${Number(purchase.transportCost).toFixed(2)}` : '-'}
+                </p>
+              </div>
+              {(purchase.loadingDate || purchase.arrivalDate) && (
+                <>
+                  <div>
+                    <p className="text-gray-600">Loading Date</p>
+                    <p className="font-medium">
+                      {purchase.loadingDate ? new Date(purchase.loadingDate).toLocaleDateString() : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Arrival Date</p>
+                    <p className="font-medium">
+                      {purchase.arrivalDate ? new Date(purchase.arrivalDate).toLocaleDateString() : '-'}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

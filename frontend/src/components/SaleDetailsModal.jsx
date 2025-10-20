@@ -154,7 +154,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white p-6 rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+      <div className="bg-white p-6 rounded-lg w-full max-w-7xl h-[90vh] flex flex-col">
         <div className="flex-shrink-0">
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-bold">Sale Details</h2>
@@ -345,13 +345,13 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          Rs.{item.price.toFixed(2)}
+                          Rs.{(Number(item.price) || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          <div>Rs.{(item.price * item.quantity).toFixed(2)}</div>
+                          <div>Rs.{((Number(item.price) || 0) * item.quantity).toFixed(2)}</div>
                           {item.returnedQuantity > 0 && (
                             <div className="text-xs text-red-600">
-                              -Rs.{(item.price * item.returnedQuantity).toFixed(2)}
+                              -Rs.{((Number(item.price) || 0) * item.returnedQuantity).toFixed(2)}
                             </div>
                           )}
                         </td>
@@ -373,7 +373,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                       Discount
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-green-600">
-                      -Rs.{(sale.discount || 0).toFixed(2)}
+                      -Rs.{(Number(sale.discount) || 0).toFixed(2)}
                     </td>
                   </tr>
                   <tr>
@@ -381,7 +381,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                       Total Amount
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
-                      Rs.{(sale.totalAmount).toFixed(2)}
+                      Rs.{(Number(sale.totalAmount) || 0).toFixed(2)}
                     </td>
                   </tr>
                   <tr>
@@ -389,7 +389,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                       Paid Amount
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
-                      Rs.{sale.paidAmount.toFixed(2)}
+                      Rs.{(Number(sale.paidAmount) || 0).toFixed(2)}
                     </td>
                   </tr>
                   {sale.returns?.length > 0 && (
@@ -399,7 +399,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           Total Returned
                         </td>
                         <td className="px-6 py-4 text-right font-medium text-red-600">
-                          -Rs.{sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0).toFixed(2)}
+                          -Rs.{sale.returns.reduce((sum, ret) => sum + (Number(ret.totalAmount) || 0), 0).toFixed(2)}
                         </td>
                       </tr>
                       {sale.returns.some(ret => ret.refundPaid) && (
@@ -408,7 +408,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                             Total Refunded
                           </td>
                           <td className="px-6 py-4 text-right font-medium text-green-600">
-                            Rs.{sale.returns.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0).toFixed(2)}
+                            Rs.{sale.returns.reduce((sum, ret) => sum + (ret.refundPaid ? (Number(ret.refundAmount) || 0) : 0), 0).toFixed(2)}
                           </td>
                         </tr>
                       )}
@@ -419,14 +419,14 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                       Net Total After Returns
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
-                      Rs.{Math.max(((sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0)), 0).toFixed(2)}
+                      Rs.{Math.max(((Number(sale.totalAmount) || 0) - (sale.returns?.reduce((sum, ret) => sum + (Number(ret.totalAmount) || 0), 0) || 0)), 0).toFixed(2)}
                     </td>
 
                   </tr>
                   {(() => {
-                    const netAmount = (sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0);
-                    const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0) || 0);
-                    const balance = netAmount - sale.paidAmount + totalRefunded;
+                    const netAmount = (Number(sale.totalAmount) || 0) - (sale.returns?.reduce((sum, ret) => sum + (Number(ret.totalAmount) || 0), 0) || 0);
+                    const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (Number(ret.refundAmount) || 0) : 0), 0) || 0);
+                    const balance = netAmount - (Number(sale.paidAmount) || 0) + totalRefunded;
                     
                     // Check if all credit has been refunded
                     const allCreditRefunded = hasFullRefund || 
@@ -447,7 +447,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           </span>
                         </td>
                       </tr>
-                    ) : balance < 0 && Math.abs(balance) <= sale.paidAmount ? (
+                    ) : balance < 0 && Math.abs(balance) <= (Number(sale.paidAmount) || 0) ? (
                       <>
                         <tr>
                           <td colSpan="3" className="px-6 py-4 text-right font-medium">
@@ -511,11 +511,11 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           ))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-red-800">
-                          Rs.{returnRecord.totalAmount.toFixed(2)}
+                          Rs.{(Number(returnRecord.totalAmount) || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                           <div className="text-sm font-medium text-gray-900">
-                            Rs.{(returnRecord.refundAmount || 0).toFixed(2)}
+                            Rs.{(Number(returnRecord.refundAmount) || 0).toFixed(2)}
                           </div>
                           <div className="flex items-center gap-2 justify-end">
                             <div className={`text-xs px-2 py-1 rounded-full ${

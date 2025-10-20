@@ -108,8 +108,6 @@ function Sales() {
         setDescription('');
         setSelectedTransport(null);
         setTransportSearchTerm('');
-        setCreateNewTransport(false);
-        setNewTransportData({ carNumber: '', driverName: '' });
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
@@ -267,8 +265,6 @@ function Sales() {
         setDescription('');
         setSelectedTransport(null);
         setTransportSearchTerm('');
-        setCreateNewTransport(false);
-        setNewTransportData({ carNumber: '', driverName: '' });
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
@@ -510,8 +506,6 @@ function Sales() {
     setDescription(sale.description || '');
     setSelectedTransport(sale.transport || null);
     setTransportSearchTerm(sale.transport?.carNumber || '');
-    setCreateNewTransport(false);
-    setNewTransportData({ carNumber: '', driverName: '' });
     setTransportCost(sale.transportCost || '');
     setLoadingDate(sale.loadingDate?.split('T')[0] || '');
     setArrivalDate(sale.arrivalDate?.split('T')[0] || '');
@@ -543,20 +537,7 @@ function Sales() {
       }
     }
 
-    // Create new transport if checkbox is checked
-    if (createNewTransport && newTransportData.carNumber) {
-      try {
-        setCreatingTransport(true);
-        const transportResponse = await API.createTransport(newTransportData);
-        transportId = transportResponse.id;
-      } catch (error) {
-        const errorMessage = error.response?.data?.error || 'Failed to create transport';
-        setValidationErrors({ transport: errorMessage });
-        return;
-      } finally {
-        setCreatingTransport(false);
-      }
-    }
+
 
     // Validate contact if something is typed but not selected
     if (contactSearchTerm && !selectedContact && !createNewContact) {
@@ -780,8 +761,6 @@ function Sales() {
                 setDescription('');
                 setSelectedTransport(null);
                 setTransportSearchTerm('');
-                setCreateNewTransport(false);
-                setNewTransportData({ carNumber: '', driverName: '' });
                 setTransportCost('');
                 setLoadingDate('');
                 setArrivalDate('');
@@ -842,6 +821,9 @@ function Sales() {
                 Contact
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                Car Number
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                 Items
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
@@ -858,7 +840,7 @@ function Sales() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && (debouncedSearchTerm || selectedDate || showPendingPayments || showCreditBalance) ? (
               <tr>
-                <td colSpan="7" className="px-6 py-8 text-center">
+                <td colSpan="8" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -883,6 +865,15 @@ function Sales() {
                   {sale.contact ? (
                     <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                       {sale.contact.name}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {sale.transport?.carNumber ? (
+                    <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      {sale.transport.carNumber}
                     </span>
                   ) : (
                     <span className="text-gray-400 text-sm">-</span>
@@ -1496,96 +1487,53 @@ function Sales() {
 
                 {/* Transport Selection */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Transport ({t('optional')})
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="createNewTransport"
-                        checked={createNewTransport}
-                        onChange={(e) => {
-                          setCreateNewTransport(e.target.checked);
-                          if (e.target.checked) {
-                            setSelectedTransport(null);
-                            setTransportSearchTerm('');
-                          } else {
-                            setNewTransportData({ carNumber: '', driverName: '' });
-                          }
-                        }}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                      <label htmlFor="createNewTransport" className="text-sm text-gray-600">
-                        Add New Transport
-                      </label>
-                    </div>
-                  </div>
-                  {createNewTransport ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          value={newTransportData.carNumber}
-                          onChange={(e) => setNewTransportData({ ...newTransportData, carNumber: e.target.value })}
-                          placeholder="Car number *"
-                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                        <input
-                          type="text"
-                          value={newTransportData.driverName}
-                          onChange={(e) => setNewTransportData({ ...newTransportData, driverName: e.target.value })}
-                          placeholder="Driver name (optional)"
-                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={transportSearchTerm}
-                        onChange={(e) => {
-                          handleTransportSearchChange(e.target.value);
-                          if (!e.target.value) {
-                            setSelectedTransport(null);
-                          }
-                        }}
-                        placeholder="Search transport by car number..."
-                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      {transportSearchTerm && !selectedTransport && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                            {transportLoading ? (
-                              <div className="px-4 py-3 flex items-center justify-center">
-                                <LoadingSpinner size="w-4 h-4" />
-                                <span className="ml-2 text-gray-500 text-sm">Searching...</span>
-                              </div>
-                            ) : transport?.length > 0 ? (
-                              transport.map((transportItem) => (
-                                <div
-                                  key={transportItem.id}
-                                  onClick={() => {
-                                    setSelectedTransport(transportItem);
-                                    setTransportSearchTerm(transportItem.carNumber);
-                                  }}
-                                  className="px-4 py-2 cursor-pointer hover:bg-primary-50"
-                                >
-                                  <div className="font-medium">{transportItem.carNumber}</div>
-                                  <div className="text-sm text-gray-600">
-                                    Driver: {transportItem.driverName || 'Not specified'}
-                                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Car Number ({t('optional')})
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={transportSearchTerm}
+                      onChange={(e) => {
+                        handleTransportSearchChange(e.target.value);
+                        if (!e.target.value) {
+                          setSelectedTransport(null);
+                        }
+                      }}
+                      placeholder="Enter or search car number..."
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    {transportSearchTerm && !selectedTransport && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                          {transportLoading ? (
+                            <div className="px-4 py-3 flex items-center justify-center">
+                              <LoadingSpinner size="w-4 h-4" />
+                              <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                            </div>
+                          ) : transport?.length > 0 ? (
+                            transport.map((transportItem) => (
+                              <div
+                                key={transportItem.id}
+                                onClick={() => {
+                                  setSelectedTransport(transportItem);
+                                  setTransportSearchTerm(transportItem.carNumber);
+                                }}
+                                className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                              >
+                                <div className="font-medium">{transportItem.carNumber}</div>
+                                <div className="text-sm text-gray-600">
+                                  Driver: {transportItem.driverName || 'Not specified'}
                                 </div>
-                              ))
-                            ) : (
-                              <div className="px-4 py-3 text-gray-500 text-sm">
-                                No transport found
                               </div>
-                            )}
-                          </div>
-                        )}
-                    </div>
-                  )}
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-gray-500 text-sm">
+                              No transport found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                  </div>
                   {selectedTransport && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
                       <div className="text-sm">
@@ -1685,7 +1633,7 @@ function Sales() {
                     </label>
                     <input
                       type="text"
-                      value={`Rs.${totalAmount.toFixed(2)}`}
+                      value={`Rs.${(Number(totalAmount) || 0).toFixed(2)}`}
                       disabled
                       className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-primary-800 font-medium"
                     />
@@ -1758,8 +1706,6 @@ function Sales() {
                   setDescription('');
                   setSelectedTransport(null);
                   setTransportSearchTerm('');
-                  setCreateNewTransport(false);
-                  setNewTransportData({ carNumber: '', driverName: '' });
                   setTransportCost('');
                   setLoadingDate('');
                   setArrivalDate('');
@@ -1774,14 +1720,14 @@ function Sales() {
               <button
                 type="submit"
                 form="sale-form"
-                disabled={createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport}
+                disabled={createSale.isLoading || updateSale.isLoading || creatingContact}
                 className={`px-4 py-2 text-white rounded shadow-sm flex items-center gap-2 ${
-                  createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport
+                  createSale.isLoading || updateSale.isLoading || creatingContact
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
                 }`}
               >
-                {(createSale.isLoading || updateSale.isLoading || creatingContact || creatingTransport) && <LoadingSpinner size="w-4 h-4" />}
+                {(createSale.isLoading || updateSale.isLoading || creatingContact) && <LoadingSpinner size="w-4 h-4" />}
                 {isEditMode ? t('updateSale') : t('createSale')}
               </button>
             </div>

@@ -94,8 +94,8 @@ export function setupSalesRoutes(app, prisma) {
           // Create sale using raw SQL
           const saleId = crypto.randomUUID();
           await prisma.$executeRaw`
-            INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "employeeId", "transportId", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
-            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.employeeId}, ${req.body.transportId}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
+            INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "employeeId", "carNumber", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
+            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create sale items
@@ -116,8 +116,7 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true,
-              transport: true
+              contact: true
             }
           });
 
@@ -308,7 +307,7 @@ export function setupSalesRoutes(app, prisma) {
             },
           },
           contact: true,
-          transport: true,
+          
           returns: {
             include: {
               items: {
@@ -507,7 +506,6 @@ export function setupSalesRoutes(app, prisma) {
               },
             },
             contact: true,
-            transport: true,
             returns: {
               include: {
                 items: {
@@ -580,7 +578,7 @@ export function setupSalesRoutes(app, prisma) {
             },
           },
           contact: true,
-          transport: true,
+          
           returns: {
             include: {
               items: {
@@ -691,7 +689,7 @@ export function setupSalesRoutes(app, prisma) {
                 ${saleDate ? Prisma.sql`"saleDate" = ${saleDate},` : Prisma.empty}
                 "contactId" = ${req.body.contactId},
                 "employeeId" = ${req.body.employeeId},
-                "transportId" = ${req.body.transportId},
+                "carNumber" = ${req.body.carNumber},
                 "transportCost" = ${req.body.transportCost},
                 "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},
                 "arrivalDate" = ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null},
@@ -718,8 +716,7 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true,
-              transport: true
+              contact: true
             }
           });
 

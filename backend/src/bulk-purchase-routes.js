@@ -168,8 +168,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           // Create the bulk purchase using raw SQL
           const purchaseId = crypto.randomUUID();
           await prisma.$executeRaw`
-            INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "transportCost", "contactId", "userId", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${invoiceNumber}, ${req.body.totalAmount}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount}::decimal, ${req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date()}, ${req.body.transportCost}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
+            INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
+            VALUES (${purchaseId}, ${invoiceNumber}, ${req.body.totalAmount}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount}::decimal, ${req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date()}, ${req.body.carNumber || null}, ${req.body.transportCost || null}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create purchase items
@@ -301,7 +301,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 discount = ${req.body.discount || 0}::decimal,
                 "paidAmount" = ${req.body.paidAmount}::decimal,
                 "purchaseDate" = ${req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date()},
+                "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost || null},
+                "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},
+                "arrivalDate" = ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null},
                 "contactId" = ${req.body.contactId},
                 "updatedAt" = NOW()
             WHERE id = ${req.params.id} AND "userId" = ${req.userId}

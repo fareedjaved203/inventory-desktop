@@ -66,6 +66,12 @@ function BulkPurchasing() {
   const [showPendingPayments, setShowPendingPayments] = useState(location.state?.showPendingPayments || false);
   const [priceInputMode, setPriceInputMode] = useState('perUnit'); // 'perUnit' or 'totalCost'
   const [totalCost, setTotalCost] = useState('');
+  const [selectedTransport, setSelectedTransport] = useState(null);
+  const [transportSearchTerm, setTransportSearchTerm] = useState('');
+  const [debouncedTransportSearchTerm, setDebouncedTransportSearchTerm] = useState('');
+  const [transportCost, setTransportCost] = useState('');
+  const [loadingDate, setLoadingDate] = useState('');
+  const [arrivalDate, setArrivalDate] = useState('');
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -107,6 +113,19 @@ function BulkPurchasing() {
     debouncedProductSearch(value);
   };
 
+  // Debounced transport search
+  const debouncedTransportSearch = useCallback(
+    debounce((term) => {
+      setDebouncedTransportSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleTransportSearchChange = (value) => {
+    setTransportSearchTerm(value);
+    debouncedTransportSearch(value);
+  };
+
   // Reset page when switching between all purchases and pending payments
   useEffect(() => {
     setCurrentPage(1);
@@ -146,6 +165,19 @@ function BulkPurchasing() {
         search: debouncedProductSearchTerm
       });
       return result.items;
+    }
+  );
+
+  // Fetch transport for dropdown with search
+  const { data: transport, isLoading: transportLoading } = useQuery(
+    ['transport', debouncedTransportSearchTerm],
+    async () => {
+      if (!debouncedTransportSearchTerm) return [];
+      const result = await API.getTransport({ limit: 100 });
+      return result.items?.filter(t => 
+        t.carNumber?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase()) ||
+        t.driverName?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase())
+      ) || [];
     }
   );
 
@@ -261,6 +293,11 @@ function BulkPurchasing() {
     setNewContactData({ name: '', phoneNumber: '', address: '' });
     setCreateNewProduct(false);
     setNewProductData({ name: '', isRawMaterial: false });
+    setSelectedTransport(null);
+    setTransportSearchTerm('');
+    setTransportCost('');
+    setLoadingDate('');
+    setArrivalDate('');
   };
 
   const handleAddItem = async () => {
@@ -443,7 +480,11 @@ function BulkPurchasing() {
       totalAmount: totalAmount,
       discount: discountAmount,
       paidAmount: parsedPaidAmount,
-      purchaseDate: new Date().toISOString()
+      purchaseDate: new Date().toISOString(),
+      carNumber: transportSearchTerm || null,
+      transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
+      loadingDate: loadingDate || null,
+      arrivalDate: arrivalDate || null
     };
 
     // Debug logging
@@ -506,6 +547,10 @@ function BulkPurchasing() {
     const discountPercentage = subtotal > 0 ? ((Number(purchase.discount) || 0) / subtotal) * 100 : 0;
     setDiscount(discountPercentage.toFixed(1));
     setPaidAmount(Number(purchase.paidAmount));
+    setTransportSearchTerm(purchase.carNumber || '');
+    setTransportCost(purchase.transportCost || '');
+    setLoadingDate(purchase.loadingDate?.split('T')[0] || '');
+    setArrivalDate(purchase.arrivalDate?.split('T')[0] || '');
     setIsEditMode(true);
     setIsModalOpen(true);
   };
@@ -1084,6 +1129,103 @@ function BulkPurchasing() {
                 {validationErrors.items && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.items}</p>
                 )}
+              </div>
+
+              {/* Transport Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Car Number ({t('optional')})
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={transportSearchTerm}
+                    onChange={(e) => {
+                      handleTransportSearchChange(e.target.value);
+                      if (!e.target.value) {
+                        setSelectedTransport(null);
+                      }
+                    }}
+                    placeholder="Enter or search car number..."
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  {transportSearchTerm && !selectedTransport && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {transportLoading ? (
+                          <div className="px-4 py-3 flex items-center justify-center">
+                            <LoadingSpinner size="w-4 h-4" />
+                            <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                          </div>
+                        ) : transport?.length > 0 ? (
+                          transport.map((transportItem) => (
+                            <div
+                              key={transportItem.id}
+                              onClick={() => {
+                                setSelectedTransport(transportItem);
+                                setTransportSearchTerm(transportItem.carNumber);
+                              }}
+                              className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                            >
+                              <div className="font-medium">{transportItem.carNumber}</div>
+                              <div className="text-sm text-gray-600">
+                                Driver: {transportItem.driverName || 'Not specified'}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-gray-500 text-sm">
+                            No transport found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
+                {selectedTransport && (
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="text-sm">
+                      <strong>Car:</strong> {selectedTransport.carNumber} | 
+                      <strong>Driver:</strong> {selectedTransport.driverName || 'Not specified'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Transport Details */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transport Cost ({t('optional')})
+                  </label>
+                  <input
+                    type="number"
+                    value={transportCost}
+                    onChange={(e) => setTransportCost(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loading Date ({t('optional')})
+                  </label>
+                  <input
+                    type="date"
+                    value={loadingDate}
+                    onChange={(e) => setLoadingDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Arrival Date ({t('optional')})
+                  </label>
+                  <input
+                    type="date"
+                    value={arrivalDate}
+                    onChange={(e) => setArrivalDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
 
               {/* Subtotal and Discount */}

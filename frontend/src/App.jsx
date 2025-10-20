@@ -18,7 +18,6 @@ import ProductLabels from './pages/ProductLabels';
 import Sales from './pages/Sales';
 import Contacts from './pages/Contacts';
 import BulkPurchasing from './pages/BulkPurchasing';
-import Transport from './pages/Transport';
 import Returns from './pages/Returns';
 import Branches from './pages/Branches';
 import Employees from './pages/Employees';
@@ -253,7 +252,6 @@ function AppContent() {
               <Route path="/sales" element={<Sales />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/bulk" element={<BulkPurchasing />} />
-              <Route path="/transport" element={<Transport />} />
               <Route path="/returns" element={<Returns />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/branches" element={<Branches />} />
