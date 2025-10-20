@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import toast from 'react-hot-toast';
+import API from '../utils/api';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 
 function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
@@ -9,22 +10,23 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
   const [reason, setReason] = useState('');
   const [removeFromStock, setRemoveFromStock] = useState(false);
   const [refundAmount, setRefundAmount] = useState(0);
+  const [isContainerReturn, setIsContainerReturn] = useState(false);
 
   // Consolidate items by product ID
   const getConsolidatedItems = (items) => {
     const consolidated = {};
     items.forEach(item => {
-      const availableQty = item.remainingQuantity !== undefined ? item.remainingQuantity : item.quantity;
+      const availableQty = Number(item.remainingQuantity !== undefined ? item.remainingQuantity : item.quantity);
       if (availableQty > 0) {
         if (consolidated[item.product.id]) {
           consolidated[item.product.id].quantity += availableQty;
-          consolidated[item.product.id].returnedQuantity += item.returnedQuantity || 0;
+          consolidated[item.product.id].returnedQuantity += Number(item.returnedQuantity || 0);
         } else {
           consolidated[item.product.id] = {
             product: item.product,
             quantity: availableQty,
-            price: item.price,
-            returnedQuantity: item.returnedQuantity || 0,
+            price: Number(item.price),
+            returnedQuantity: Number(item.returnedQuantity || 0),
             remainingQuantity: availableQty
           };
         }
@@ -46,28 +48,41 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
       }));
       setReturnItems(allItems);
       setReason('Full sale return');
+      setIsContainerReturn(true); // Auto-enable container return for full returns
     } else if (returnType === 'partial') {
       setReturnItems([]);
       setReason('');
+      setIsContainerReturn(false);
     }
   }, [returnType, sale, isOpen]);
 
   const createReturn = useMutation(
     async (returnData) => {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/returns`,
-        returnData
-      );
-      return response.data;
+      const response = await API.post('/returns', returnData);
+      return response;
     },
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries(['sales']);
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['returns']);
+        
+        // Show success notification
+        const message = isContainerReturn
+          ? 'Empty containers returned successfully (no refund)'
+          : `Return processed successfully. Refund amount: ${formatPakistaniCurrency(data.totalAmount)}`;
+        
+        toast.success(message);
+        
         onClose();
         setReturnItems([]);
         setReason('');
+        setIsContainerReturn(false);
       },
+      onError: (error) => {
+        const errorMessage = error.response?.data?.error || 'Failed to process return';
+        toast.error(errorMessage);
+      }
     }
   );
 
@@ -118,7 +133,8 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
       })),
       reason,
       removeFromStock,
-      refundAmount
+      refundAmount: isContainerReturn ? 0 : refundAmount,
+      isContainerReturn
     };
 
     createReturn.mutate(returnData);
@@ -158,7 +174,7 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
                       {sale.items.filter(item => item.returnedQuantity > 0).map((item, index) => (
                         <div key={index} className="flex justify-between items-center py-1 text-sm text-gray-600">
                           <span>{item.product.name}</span>
-                          <span className="text-red-600 font-medium">{item.returnedQuantity} returned</span>
+                          <span className="text-red-600 font-medium">{Number(item.returnedQuantity)} returned</span>
                         </div>
                       ))}
                     </div>
@@ -187,7 +203,7 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
                             </div>
                             {item.returnedQuantity > 0 && (
                               <div className="text-xs text-red-600">
-                                Already returned: {item.returnedQuantity}
+                                Already returned: {Number(item.returnedQuantity)}
                               </div>
                             )}
                           </div>
@@ -199,7 +215,7 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
                               max={item.quantity}
                               value={returnQuantity}
                               onChange={(e) => {
-                                const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                const value = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0);
                                 handleItemToggle(item, value);
                               }}
                               className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
@@ -237,17 +253,40 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                id="removeFromStock"
-                checked={removeFromStock}
-                onChange={(e) => setRemoveFromStock(e.target.checked)}
-                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-              />
-              <label htmlFor="removeFromStock" className="text-sm font-medium text-gray-700">
-                Remove from stock (deduct returned quantity from product inventory)
-              </label>
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isContainerReturn"
+                  checked={isContainerReturn}
+                  onChange={(e) => {
+                    setIsContainerReturn(e.target.checked);
+                    if (e.target.checked) {
+                      setReason('Empty container return');
+                      setRefundAmount(0);
+                    }
+                  }}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isContainerReturn" className="text-sm font-medium text-gray-700">
+                  Empty Container Return (No payment adjustment)
+                </label>
+              </div>
+              
+              {!isContainerReturn && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="removeFromStock"
+                    checked={removeFromStock}
+                    onChange={(e) => setRemoveFromStock(e.target.checked)}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <label htmlFor="removeFromStock" className="text-sm font-medium text-gray-700">
+                    Remove from stock (deduct returned quantity from product inventory)
+                  </label>
+                </div>
+              )}
             </div>
 
             <div>
@@ -262,18 +301,25 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
             </div>
 
             {returnItems.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h4 className="font-medium text-red-800 mb-2">Return Summary</h4>
+              <div className={`${isContainerReturn ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4`}>
+                <h4 className={`font-medium ${isContainerReturn ? 'text-blue-800' : 'text-red-800'} mb-2`}>
+                  {isContainerReturn ? 'Container Return Summary' : 'Return Summary'}
+                </h4>
+                {isContainerReturn && (
+                  <p className="text-sm text-blue-700 mb-3">
+                    Empty containers returned - No payment adjustment will be made
+                  </p>
+                )}
                 {returnItems.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <span>{item.productName} × {item.quantity}</span>
-                    <span>{formatPakistaniCurrency(item.price * item.quantity)}</span>
+                    <span>{isContainerReturn ? 'No refund' : formatPakistaniCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
-                <div className="border-t border-red-300 mt-2 pt-2 font-medium">
+                <div className={`border-t ${isContainerReturn ? 'border-blue-300' : 'border-red-300'} mt-2 pt-2 font-medium`}>
                   <div className="flex justify-between">
                     <span>Total Return Amount:</span>
-                    <span>{formatPakistaniCurrency(calculateReturnTotal())}</span>
+                    <span>{isContainerReturn ? formatPakistaniCurrency(0) : formatPakistaniCurrency(calculateReturnTotal())}</span>
                   </div>
                 </div>
               </div>
@@ -291,13 +337,16 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={returnItems.length === 0 || (returnType === 'partial' && getConsolidatedItems(sale.items).length === 0)}
-            className={`px-4 py-2 text-white rounded shadow-sm ${
-              returnItems.length === 0 || (returnType === 'partial' && getConsolidatedItems(sale.items).length === 0)
+            disabled={returnItems.length === 0 || (returnType === 'partial' && getConsolidatedItems(sale.items).length === 0) || createReturn.isLoading}
+            className={`px-4 py-2 text-white rounded shadow-sm flex items-center gap-2 ${
+              returnItems.length === 0 || (returnType === 'partial' && getConsolidatedItems(sale.items).length === 0) || createReturn.isLoading
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
             }`}
           >
+            {createReturn.isLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            )}
             Process Return
           </button>
         </div>

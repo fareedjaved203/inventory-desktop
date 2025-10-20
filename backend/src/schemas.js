@@ -60,6 +60,10 @@ export const bulkPurchaseSchema = z.object({
   paidAmount: z.number().min(0, "Paid amount cannot be negative").max(100000000, "Paid amount cannot exceed Rs.10 Crores"),
   invoiceNumber: z.string().optional(),
   purchaseDate: z.string().optional(),
+  carNumber: z.string().nullable().optional(),
+  transportCost: z.number().min(0).nullable().optional(),
+  loadingDate: z.string().nullable().optional(),
+  arrivalDate: z.string().nullable().optional(),
 });
 
 export const contactProductSchema = z.object({

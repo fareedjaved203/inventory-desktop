@@ -291,11 +291,11 @@ function Dashboard() {
         </div>
       </ErrorBoundary>
       
-      <ErrorBoundary>
+      {/* <ErrorBoundary>
         <div className="mb-8">
           <SalesChart />
         </div>
-      </ErrorBoundary>
+      </ErrorBoundary> */}
       
       <ErrorBoundary>
         <div className="mb-8">

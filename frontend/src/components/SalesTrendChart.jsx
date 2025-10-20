@@ -30,8 +30,10 @@ function SalesTrendChart() {
   const { data: salesData, isLoading } = useQuery(
     ['sales-analytics', selectedPeriod],
     async () => {
-      // Sales analytics not available in API wrapper, return empty data
-      return [];
+      const response = await API.get(
+        `/sales-analytics?interval=${selectedPeriod}`
+      );
+      return response.data;
     }
   );
 

@@ -34,6 +34,12 @@ const styles = StyleSheet.create({
     margin: 'auto',
     flexDirection: 'row',
   },
+  purchaseRow: {
+    backgroundColor: '#e3f2fd',
+  },
+  saleRow: {
+    backgroundColor: '#e8f5e8',
+  },
   tableColHeader: {
     borderStyle: 'solid',
     borderWidth: 1,
@@ -85,6 +91,9 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
   // If no visible columns provided, show all columns
   const columnsToShow = visibleColumns.length > 0 ? visibleColumns : [
     ['date', { label: 'Date' }],
+    ['loadingDate', { label: 'Loading Date' }],
+    ['arrivalDate', { label: 'Arrival Date' }],
+    ['carNumber', { label: 'Car Number' }],
     ['productName', { label: 'Product Name' }],
     ['productDescription', { label: 'Description' }],
     ['purchaseQuantity', { label: 'Purchase Qty' }],
@@ -126,6 +135,9 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
             const getCellValue = (key) => {
               switch (key) {
                 case 'date': return new Date(item.date).toLocaleDateString();
+                case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
+                case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
+                case 'carNumber': return item.carNumber || '-';
                 case 'productName': return item.productName;
                 case 'productDescription': return item.productDescription || '-';
                 case 'purchaseQuantity': return item.purchaseQuantity || '-';
@@ -143,7 +155,7 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
             };
             
             return (
-              <View style={styles.tableRow} key={index}>
+              <View style={[styles.tableRow, item.type === 'purchase' ? styles.purchaseRow : styles.saleRow]} key={index}>
                 {columnsToShow.map(([key]) => (
                   <View key={key} style={[styles.tableCol, { width: columnWidth }]}>
                     <Text style={styles.tableCell}>{getCellValue(key)}</Text>

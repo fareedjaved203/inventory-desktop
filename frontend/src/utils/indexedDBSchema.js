@@ -18,7 +18,7 @@ export const STORES = {
   saleReturnItems: 'saleReturnItems',
   loanTransactions: 'loanTransactions',
   shopSettings: 'shopSettings',
-  transport: 'transport',
+
   categories: 'categories',
   settings: 'settings'
 };
@@ -138,12 +138,7 @@ export const initDB = () => {
         settingsStore.createIndex('userId', 'userId');
       }
       
-      // Transport store
-      if (!db.objectStoreNames.contains(STORES.transport)) {
-        const transportStore = db.createObjectStore(STORES.transport, { keyPath: 'id' });
-        transportStore.createIndex('userId', 'userId');
-        transportStore.createIndex('carNumber', 'carNumber');
-      }
+
       
       // Categories store
       if (!db.objectStoreNames.contains(STORES.categories)) {

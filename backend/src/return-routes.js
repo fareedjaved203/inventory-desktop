@@ -1,11 +1,12 @@
-import { validateRequest } from './middleware.js';
+import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 import { withTransaction } from './db-utils.js';
+import crypto from 'crypto';
 
 const returnItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().int().min(0, "Quantity must be non-negative"),
-  price: z.number().positive("Price must be positive"),
+  price: z.union([z.number(), z.string()]).transform(val => Number(val)).refine(val => val > 0, "Price must be positive"),
 });
 
 const returnSchema = z.object({
@@ -14,6 +15,7 @@ const returnSchema = z.object({
   reason: z.string().optional(),
   removeFromStock: z.boolean().optional(),
   refundAmount: z.number().min(0).optional(),
+  isContainerReturn: z.boolean().optional(),
 }).refine(data => data.items.some(item => item.quantity > 0), {
   message: "At least one item must have a positive quantity",
   path: ["items"]
@@ -21,34 +23,41 @@ const returnSchema = z.object({
 
 export function setupReturnRoutes(app, prisma) {
   // Create a return
-  app.post('/api/returns', validateRequest({ body: returnSchema }), async (req, res) => {
+  app.post('/api/returns', authenticateToken, validateRequest({ body: returnSchema }), async (req, res) => {
     try {
       const returnData = await withTransaction(prisma, async (prisma) => {
         // Generate return number
         const returnNumber = `RET-${Date.now().toString().slice(-6)}`;
         
-        // Calculate total amount
-        const totalAmount = req.body.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Calculate total amount (0 for container returns)
+        const totalAmount = req.body.isContainerReturn ? 0 : req.body.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
         // Filter out items with zero quantity
         const validItems = req.body.items.filter(item => item.quantity > 0);
         
-        // Create return
-        const saleReturn = await prisma.saleReturn.create({
-          data: {
-            returnNumber,
-            totalAmount,
-            reason: req.body.reason,
-            refundAmount: req.body.refundAmount || 0,
-            saleId: req.body.saleId,
-            items: {
-              create: validItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                price: item.price
-              }))
-            }
-          },
+        // Create return using raw SQL
+        const returnId = crypto.randomUUID();
+        const refundAmount = req.body.isContainerReturn ? 0 : (req.body.refundAmount || 0);
+        const returnReason = req.body.isContainerReturn ? 'Empty container return' : (req.body.reason || null);
+        
+        await prisma.$executeRaw`
+          INSERT INTO "SaleReturn" (id, "returnNumber", "totalAmount", reason, "refundAmount", "saleId", "userId", "createdAt", "updatedAt")
+          VALUES (${returnId}, ${returnNumber}, ${totalAmount}::decimal, ${returnReason}, ${refundAmount}::decimal, ${req.body.saleId}, ${req.userId}, NOW(), NOW())
+        `;
+        
+        // Create return items using raw SQL
+        for (const item of validItems) {
+          const itemId = crypto.randomUUID();
+          const itemPrice = req.body.isContainerReturn ? 0 : item.price;
+          await prisma.$executeRaw`
+            INSERT INTO "SaleReturnItem" (id, quantity, price, "saleReturnId", "productId", "createdAt", "updatedAt")
+            VALUES (${itemId}, ${item.quantity}::decimal, ${itemPrice}::decimal, ${returnId}, ${item.productId}, NOW(), NOW())
+          `;
+        }
+        
+        // Get the created return with relations
+        const saleReturn = await prisma.saleReturn.findUnique({
+          where: { id: returnId },
           include: {
             items: {
               include: {
@@ -59,9 +68,19 @@ export function setupReturnRoutes(app, prisma) {
           }
         });
 
-        // Update product quantities based on removeFromStock flag
+        // Update product quantities based on return type
         for (const item of validItems) {
-          if (req.body.removeFromStock) {
+          if (req.body.isContainerReturn) {
+            // For container returns, always add back to stock (empty containers returned)
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: {
+                quantity: {
+                  increment: item.quantity
+                }
+              }
+            });
+          } else if (req.body.removeFromStock) {
             // Remove from stock (decrement) - ensure quantity doesn't go below 0
             const product = await prisma.product.findUnique({
               where: { id: item.productId }
@@ -112,16 +131,19 @@ export function setupReturnRoutes(app, prisma) {
   });
 
   // Get all returns
-  app.get('/api/returns', async (req, res) => {
+  app.get('/api/returns', authenticateToken, async (req, res) => {
     try {
       const { search = '', page = 1, limit = 10 } = req.query;
       
-      const where = search ? {
-        OR: [
-          { returnNumber: { contains: search } },
-          { sale: { billNumber: { contains: search } } }
-        ]
-      } : {};
+      const where = {
+        userId: req.userId,
+        ...(search ? {
+          OR: [
+            { returnNumber: { contains: search } },
+            { sale: { billNumber: { contains: search } } }
+          ]
+        } : {})
+      };
       
       const [total, returns] = await Promise.all([
         prisma.saleReturn.count({ where }),
@@ -160,7 +182,10 @@ export function setupReturnRoutes(app, prisma) {
       
       // Update the return record to mark refund as paid
       const updatedReturn = await prisma.saleReturn.update({
-        where: { id: returnId },
+        where: { 
+          id: returnId,
+          userId: req.userId
+        },
         data: {
           refundPaid: true,
           refundAmount: amount || undefined,
@@ -176,7 +201,7 @@ export function setupReturnRoutes(app, prisma) {
   });
   
   // Pay direct credit refund
-  app.post('/api/sales/:saleId/pay-credit', async (req, res) => {
+  app.post('/api/sales/:saleId/pay-credit', authenticateToken, async (req, res) => {
     try {
       const { saleId } = req.params;
       const { amount } = req.body;
@@ -188,17 +213,14 @@ export function setupReturnRoutes(app, prisma) {
       // Create a dummy return record for tracking the refund
       const returnNumber = `REF-${Date.now().toString().slice(-6)}`;
       
-      const creditReturn = await prisma.saleReturn.create({
-        data: {
-          returnNumber,
-          totalAmount: 0, // No items returned
-          refundAmount: amount,
-          refundPaid: true,
-          refundDate: new Date(),
-          reason: 'Credit balance refund',
-          saleId,
-          items: { create: [] } // No items
-        }
+      const returnId = crypto.randomUUID();
+      await prisma.$executeRaw`
+        INSERT INTO "SaleReturn" (id, "returnNumber", "totalAmount", "refundAmount", "refundPaid", "refundDate", reason, "saleId", "userId", "createdAt", "updatedAt")
+        VALUES (${returnId}, ${returnNumber}, 0::decimal, ${amount}::decimal, true, NOW(), 'Credit balance refund', ${saleId}, ${req.userId}, NOW(), NOW())
+      `;
+      
+      const creditReturn = await prisma.saleReturn.findUnique({
+        where: { id: returnId }
       });
       
       res.json(creditReturn);
@@ -209,10 +231,13 @@ export function setupReturnRoutes(app, prisma) {
   });
 
   // Get returns for a specific sale
-  app.get('/api/sales/:saleId/returns', async (req, res) => {
+  app.get('/api/sales/:saleId/returns', authenticateToken, async (req, res) => {
     try {
       const returns = await prisma.saleReturn.findMany({
-        where: { saleId: req.params.saleId },
+        where: { 
+          saleId: req.params.saleId,
+          userId: req.userId
+        },
         include: {
           items: {
             include: {
@@ -230,10 +255,13 @@ export function setupReturnRoutes(app, prisma) {
   });
 
   // Mark refund as paid
-  app.post('/api/returns/:returnId/pay-credit', async (req, res) => {
+  app.post('/api/returns/:returnId/pay-credit', authenticateToken, async (req, res) => {
     try {
       const returnRecord = await prisma.saleReturn.update({
-        where: { id: req.params.returnId },
+        where: { 
+          id: req.params.returnId,
+          userId: req.userId
+        },
         data: {
           refundPaid: true,
           refundDate: new Date()

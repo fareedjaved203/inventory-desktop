@@ -206,23 +206,6 @@ class API {
     return DataStorageManager.delete(STORES.expenses, id);
   }
 
-  // Transport
-  async getTransport(params = {}) {
-    return DataStorageManager.read(STORES.transport, params);
-  }
-
-  async createTransport(data) {
-    return DataStorageManager.create(STORES.transport, data);
-  }
-
-  async updateTransport(id, data) {
-    return DataStorageManager.update(STORES.transport, id, data);
-  }
-
-  async deleteTransport(id) {
-    return DataStorageManager.delete(STORES.transport, id);
-  }
-
   // Purchases
   async getPurchases(params = {}) {
     return DataStorageManager.read(STORES.purchases, params);
@@ -445,7 +428,20 @@ class API {
 
   // Dashboard Stats
   async getDashboardStats() {
-    return DataStorageManager.getDashboardStats();
+    if (DataStorageManager.getOfflineMode()) {
+      return DataStorageManager.getDashboardStats();
+    }
+    
+    // For online mode, make direct API call
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+    
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   }
 
   // Manufacturing - Generic HTTP methods for new endpoints

@@ -475,7 +475,7 @@ function POS() {
       )}
 
       {/* Left Panel - Product Search & Cart */}
-      <div className="flex-1 flex flex-col p-2 lg:p-4">
+      <div className="flex-1 flex flex-col p-2 lg:p-4 lg:pr-96">
         {/* Search & Barcode Input */}
         <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 mb-3 lg:mb-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
@@ -600,10 +600,10 @@ function POS() {
       {/* Right Panel - Cart & Checkout */}
       <div className={`
         ${isMobile 
-          ? `fixed right-0 top-0 h-full w-full max-w-sm transform transition-transform duration-300 z-50 ${
+          ? `fixed right-0 top-0 h-[90vh] w-full max-w-sm transform transition-transform duration-300 z-50 ${
               showCart ? 'translate-x-0' : 'translate-x-full'
             }` 
-          : 'w-80 xl:w-96'
+          : 'fixed right-4 top-16 w-80 xl:w-96 h-[90vh]'
         } 
         bg-white shadow-lg flex flex-col
       `}>

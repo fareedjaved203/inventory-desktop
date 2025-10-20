@@ -251,7 +251,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
           <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium mb-2">#{sale.billNumber}</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-gray-600">Date</p>
                 <p className="font-medium">{new Date(sale.saleDate).toLocaleDateString()}</p>
@@ -268,7 +268,33 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                   )}
                 </p>
               </div>
+              <div>
+                <p className="text-gray-600">Car Number</p>
+                <p className="font-medium">{sale.carNumber || <span className="text-gray-400">Not specified</span>}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Transport Cost</p>
+                <p className="font-medium">{sale.transportCost ? formatPakistaniCurrency(sale.transportCost) : <span className="text-gray-400">Not specified</span>}</p>
+              </div>
             </div>
+            {(sale.loadingDate || sale.arrivalDate) && (
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <p className="text-gray-600">Loading Date</p>
+                  <p className="font-medium">{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Arrival Date</p>
+                  <p className="font-medium">{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
+                </div>
+              </div>
+            )}
+            {sale.description && (
+              <div className="mt-4">
+                <p className="text-gray-600">Description</p>
+                <p className="font-medium">{sale.description}</p>
+              </div>
+            )}
           </div>
 
           <div>

@@ -166,22 +166,22 @@ function DashboardReportModal({ isOpen, onClose }) {
               {/* Executive Summary */}
               <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
                 <h3 className="text-xl font-bold text-blue-800 mb-4">Executive Summary</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total Sales</p>
-                    <p className="text-2xl font-bold text-green-600">{formatPakistaniCurrency(totalSales)}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="text-center bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2">Total Sales</p>
+                    <p className="text-lg font-bold text-green-600 break-words">{formatPakistaniCurrency(totalSales)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total Purchases</p>
-                    <p className="text-2xl font-bold text-blue-600">{formatPakistaniCurrency(totalPurchases)}</p>
+                  <div className="text-center bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2">Total Purchases</p>
+                    <p className="text-lg font-bold text-blue-600 break-words">{formatPakistaniCurrency(totalPurchases)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total Expenses</p>
-                    <p className="text-2xl font-bold text-red-600">{formatPakistaniCurrency(totalExpenses)}</p>
+                  <div className="text-center bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2">Total Expenses</p>
+                    <p className="text-lg font-bold text-red-600 break-words">{formatPakistaniCurrency(totalExpenses)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Net Profit</p>
-                    <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className="text-center bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2">Net Profit</p>
+                    <p className={`text-lg font-bold break-words ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {netProfit >= 0 ? formatPakistaniCurrency(netProfit) : `(${formatPakistaniCurrency(Math.abs(netProfit))})`}
                     </p>
                     {netProfit < 0 && (
@@ -197,40 +197,40 @@ function DashboardReportModal({ isOpen, onClose }) {
               </div>
 
               {/* Key Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Total Products</p>
-                  <p className="text-xl font-bold">{reportData.dashboardData?.totalProducts || 0}</p>
+                  <p className="text-sm text-gray-600 mb-2">Total Products</p>
+                  <p className="text-lg font-bold break-words">{reportData.dashboardData?.totalProducts || 0}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Total Sales</p>
-                  <p className="text-xl font-bold">{formatPakistaniCurrency(reportData.salesStats?.totalSales || 0)}</p>
+                  <p className="text-sm text-gray-600 mb-2">Total Sales</p>
+                  <p className="text-lg font-bold break-words">{formatPakistaniCurrency(reportData.salesStats?.totalSales || 0)}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Low Stock Items</p>
-                  <p className="text-xl font-bold text-amber-600">{reportData.dashboardData?.lowStock || 0}</p>
+                  <p className="text-sm text-gray-600 mb-2">Low Stock Items</p>
+                  <p className="text-lg font-bold text-amber-600 break-words">{reportData.dashboardData?.lowStock || 0}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Sales Due</p>
-                  <p className="text-xl font-bold text-orange-600">
+                  <p className="text-sm text-gray-600 mb-2">Sales Due</p>
+                  <p className="text-lg font-bold text-orange-600 break-words">
                     {formatPakistaniCurrency(reportData.salesStats?.totalSalesDueAmount || 0)}
                   </p>
                 </div>
               </div>
 
               {/* Additional Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Total Transactions</p>
-                  <p className="text-lg font-semibold">{reportData.salesStats?.totalTransactions || 0}</p>
+                  <p className="text-sm text-gray-600 mb-2">Total Transactions</p>
+                  <p className="text-lg font-semibold break-words">{reportData.salesStats?.totalTransactions || 0}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Average Sale Value</p>
-                  <p className="text-lg font-semibold">{formatPakistaniCurrency(reportData.salesStats?.averageSaleValue || 0)}</p>
+                  <p className="text-sm text-gray-600 mb-2">Average Sale Value</p>
+                  <p className="text-lg font-semibold break-words">{formatPakistaniCurrency(reportData.salesStats?.averageSaleValue || 0)}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="text-sm text-gray-600">Profit Margin</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-sm text-gray-600 mb-2">Profit Margin</p>
+                  <p className="text-lg font-semibold break-words">
                     {totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(2) + '%' : '0%'}
                   </p>
                 </div>

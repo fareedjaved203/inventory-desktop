@@ -221,10 +221,6 @@ function Contacts() {
     const bulkPurchasesResult = await API.getBulkPurchases({ limit: 1000 });
     const contactPurchases = bulkPurchasesResult.items.filter(purchase => purchase.contactId === contactId);
     
-    // Get all transports to link with sales
-    const transportsResult = await API.getTransport({ limit: 1000 });
-    const transports = transportsResult.items || [];
-    
     // Get loan transactions for this contact
     const loanResult = await API.getLoanTransactions({ contactId });
     const loanTransactions = loanResult.transactions || [];
@@ -252,15 +248,14 @@ function Contacts() {
     // Combine and sort transactions by date
     const allTransactions = [
       ...filteredSales.map(sale => {
-        
         return {
           date: sale.saleDate,
           type: 'sale',
           description: `Sale #${sale.billNumber}`,
           saleDescription: sale.description || '',
-          quantity: sale.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+          quantity: sale.items?.reduce((sum, item) => sum + Number(item.quantity), 0) || 0,
           unitPrice: sale.items?.[0]?.price || 0,
-          carNumber: sale?.carNumber || '',
+          carNumber: sale.carNumber || '',
           loadingDate: sale.loadingDate || '',
           arrivalDate: sale.arrivalDate || '',
           debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
@@ -274,13 +269,13 @@ function Contacts() {
           type: 'purchase',
           description: `Purchase #${purchase.invoiceNumber || purchase.id}`,
           saleDescription: purchase.description || '',
-          quantity: purchase.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
-          unitPrice: purchase.items?.[0]?.price || 0,
-          carNumber: '',
-          loadingDate: '',
-          arrivalDate: '',
-          debit: Number(purchase.paidAmount) || 0, // Amount paid to supplier reduces our debt to them
-          credit: Number(purchase.totalAmount) || 0, // Total purchase amount increases our debt to supplier
+          quantity: purchase.items?.reduce((sum, item) => sum + Number(item.quantity), 0) || 0,
+          unitPrice: purchase.items?.[0]?.purchasePrice || purchase.items?.[0]?.price || 0,
+          carNumber: purchase.carNumber || '',
+          loadingDate: purchase.loadingDate || '',
+          arrivalDate: purchase.arrivalDate || '',
+          debit: Number(purchase.paidAmount) || 0, // Amount we paid to supplier
+          credit: Number(purchase.totalAmount) || 0, // Total purchase amount (what we owe)
           balance: 0 // Will be calculated
         };
       }),

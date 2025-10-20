@@ -122,22 +122,20 @@ function PurchaseDetailsModal({ purchase, isOpen, onClose }) {
                   {purchase.transportCost ? `Rs.${Number(purchase.transportCost).toFixed(2)}` : '-'}
                 </p>
               </div>
-              {(purchase.loadingDate || purchase.arrivalDate) && (
-                <>
-                  <div>
-                    <p className="text-gray-600">Loading Date</p>
-                    <p className="font-medium">
-                      {purchase.loadingDate ? new Date(purchase.loadingDate).toLocaleDateString() : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Arrival Date</p>
-                    <p className="font-medium">
-                      {purchase.arrivalDate ? new Date(purchase.arrivalDate).toLocaleDateString() : '-'}
-                    </p>
-                  </div>
-                </>
-              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <p className="text-gray-600">Loading Date</p>
+                <p className="font-medium">
+                  {purchase.loadingDate ? new Date(purchase.loadingDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600">Arrival Date</p>
+                <p className="font-medium">
+                  {purchase.arrivalDate ? new Date(purchase.arrivalDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}
+                </p>
+              </div>
             </div>
           </div>
 

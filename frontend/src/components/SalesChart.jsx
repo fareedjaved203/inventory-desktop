@@ -26,8 +26,19 @@ function SalesChart() {
   const { data, isLoading, error, refetch } = useQuery(
     ['salesAnalytics', interval, showDateRange ? dateRange : undefined],
     async () => {
-      // Sales analytics not available in API wrapper, return empty data
-      return [];
+      const response = await API.get(
+        '/api/sales-analytics',
+        {
+          params: {
+            interval,
+            ...(showDateRange && {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate
+            })
+          }
+        }
+      );
+      return response.data;
     },
     {
       retry: 1,

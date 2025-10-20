@@ -6,6 +6,9 @@ import { formatPakistaniCurrency } from '../utils/formatCurrency';
 
 const DEFAULT_COLUMNS = {
   date: { label: 'Date', visible: true },
+  loadingDate: { label: 'Loading Date', visible: true },
+  arrivalDate: { label: 'Arrival Date', visible: true },
+  carNumber: { label: 'Car Number', visible: false },
   productName: { label: 'Product Name', visible: true },
   productDescription: { label: 'Description', visible: false },
   purchaseQuantity: { label: 'Purchase Qty', visible: true },
@@ -159,10 +162,13 @@ function DayBookReportModal({ isOpen, onClose }) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dayBookData.data.map((item, index) => (
-                      <tr key={index} className={item.type === 'purchase' ? 'bg-blue-50' : 'bg-green-50'}>
+                      <tr key={index} className={item.type === 'purchase' ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-green-100 border-l-4 border-green-500'}>
                         {visibleColumns.map(([key]) => (
                           <td key={key} className="px-3 py-2 text-sm text-gray-900 border-b">
                             {key === 'date' && new Date(item.date).toLocaleDateString()}
+                            {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
+                            {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
+                            {key === 'carNumber' && (item.carNumber || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'productDescription' && (item.productDescription || '-')}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
@@ -218,8 +224,8 @@ function DayBookReportModal({ isOpen, onClose }) {
         {/* Footer */}
         <div className="p-6 border-t bg-gray-50 flex justify-between">
           <div className="text-sm text-gray-600">
-            <span className="inline-block w-4 h-4 bg-blue-50 border mr-2"></span>Purchase Entries
-            <span className="inline-block w-4 h-4 bg-green-50 border mr-2 ml-4"></span>Sale Entries
+            <span className="inline-block w-4 h-4 bg-blue-100 border-l-4 border-blue-500 mr-2"></span>Purchase Entries
+            <span className="inline-block w-4 h-4 bg-green-100 border-l-4 border-green-500 mr-2 ml-4"></span>Sale Entries
           </div>
           <div className="flex gap-3">
             {dayBookData && (

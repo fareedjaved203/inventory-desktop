@@ -12,7 +12,7 @@ import { setupDashboardRoutes } from './dashboard-routes.js';
 import { setupUserRoutes } from './user-routes.js';
 import { setupShopSettingsRoutes } from './shop-settings-routes.js';
 import { setupReturnRoutes } from './return-routes.js';
-import { setupTransportRoutes } from './transport-routes.js';
+
 import { setupManufacturingRoutes } from './manufacturing-routes.js';
 import { setupCategoryRoutes } from './category-routes.js';
 import createLoanRoutes from './loan-routes.js';
@@ -141,7 +141,7 @@ setupDashboardRoutes(app, prisma);
 setupUserRoutes(app, prisma);
 setupShopSettingsRoutes(app, prisma);
 setupReturnRoutes(app, prisma);
-setupTransportRoutes(app, prisma);
+
 setupManufacturingRoutes(app, prisma);
 setupCategoryRoutes(app, prisma);
 app.use('/api/loans', createLoanRoutes(prisma));
