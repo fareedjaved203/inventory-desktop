@@ -381,13 +381,13 @@ export function setupManufacturingRoutes(app, prisma) {
           }
         });
 
-        // Update the manufactured product's per unit cost based on manufacturing cost
+        // Update the manufactured product's purchase cost with manufacturing cost
         if (manufacturingCost > 0) {
-          const perUnitManufacturingCost = manufacturingCost / Number(req.body.quantityProduced);
           await prisma.product.update({
             where: { id: recipe.productId },
             data: {
-              perUnitPurchasePrice: Math.round(perUnitManufacturingCost * 100) // Convert to cents for BigInt storage
+              purchasePrice: Math.round(manufacturingCost),
+              perUnitPurchasePrice: 0
             }
           });
         }

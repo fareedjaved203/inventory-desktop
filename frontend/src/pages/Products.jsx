@@ -907,7 +907,7 @@ function Products() {
                     </label>
                     <input
                       type="number"
-                      step="0.1"
+                      step="0.01"
                       min="0"
                       value={formData.perUnitPurchasePrice || ''}
                       onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
