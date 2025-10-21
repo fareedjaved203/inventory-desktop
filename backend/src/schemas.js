@@ -15,6 +15,7 @@ export const productSchema = z.object({
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative").optional(),
   isRawMaterial: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
+  image: z.string().nullable().optional(),
 });
 
 export const productUpdateSchema = productSchema.partial();

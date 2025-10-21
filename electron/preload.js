@@ -11,5 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, progress) => callback(progress)),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (event, info) => callback(info)),
-  onUpdateError: (callback) => ipcRenderer.on('update-error', (event, error) => callback(error))
+  onUpdateError: (callback) => ipcRenderer.on('update-error', (event, error) => callback(error)),
+  
+  // Image handling
+  selectProductImage: () => ipcRenderer.invoke('select-product-image'),
+  getProductImagePath: (filename) => ipcRenderer.invoke('get-product-image-path', filename),
+  deleteProductImage: (filename) => ipcRenderer.invoke('delete-product-image', filename)
 });

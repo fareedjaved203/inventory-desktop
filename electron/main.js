@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -11,6 +11,10 @@ const isDev = process.env.NODE_ENV === 'development';
 const serverPort = 3000;
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, 'preload.js');
+  console.log('Preload script path:', preloadPath);
+  console.log('Preload script exists:', fs.existsSync(preloadPath));
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -22,7 +26,7 @@ function createWindow() {
       contextIsolation: true,
       enableRemoteModule: false,
       webSecurity: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: preloadPath
     },
     icon: path.join(__dirname, '../assets/icon.png'),
     show: false,
@@ -65,6 +69,22 @@ function createWindow() {
           click: () => {
             const logsPath = app.getPath('userData');
             shell.openPath(logsPath);
+          }
+        },
+        {
+          label: 'Show Server Logs',
+          click: () => {
+            const serverLogPath = path.join(app.getPath('userData'), 'server.log');
+            if (fs.existsSync(serverLogPath)) {
+              shell.openPath(serverLogPath);
+            } else {
+              dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'No Server Logs',
+                message: 'Server log file not found.',
+                detail: 'The server may not have started yet or no errors have occurred.'
+              });
+            }
           }
         },
         {
@@ -132,6 +152,11 @@ function createWindow() {
     return app.getVersion();
   });
 
+  // Handle retry request
+  ipcMain.handle('retry-connection', () => {
+    loadApp(5);
+  });
+
   // Handle update check from renderer
   ipcMain.handle('check-for-updates', async () => {
     if (!isDev) {
@@ -186,6 +211,71 @@ function createWindow() {
   // Handle opening external URLs
   ipcMain.handle('open-external', (event, url) => {
     shell.openExternal(url);
+  });
+
+  // Handle opening logs folder
+  ipcMain.handle('open-logs', () => {
+    const logsPath = app.getPath('userData');
+    shell.openPath(logsPath);
+  });
+
+  // Handle image file selection and storage
+  ipcMain.handle('select-product-image', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+      ]
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      const sourcePath = result.filePaths[0];
+      const imagesDir = path.join(app.getPath('userData'), 'product-images');
+      
+      // Create images directory if it doesn't exist
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+      
+      // Generate unique filename
+      const ext = path.extname(sourcePath);
+      const filename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+      const destPath = path.join(imagesDir, filename);
+      
+      try {
+        // Copy file to app data directory
+        fs.copyFileSync(sourcePath, destPath);
+        return { success: true, filename, path: destPath };
+      } catch (error) {
+        console.error('Failed to copy image:', error);
+        return { success: false, error: error.message };
+      }
+    }
+    
+    return { success: false, canceled: true };
+  });
+
+  // Handle getting image path for display
+  ipcMain.handle('get-product-image-path', (event, filename) => {
+    if (!filename) return null;
+    const imagePath = path.join(app.getPath('userData'), 'product-images', filename);
+    return fs.existsSync(imagePath) ? imagePath : null;
+  });
+
+  // Handle deleting product image
+  ipcMain.handle('delete-product-image', (event, filename) => {
+    if (!filename) return { success: true };
+    
+    try {
+      const imagePath = path.join(app.getPath('userData'), 'product-images', filename);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete image:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Handle saving and opening Urdu invoice
@@ -291,8 +381,13 @@ function createWindow() {
     console.log('No updates available');
   });
 
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error('Failed to load:', errorCode, errorDescription);
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
+    
+    if (errorCode !== -3) { // -3 is ERR_ABORTED (user navigation)
+      console.log('Connection failed, will retry automatically...');
+      setTimeout(() => loadApp(5), 2000);
+    }
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -302,6 +397,52 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Check if server is ready
+  const checkServer = () => {
+    return new Promise((resolve) => {
+      const request = net.request(`http://localhost:${serverPort}/api/health`);
+      request.on('response', (response) => {
+        resolve(response.statusCode === 200);
+      });
+      request.on('error', () => {
+        resolve(false);
+      });
+      request.end();
+    });
+  };
+
+  // Load the application URL with retry mechanism
+  const loadApp = async (retries = 10) => {
+    const url = `http://localhost:${serverPort}`;
+    console.log('Checking server readiness...', `(attempt ${11 - retries})`);
+    
+    const serverReady = await checkServer();
+    if (!serverReady && retries > 0) {
+      console.log(`Server not ready, retrying in 1 second... (${retries} attempts left)`);
+      setTimeout(() => loadApp(retries - 1), 1000);
+      return;
+    }
+    
+    if (!serverReady) {
+      console.error('Server failed to start after all retries');
+      dialog.showErrorBox('Server Error', 'The application server failed to start. Please restart the application.');
+      app.quit();
+      return;
+    }
+    
+    console.log('Server ready, loading application...');
+    try {
+      await mainWindow.loadURL(url);
+      console.log('Successfully loaded application');
+    } catch (err) {
+      console.error('Failed to load URL:', err);
+      setTimeout(() => loadApp(3), 2000);
+    }
+  };
+
+  // Load app immediately after window creation
+  loadApp();
 }
 
 function startServer() {
@@ -313,60 +454,50 @@ function startServer() {
       serverPath = path.join(__dirname, '../backend/src/index.js');
       cwd = path.join(__dirname, '../backend');
     } else {
-      // For packaged app, use the unpacked backend
       serverPath = path.join(process.resourcesPath, 'backend/src/index.js');
       cwd = path.join(process.resourcesPath, 'backend');
     }
     
-    const dbPath = path.join(app.getPath('userData'), 'inventory.db');
-    
     console.log('Starting server...');
     console.log('Server path:', serverPath);
-    console.log('Database path:', dbPath);
-    console.log('Is dev:', isDev);
-    console.log('Is packaged:', app.isPackaged);
+    console.log('Working directory:', cwd);
+    console.log('Node version:', process.version);
+    console.log('Platform:', process.platform);
     
-    // Load .env file
-    const envPath = path.join(cwd, '.env');
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, 'utf8');
-      const envVars = {};
-      envContent.split('\n').forEach(line => {
-        const trimmedLine = line.trim();
-        if (trimmedLine && !trimmedLine.startsWith('#')) {
-          const equalIndex = trimmedLine.indexOf('=');
-          if (equalIndex > 0) {
-            const key = trimmedLine.substring(0, equalIndex).trim();
-            let value = trimmedLine.substring(equalIndex + 1).trim();
-            // Remove surrounding quotes if present
-            if ((value.startsWith('"') && value.endsWith('"')) || 
-                (value.startsWith("'") && value.endsWith("'"))) {
-              value = value.slice(1, -1);
-            }
-            envVars[key] = value;
-          }
-        }
-      });
-      Object.assign(process.env, envVars);
+    // Check if server file exists
+    if (!fs.existsSync(serverPath)) {
+      const error = new Error(`Server file not found: ${serverPath}`);
+      console.error(error.message);
+      reject(error);
+      return;
     }
     
-    const sqliteUrl = `file:${dbPath}`;
+    // Check if working directory exists
+    if (!fs.existsSync(cwd)) {
+      const error = new Error(`Working directory not found: ${cwd}`);
+      console.error(error.message);
+      reject(error);
+      return;
+    }
     
     const env = {
       ...process.env,
       PORT: serverPort,
-      NODE_ENV: isDev ? 'development' : undefined,
+      NODE_ENV: isDev ? 'development' : 'production',
       ELECTRON_APP: 'true',
       DATABASE_URL: process.env.DATABASE_URL,
       DIRECT_URL: process.env.DIRECT_URL
     };
+    
+    console.log('Environment variables:');
+    console.log('- PORT:', env.PORT);
+    console.log('- NODE_ENV:', env.NODE_ENV);
+    console.log('- ELECTRON_APP:', env.ELECTRON_APP);
+    console.log('- DATABASE_URL:', env.DATABASE_URL ? 'Set' : 'Not set');
+    console.log('- DIRECT_URL:', env.DIRECT_URL ? 'Set' : 'Not set');
 
     serverProcess = spawn('node', [serverPath], {
-      env: {
-        ...process.env,
-        ...env,
-        ELECTRON_CWD: process.cwd()
-      },
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd
     });
@@ -374,31 +505,52 @@ function startServer() {
     let serverStarted = false;
 
     serverProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      console.log(`[SERVER] ${output}`);
+      const output = data.toString().trim();
+      console.log(`[SERVER STDOUT] ${output}`);
+      
+      // Write to log file
+      const logPath = path.join(app.getPath('userData'), 'server.log');
+      try {
+        const timestamp = new Date().toISOString();
+        fs.appendFileSync(logPath, `[${timestamp}] STDOUT: ${output}\n`);
+      } catch (e) {
+        console.error('Failed to write server log:', e);
+      }
+      
       if (output.includes(`Server is running on port ${serverPort}`) && !serverStarted) {
         serverStarted = true;
         console.log('Server started successfully!');
-        resolve();
+        setTimeout(resolve, 1000);
       }
     });
 
     serverProcess.stderr.on('data', (data) => {
-      const error = data.toString();
-      console.error(`[SERVER ERROR] ${error}`);
+      const error = data.toString().trim();
+      console.error(`[SERVER STDERR] ${error}`);
       
-      // Log errors to file for debugging
-      const errorLogPath = path.join(app.getPath('userData'), 'server-errors.log');
+      // Write to log file
+      const logPath = path.join(app.getPath('userData'), 'server.log');
       try {
         const timestamp = new Date().toISOString();
-        fs.appendFileSync(errorLogPath, `[${timestamp}] ${error}\n`);
+        fs.appendFileSync(logPath, `[${timestamp}] STDERR: ${error}\n`);
       } catch (e) {
-        console.error('Failed to write error log:', e);
+        console.error('Failed to write server log:', e);
       }
     });
 
-    serverProcess.on('close', (code) => {
-      console.log(`Server process exited with code ${code}`);
+    serverProcess.on('close', (code, signal) => {
+      console.log(`Server process exited with code ${code}, signal: ${signal}`);
+      const logPath = path.join(app.getPath('userData'), 'server.log');
+      try {
+        const timestamp = new Date().toISOString();
+        fs.appendFileSync(logPath, `[${timestamp}] Process exited with code ${code}, signal: ${signal}\n`);
+      } catch (e) {
+        console.error('Failed to write exit log:', e);
+      }
+      
+      if (!serverStarted) {
+        reject(new Error(`Server exited with code ${code}`));
+      }
     });
 
     serverProcess.on('error', (error) => {
@@ -406,13 +558,13 @@ function startServer() {
       reject(error);
     });
 
-    // Timeout after 8 seconds (reduced from 15 for faster startup)
+    // Timeout after 15 seconds
     setTimeout(() => {
       if (!serverStarted) {
-        console.log('Server startup timeout, continuing anyway...');
+        console.error('Server startup timeout');
+        reject(new Error('Server startup timeout'));
       }
-      resolve();
-    }, 8000);
+    }, 15000);
   });
 }
 
@@ -447,28 +599,16 @@ app.whenReady().then(async () => {
   console.log('Electron app ready, setting up...');
   await setupDatabase();
   
+  // Start server and window in parallel
+  const serverPromise = startServer();
+  createWindow();
+  
   try {
-    console.log('Starting server...');
-    await startServer();
-    console.log('Creating window...');
-    createWindow();
-    
-    // Wait a bit for server to fully start (reduced from 2s to 1s for faster startup)
-    setTimeout(() => {
-      const url = isDev ? 'http://localhost:5173' : `http://localhost:${serverPort}`;
-      console.log('Loading URL:', url);
-      mainWindow.loadURL(url).catch(err => {
-        console.error('Failed to load URL:', err);
-        // Fallback to backend URL if frontend fails
-        if (isDev) {
-          mainWindow.loadURL(`http://localhost:${serverPort}`);
-        }
-      });
-    }, 1000);
+    await serverPromise;
+    console.log('Server ready, application fully loaded');
   } catch (error) {
-    console.error('Failed to start application:', error);
-    dialog.showErrorBox('Startup Error', 'Failed to start the application server.');
-    app.quit();
+    console.error('Server failed to start:', error);
+    // Don't quit immediately, let the retry mechanism handle it
   }
 });
 

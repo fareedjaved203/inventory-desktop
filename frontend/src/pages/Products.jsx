@@ -12,9 +12,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { generateUserBarcode } from '../utils/barcodeGenerator';
-import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse, FaBarcode, FaPrint } from 'react-icons/fa';
+import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse, FaBarcode, FaPrint, FaFilePdf } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+import ProductImageUpload from '../components/ProductImageUpload';
 
 
 const productSchema = z.object({
@@ -31,6 +32,7 @@ const productSchema = z.object({
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative"),
   isRawMaterial: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
+  image: z.string().nullable().optional(),
 });
 
 function Products() {
@@ -68,6 +70,7 @@ function Products() {
     isRawMaterial: false,
     perUnitPurchasePrice: '',
     categoryId: '',
+    image: null,
   });
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -328,6 +331,7 @@ function Products() {
       isRawMaterial: product.isRawMaterial || false,
       perUnitPurchasePrice: product.perUnitPurchasePrice ? product.perUnitPurchasePrice.toString() : '',
       categoryId: product.categoryId || '',
+      image: product.image || null,
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -447,6 +451,79 @@ function Products() {
                 </button>
               </>
             )}
+            <button
+              onClick={() => {
+                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                const reportHtml = `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <title>Products Stock Report</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; margin: 20px; }
+                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                      .company { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+                      .report-title { font-size: 18px; color: #666; }
+                      .date { font-size: 12px; color: #888; margin-top: 10px; }
+                      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                      th { background-color: #f5f5f5; font-weight: bold; }
+                      .number { text-align: right; }
+                      .low-stock { background-color: #fff3cd; }
+                      .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+                      @media print { body { margin: 0; } }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="header">
+                      <div class="company">HISAB GHAR</div>
+                      <div class="report-title">Products Stock Report</div>
+                      <div class="date">Generated on: ${new Date().toLocaleDateString('en-PK', { 
+                        year: 'numeric', month: 'long', day: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                      })}</div>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Product Name</th>
+                          <th>Description</th>
+                          <th>SKU/Barcode</th>
+                          <th class="number">Current Stock</th>
+                          <th>Unit</th>
+                          <th class="number">Retail Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${products?.items?.map(product => `
+                          <tr class="${product.quantity <= (product.lowStockThreshold || 10) ? 'low-stock' : ''}">
+                            <td><strong>${product.name}</strong></td>
+                            <td>${product.description || '-'}</td>
+                            <td>${product.sku || '-'}</td>
+                            <td class="number"><strong>${product.quantity}</strong></td>
+                            <td>${product.unit || 'pcs'}</td>
+                            <td class="number">${product.retailPrice ? formatPakistaniCurrency(product.retailPrice) : (product.price ? formatPakistaniCurrency(product.price) : '-')}</td>
+                          </tr>
+                        `).join('') || '<tr><td colspan="6" style="text-align: center;">No products found</td></tr>'}
+                      </tbody>
+                    </table>
+                    <div class="footer">
+                      <p>Total Products: ${products?.total || 0} | Low Stock Items highlighted in yellow</p>
+                      <p>Report generated by Hisab Ghar Inventory Management System</p>
+                    </div>
+                  </body>
+                  </html>
+                `;
+                printWindow.document.write(reportHtml);
+                printWindow.document.close();
+                setTimeout(() => { printWindow.print(); }, 500);
+              }}
+              className="bg-gradient-to-r from-red-600 to-red-700 text-white px-3 py-2 text-sm rounded-lg hover:from-red-700 hover:to-red-800 shadow-sm whitespace-nowrap w-full sm:w-auto flex items-center gap-2"
+            >
+              <FaFilePdf className="w-4 h-4" />
+              Stock Report
+            </button>
             <button
               onClick={async () => {
                 setIsEditMode(false);
@@ -725,6 +802,13 @@ function Products() {
                     <p className="text-xs text-gray-500 mt-1">Organize products for better POS navigation</p>
                   </div>
                 </div>
+                
+                {/* Product Image Upload */}
+                {/* <ProductImageUpload
+                  value={formData.image}
+                  onChange={(filename) => setFormData({ ...formData, image: filename })}
+                  className="mb-4"
+                /> */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <FaBoxOpen className="text-primary-500" /> {language === 'ur' ? 'نام *' : 'Name *'}

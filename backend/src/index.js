@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { productSchema, productUpdateSchema, querySchema } from './schemas.js';
 import { setupContactRoutes } from './contact-routes.js';
@@ -43,6 +44,11 @@ console.log('Initial Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure __dirname is available globally for compatibility
+if (typeof global !== 'undefined') {
+  global.__dirname = __dirname;
+}
+
 const app = express();
 let prisma;
 
@@ -82,8 +88,11 @@ async function initializeApp() {
   await checkAndMigrate();
 }
 
-// Start initialization
-initializeApp().catch(console.error);
+// Start initialization with error handling
+initializeApp().catch(error => {
+  console.error('Critical initialization error:', error);
+  process.exit(1);
+});
 
 const port = process.env.PORT || 3000;
 
@@ -124,13 +133,26 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Add connection management middleware
 app.use(requestTimeout(30000)); // 30 second timeout
 
-// Serve static files only in development or Electron mode
-if (process.env.NODE_ENV !== 'production') {
-  const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
-  const frontendPath = isPackaged 
-    ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist')
-    : path.join(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendPath));
+// Serve static files in Electron mode
+if (process.env.ELECTRON_APP) {
+  const isPackaged = process.env.NODE_ENV === 'production';
+  let frontendPath;
+  
+  if (isPackaged && process.resourcesPath) {
+    frontendPath = path.join(process.resourcesPath, 'frontend', 'dist');
+  } else {
+    frontendPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+  }
+  
+  console.log('Serving static files from:', frontendPath);
+  console.log('isPackaged:', isPackaged);
+  console.log('process.resourcesPath:', process.resourcesPath);
+  
+  if (fs.existsSync(frontendPath)) {
+    app.use(express.static(frontendPath));
+  } else {
+    console.warn('Frontend path does not exist:', frontendPath);
+  }
 }
 
 // Setup routes
@@ -670,14 +692,40 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 
 
 
-// Catch-all handler only in development or Electron mode
-if (process.env.NODE_ENV !== 'production') {
+// Catch-all handler for Electron mode
+if (process.env.ELECTRON_APP) {
   app.get('*', (req, res) => {
-    const isPackaged = process.env.ELECTRON_APP && !process.env.NODE_ENV;
-    const indexPath = isPackaged 
-      ? path.join(process.env.ELECTRON_CWD, 'resources/frontend/dist/index.html')
-      : path.join(__dirname, '../../frontend/dist/index.html');
-    res.sendFile(indexPath);
+    const isPackaged = !process.env.NODE_ENV || process.env.NODE_ENV !== 'development';
+    let indexPath;
+    
+    if (isPackaged && process.resourcesPath) {
+      indexPath = path.join(process.resourcesPath, 'frontend', 'dist', 'index.html');
+    } else {
+      // For development, use relative path from current file
+      indexPath = path.join(__dirname, '..', '..', 'frontend', 'dist', 'index.html');
+    }
+    
+    console.log('Serving index.html from:', indexPath);
+    console.log('isPackaged:', isPackaged);
+    console.log('process.resourcesPath:', process.resourcesPath);
+    console.log('__dirname:', __dirname);
+    
+    // Check if file exists before serving
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error('Index.html not found at:', indexPath);
+      res.status(404).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>Application Not Found</h1>
+            <p>The frontend application files are missing.</p>
+            <p>Path: ${indexPath}</p>
+            <p>Please ensure the application is properly built.</p>
+          </body>
+        </html>
+      `);
+    }
   });
 }
 
@@ -698,7 +746,8 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
-if (process.env.NODE_ENV === 'production') {
+// Keep-alive removed for Electron mode
+if (!process.env.ELECTRON_APP) {
   const url = process.env.RENDER_EXTERNAL_URL;
   
   setInterval(async () => {
@@ -710,6 +759,18 @@ if (process.env.NODE_ENV === 'production') {
     }
   }, 14 * 60 * 1000); // Every 14 minutes
 }
+// Serve product images
+app.get('/api/images/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const imagePath = path.join(process.env.ELECTRON_APP ? require('electron').app.getPath('userData') : __dirname, 'product-images', filename);
+  
+  if (fs.existsSync(imagePath)) {
+    res.sendFile(imagePath);
+  } else {
+    res.status(404).json({ error: 'Image not found' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -723,4 +784,6 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  console.log(`Database type: ${isPostgreSQL ? 'PostgreSQL' : 'SQLite'}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
