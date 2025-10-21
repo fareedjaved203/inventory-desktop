@@ -27,6 +27,7 @@ model Product {
   wholesalePrice    Decimal?
   unitValue         Decimal?
   categoryId        String?
+  image             String?
   BulkPurchaseItem  BulkPurchaseItem[]
   expenses          Expense[]
   SaleItem          SaleItem[]

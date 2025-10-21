@@ -5,38 +5,60 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
   const [isElectron, setIsElectron] = useState(false);
 
   useEffect(() => {
-    console.log('ProductImageUpload - window.electronAPI:', window.electronAPI);
-    console.log('ProductImageUpload - import.meta.env:', import.meta.env);
-    
     const isElectronApp = window.electronAPI !== undefined;
     setIsElectron(isElectronApp);
     
     // Load existing image if value is provided
-    if (value && window.electronAPI) {
-      window.electronAPI.getProductImagePath(value).then(imagePath => {
-        if (imagePath) {
-          setImagePreview(`file://${imagePath}`);
-        }
-      });
+    if (value) {
+      if (window.electronAPI) {
+        // For Electron, get local file path
+        window.electronAPI.getProductImagePath(value).then(imagePath => {
+          if (imagePath) {
+            setImagePreview(`file://${imagePath}`);
+          }
+        }).catch(error => {
+          console.error('Failed to get image path:', error);
+        });
+      } else {
+        // For web version, use API endpoint
+        setImagePreview(`/api/images/${value}`);
+      }
+    } else {
+      setImagePreview(null);
     }
   }, [value]);
 
   const handleImageSelect = async () => {
-    if (!window.electronAPI) {
-      alert('Image upload is only available in desktop app');
-      return;
-    }
-
-    try {
-      const result = await window.electronAPI.selectProductImage();
-      
-      if (result.success && !result.canceled) {
-        setImagePreview(`file://${result.path}`);
-        onChange(result.filename);
+    if (window.electronAPI) {
+      // Electron version - use native file dialog
+      try {
+        const result = await window.electronAPI.selectProductImage();
+        
+        if (result.success && !result.canceled) {
+          setImagePreview(`file://${result.path}`);
+          onChange(result.filename);
+        }
+      } catch (error) {
+        console.error('Failed to select image:', error);
+        alert('Failed to select image');
       }
-    } catch (error) {
-      console.error('Failed to select image:', error);
-      alert('Failed to select image');
+    } else {
+      // Web version - use file input
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setImagePreview(e.target.result);
+            onChange(`web_${Date.now()}_${file.name}`);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
     }
   };
 
@@ -53,23 +75,19 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
     onChange(null);
   };
 
-  if (!isElectron) {
-    return (
-      <div className={`text-gray-500 text-sm ${className}`}>
-        <div className="flex items-center space-x-2">
-          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
-            DESKTOP
-          </span>
-          <span>Image upload available in desktop app only</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`space-y-2 ${className}`}>
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
         Product Image
+        {isElectron ? (
+          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+            DESKTOP
+          </span>
+        ) : (
+          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
+            WEB
+          </span>
+        )}
       </label>
       
       {imagePreview ? (

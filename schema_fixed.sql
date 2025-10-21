@@ -230,6 +230,7 @@ create table public."Product" (
   "spiceLevel" text null,
   "perUnitPurchasePrice" numeric(10, 2) null default 0,
   "categoryId" text null,
+  "image" text null,
   constraint Product_pkey primary key (id),
   constraint Product_categoryId_fkey foreign KEY ("categoryId") references "Category" (id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;

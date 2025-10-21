@@ -759,10 +759,40 @@ if (!process.env.ELECTRON_APP) {
     }
   }, 14 * 60 * 1000); // Every 14 minutes
 }
+// Image upload endpoint for web version
+app.post('/api/products/upload-image', authenticateToken, async (req, res) => {
+  try {
+    // For Electron, images are handled by the main process
+    if (process.env.ELECTRON_APP) {
+      return res.status(400).json({ error: 'Use Electron image selection for desktop app' });
+    }
+    
+    // For web version, you would implement multer or similar here
+    // This is a placeholder for web image upload functionality
+    res.status(501).json({ error: 'Web image upload not implemented yet' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve product images
 app.get('/api/images/:filename', (req, res) => {
   const filename = req.params.filename;
-  const imagePath = path.join(process.env.ELECTRON_APP ? require('electron').app.getPath('userData') : __dirname, 'product-images', filename);
+  let imagePath;
+  
+  if (process.env.ELECTRON_APP) {
+    // For Electron, get images from userData directory
+    try {
+      const { app } = require('electron');
+      imagePath = path.join(app.getPath('userData'), 'product-images', filename);
+    } catch (error) {
+      // Fallback if electron is not available
+      imagePath = path.join(__dirname, 'product-images', filename);
+    }
+  } else {
+    // For web version, serve from uploads directory
+    imagePath = path.join(__dirname, '..', 'uploads', 'product-images', filename);
+  }
   
   if (fs.existsSync(imagePath)) {
     res.sendFile(imagePath);
