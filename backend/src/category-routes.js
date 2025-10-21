@@ -143,7 +143,8 @@ export function setupCategoryRoutes(app, prisma) {
               wholesalePrice: true,
               quantity: true,
               unit: true,
-              sku: true
+              sku: true,
+              image: true
             }
           }
         },
@@ -160,11 +161,13 @@ export function setupCategoryRoutes(app, prisma) {
         select: {
           id: true,
           name: true,
+          price: true,
           retailPrice: true,
           wholesalePrice: true,
           quantity: true,
           unit: true,
-          sku: true
+          sku: true,
+          image: true
         }
       });
 

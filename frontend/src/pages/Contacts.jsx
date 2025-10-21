@@ -10,7 +10,7 @@ import CustomerStatementPDF from '../components/CustomerStatementPDF';
 import StatementPDFPreferencesModal from '../components/StatementPDFPreferencesModal';
 import UrduStatementHTML from '../components/UrduStatementHTML';
 import { debounce } from 'lodash';
-import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign, FaFileAlt } from 'react-icons/fa';
+import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone, FaUserPlus, FaDollarSign, FaFileAlt, FaPrint } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -350,6 +350,164 @@ function Contacts() {
       type: loanType,
       description: loanDescription
     });
+  };
+
+  // Generate thermal statement HTML
+  const generateThermalStatementHtml = (statementData, shopSettings, contact) => {
+    const totalDebit = statementData.transactions.reduce((sum, t) => sum + (t.debit || 0), 0);
+    const totalCredit = statementData.transactions.reduce((sum, t) => sum + (t.credit || 0), 0);
+    const finalBalance = statementData.closingBalance;
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Customer Statement</title>
+        <style>
+          @media print {
+            @page { 
+              size: 80mm auto; 
+              margin: 0; 
+            }
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            margin: 0;
+            padding: 3mm;
+            width: 74mm;
+            color: #000;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+          }
+          .shop-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 2px;
+          }
+          .customer-name {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 8px 0;
+            text-align: center;
+            border: 1px solid #000;
+            padding: 3px;
+          }
+          .date-range {
+            font-size: 10px;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #666;
+          }
+          .transaction {
+            border-bottom: 1px dotted #ccc;
+            padding: 3px 0;
+            font-size: 10px;
+          }
+          .transaction-header {
+            font-weight: bold;
+            margin-bottom: 2px;
+          }
+          .transaction-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1px;
+          }
+          .amount {
+            font-weight: bold;
+          }
+          .debit { color: #d00; }
+          .credit { color: #0a0; }
+          .summary {
+            border-top: 2px solid #000;
+            margin-top: 8px;
+            padding-top: 5px;
+          }
+          .summary-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-size: 11px;
+          }
+          .final-balance {
+            font-size: 12px;
+            font-weight: bold;
+            border-top: 1px solid #000;
+            padding-top: 3px;
+            margin-top: 5px;
+          }
+          .footer {
+            text-align: center;
+            font-size: 9px;
+            margin-top: 8px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
+          <div style="font-size: 10px;">Customer Statement</div>
+        </div>
+        
+        <div class="customer-name">${contact.name}</div>
+        
+        ${statementStartDate || statementEndDate ? `
+          <div class="date-range">
+            ${statementStartDate ? `From: ${new Date(statementStartDate).toLocaleDateString()}` : 'From: Beginning'}
+            ${statementEndDate ? ` To: ${new Date(statementEndDate).toLocaleDateString()}` : ' To: Today'}
+          </div>
+        ` : ''}
+        
+        <div style="margin-bottom: 8px;">
+          ${statementData.transactions.map(transaction => `
+            <div class="transaction">
+              <div class="transaction-header">${new Date(transaction.date).toLocaleDateString()}</div>
+              <div class="transaction-details">
+                <span>${transaction.description}</span>
+              </div>
+              <div class="transaction-details">
+                <span>Total: ${formatPakistaniCurrency(transaction.debit || transaction.credit)}</span>
+                <span>Paid: ${formatPakistaniCurrency(transaction.credit || 0)}</span>
+              </div>
+              <div class="transaction-details">
+                <span>Remaining: ${formatPakistaniCurrency((transaction.debit || 0) - (transaction.credit || 0))}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="summary">
+          <div class="summary-line">
+            <span>Total Sales:</span>
+            <span class="amount debit">${formatPakistaniCurrency(totalDebit)}</span>
+          </div>
+          <div class="summary-line">
+            <span>Total Paid:</span>
+            <span class="amount credit">${formatPakistaniCurrency(totalCredit)}</span>
+          </div>
+          <div class="summary-line final-balance">
+            <span>${finalBalance >= 0 ? `${contact.name} owes:` : `We owe ${contact.name}:`}</span>
+            <span class="amount ${finalBalance >= 0 ? 'debit' : 'credit'}">
+              ${formatPakistaniCurrency(Math.abs(finalBalance))}
+            </span>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <div>Generated: ${new Date().toLocaleDateString()}</div>
+          <div>Thank you for your business!</div>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleGenerateStatement = async () => {
@@ -1104,6 +1262,24 @@ function Contacts() {
                 <div className="flex gap-2">
                   {statementData && shopSettings && (
                     <>
+                      <button
+                        onClick={() => {
+                          const thermalHtml = generateThermalStatementHtml(statementData, shopSettings, selectedContact);
+                          const printWindow = window.open('', '_blank', 'width=400,height=600');
+                          if (printWindow) {
+                            printWindow.document.write(thermalHtml);
+                            printWindow.document.close();
+                            setTimeout(() => {
+                              printWindow.print();
+                              printWindow.close();
+                            }, 500);
+                          }
+                        }}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                      >
+                        <FaPrint className="w-4 h-4" />
+                        Thermal Print
+                      </button>
                       {statementPdfPreferences.urduVersion ? (
                         <UrduStatementHTML
                           statementData={statementData}
@@ -1132,7 +1308,7 @@ function Contacts() {
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                 </svg>
-                                {t('downloadPDF')}
+                                A4 PDF
                               </>
                             )
                           )}

@@ -8,21 +8,8 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
     const isElectronApp = window.electronAPI !== undefined;
     setIsElectron(isElectronApp);
     
-    // Load existing image if value is provided
     if (value) {
-      if (window.electronAPI) {
-        // For Electron, get local file path
-        window.electronAPI.getProductImagePath(value).then(imagePath => {
-          if (imagePath) {
-            setImagePreview(`file://${imagePath}`);
-          }
-        }).catch(error => {
-          console.error('Failed to get image path:', error);
-        });
-      } else {
-        // For web version, use API endpoint
-        setImagePreview(`/api/images/${value}`);
-      }
+      setImagePreview(`${import.meta.env.VITE_API_URL}/api/images/${value}`);
     } else {
       setImagePreview(null);
     }
@@ -30,10 +17,8 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
 
   const handleImageSelect = async () => {
     if (window.electronAPI) {
-      // Electron version - use native file dialog
       try {
         const result = await window.electronAPI.selectProductImage();
-        
         if (result.success && !result.canceled) {
           setImagePreview(`file://${result.path}`);
           onChange(result.filename);
@@ -43,7 +28,6 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
         alert('Failed to select image');
       }
     } else {
-      // Web version - use file input
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -51,9 +35,35 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (e) => {
+          reader.onload = async (e) => {
             setImagePreview(e.target.result);
-            onChange(`web_${Date.now()}_${file.name}`);
+            
+            // Upload image to server
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+              const token = localStorage.getItem('authToken');
+              const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/upload-image`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                },
+                body: formData
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                onChange(result.filename);
+              } else {
+                const filename = `web_${Date.now()}_${file.name}`;
+                onChange(filename);
+              }
+            } catch (error) {
+              console.error('Upload failed:', error);
+              const filename = `web_${Date.now()}_${file.name}`;
+              onChange(filename);
+            }
           };
           reader.readAsDataURL(file);
         }
@@ -96,6 +106,7 @@ const ProductImageUpload = ({ value, onChange, className = '' }) => {
             src={imagePreview}
             alt="Product"
             className="w-32 h-32 object-cover border border-gray-300 rounded-lg"
+            onError={() => setImagePreview(null)}
           />
           <button
             type="button"

@@ -16,6 +16,7 @@ import { FaSearch, FaBoxOpen, FaTag, FaDollarSign, FaWarehouse, FaBarcode, FaPri
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import ProductImageUpload from '../components/ProductImageUpload';
+import ProductImage from '../components/ProductImage';
 
 
 const productSchema = z.object({
@@ -71,6 +72,8 @@ function Products() {
     perUnitPurchasePrice: '',
     categoryId: '',
     image: null,
+    colorVariants: [],
+    saleUnits: [],
   });
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -143,7 +146,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '' });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '', image: null });
         setIsEditMode(false);
         setValidationErrors({});
         toast.success('Product updated successfully!');
@@ -185,7 +188,7 @@ function Products() {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
         setIsModalOpen(false);
-        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '' });
+        setFormData({ name: '', description: '', retailPrice: '', wholesalePrice: '', purchasePrice: '', sku: '', quantity: '', unit: 'pcs', unitValue: '', lowStockThreshold: '10', isRawMaterial: false, perUnitPurchasePrice: '', categoryId: '', image: null });
         setValidationErrors({});
         toast.success('Product created successfully!');
       },
@@ -274,6 +277,7 @@ function Products() {
       lowStockThreshold: parseFloat(formData.lowStockThreshold),
       isRawMaterial: formData.isRawMaterial,
       categoryId: formData.categoryId || null,
+      image: formData.image,
     };
     
     console.log('Form data:', formData);
@@ -332,6 +336,8 @@ function Products() {
       perUnitPurchasePrice: product.perUnitPurchasePrice ? product.perUnitPurchasePrice.toString() : '',
       categoryId: product.categoryId || '',
       image: product.image || null,
+      colorVariants: product.colorVariants || [],
+      saleUnits: product.saleUnits || [],
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -540,7 +546,8 @@ function Products() {
                   lowStockThreshold: '10',
                   isRawMaterial: false,
                   perUnitPurchasePrice: '',
-                  categoryId: ''
+                  categoryId: '',
+                  image: null
                 });
                 setValidationErrors({});
                 setIsModalOpen(true);
@@ -594,8 +601,8 @@ function Products() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {product.image ? (
-                        <img
-                          src={window.electronAPI ? `/api/images/${product.image}` : `/api/images/${product.image}`}
+                        <ProductImage
+                          filename={product.image}
                           alt={product.name}
                           className="w-10 h-10 object-cover rounded-lg border border-gray-200"
                           onError={(e) => {

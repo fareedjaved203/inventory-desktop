@@ -458,13 +458,6 @@ function BulkPurchasing() {
     }
 
     const parsedPaidAmount = parseFloat(paidAmount) || 0;
-    if (parsedPaidAmount > totalAmount) {
-      setValidationErrors({
-        ...validationErrors,
-        paidAmount: t('paidAmountCannotExceedTotal')
-      });
-      return;
-    }
 
     const discountPercentage = parseFloat(discount) || 0;
     const discountAmount = (calculateSubtotal() * discountPercentage) / 100;

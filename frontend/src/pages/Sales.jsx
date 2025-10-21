@@ -547,13 +547,6 @@ function Sales() {
     }
 
     const parsedPaidAmount = parseFloat(paidAmount) || 0;
-    if (parsedPaidAmount > totalAmount) {
-      setValidationErrors({
-        ...validationErrors,
-        paidAmount: t('creditAmountCannotExceedPaid'),
-      });
-      return;
-    }
 
     if (totalAmount > 100000000) {
       setValidationErrors({

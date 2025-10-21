@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import multer from 'multer';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { productSchema, productUpdateSchema, querySchema } from './schemas.js';
 import { setupContactRoutes } from './contact-routes.js';
@@ -153,6 +154,32 @@ if (process.env.ELECTRON_APP) {
   } else {
     console.warn('Frontend path does not exist:', frontendPath);
   }
+}
+
+// Serve uploads directory for product images
+let uploadsPath;
+if (process.env.ELECTRON_APP) {
+  // In Electron, images are stored in user data directory
+  const userDataPath = process.env.ELECTRON_USER_DATA || path.join(__dirname, '..', '..');
+  uploadsPath = path.join(userDataPath, 'product-images');
+} else {
+  uploadsPath = path.join(__dirname, '..', 'uploads');
+}
+
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('Created uploads directory:', uploadsPath);
+}
+
+// Serve images from the correct path
+if (process.env.ELECTRON_APP) {
+  app.use('/api/images', express.static(uploadsPath));
+  console.log('Serving Electron images from:', uploadsPath);
+} else {
+  app.use('/uploads', express.static(uploadsPath));
+  const productImagesPath = path.join(uploadsPath, 'product-images');
+  app.use('/product-images', express.static(productImagesPath));
+  console.log('Serving web uploads from:', uploadsPath);
 }
 
 // Setup routes
@@ -760,16 +787,46 @@ if (!process.env.ELECTRON_APP) {
   }, 14 * 60 * 1000); // Every 14 minutes
 }
 // Image upload endpoint for web version
-app.post('/api/products/upload-image', authenticateToken, async (req, res) => {
+app.post('/api/products/upload-image', authenticateToken, (req, res) => {
   try {
-    // For Electron, images are handled by the main process
-    if (process.env.ELECTRON_APP) {
-      return res.status(400).json({ error: 'Use Electron image selection for desktop app' });
-    }
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        let uploadPath;
+        if (process.env.ELECTRON_APP) {
+          // In Electron, use AppData directory
+          const os = require('os');
+          uploadPath = path.join(os.homedir(), 'AppData', 'Roaming', 'hisab-ghar', 'product-images');
+        } else {
+          // Web mode - use uploads directory
+          uploadPath = path.join(__dirname, '..', 'uploads', 'product-images');
+        }
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+      },
+      filename: (req, file, cb) => {
+        const filename = `web_${Date.now()}_${file.originalname.replace(/\s+/g, '_')}`;
+        cb(null, filename);
+      }
+    });
     
-    // For web version, you would implement multer or similar here
-    // This is a placeholder for web image upload functionality
-    res.status(501).json({ error: 'Web image upload not implemented yet' });
+    const upload = multer({ 
+      storage,
+      limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    }).single('image');
+    
+    upload(req, res, (err) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
+      
+      res.json({ filename: req.file.filename });
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -781,22 +838,30 @@ app.get('/api/images/:filename', (req, res) => {
   let imagePath;
   
   if (process.env.ELECTRON_APP) {
-    // For Electron, get images from userData directory
-    try {
-      const { app } = require('electron');
-      imagePath = path.join(app.getPath('userData'), 'product-images', filename);
-    } catch (error) {
-      // Fallback if electron is not available
-      imagePath = path.join(__dirname, 'product-images', filename);
+    // In Electron, images are stored in a known AppData location
+    const os = require('os');
+    const appDataPath = path.join(os.homedir(), 'AppData', 'Roaming', 'hisab-ghar');
+    const electronImagePath = path.join(appDataPath, 'product-images', filename);
+    
+    if (fs.existsSync(electronImagePath)) {
+      imagePath = electronImagePath;
+    } else {
+      // Fallback to regular uploads directory
+      const uploadsPath = path.join(__dirname, '..', 'uploads', 'product-images', filename);
+      if (fs.existsSync(uploadsPath)) {
+        imagePath = uploadsPath;
+      }
     }
   } else {
-    // For web version, serve from uploads directory
+    // Web mode - use uploads directory
     imagePath = path.join(__dirname, '..', 'uploads', 'product-images', filename);
   }
   
-  if (fs.existsSync(imagePath)) {
-    res.sendFile(imagePath);
+  if (imagePath && fs.existsSync(imagePath)) {
+    console.log('Serving image from:', imagePath);
+    res.sendFile(path.resolve(imagePath));
   } else {
+    console.log('Image not found:', filename);
     res.status(404).json({ error: 'Image not found' });
   }
 });

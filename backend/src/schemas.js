@@ -16,6 +16,11 @@ export const productSchema = z.object({
   isRawMaterial: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
+  colorVariants: z.array(z.string()).optional(),
+  saleUnits: z.array(z.object({
+    unit: z.string().min(1, "Unit is required"),
+    quantity: z.number().positive("Quantity must be positive")
+  })).optional(),
 });
 
 export const productUpdateSchema = productSchema.partial();

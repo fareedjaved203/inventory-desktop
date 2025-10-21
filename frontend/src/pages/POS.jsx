@@ -5,6 +5,7 @@ import API from '../utils/api';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProductImage from '../components/ProductImage';
 import { debounce } from 'lodash';
 
 function POS() {
@@ -543,6 +544,13 @@ function POS() {
                     onClick={() => addToCart(product)}
                     className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
                   >
+                    {product.image && (
+                      <ProductImage
+                        filename={product.image}
+                        alt={product.name}
+                        className="w-full h-16 object-cover rounded mb-2"
+                      />
+                    )}
                     <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
                     <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                     <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
@@ -580,6 +588,13 @@ function POS() {
                           onClick={() => addToCart(product)}
                           className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
                         >
+                          {product.image && (
+                            <ProductImage
+                              filename={product.image}
+                              alt={product.name}
+                              className="w-full h-16 object-cover rounded mb-2"
+                            />
+                          )}
                           <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
                           <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                           <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>

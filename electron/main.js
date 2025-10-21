@@ -25,7 +25,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      webSecurity: true,
+      webSecurity: false,
       preload: preloadPath
     },
     icon: path.join(__dirname, '../assets/icon.png'),
@@ -485,6 +485,7 @@ function startServer() {
       PORT: serverPort,
       NODE_ENV: isDev ? 'development' : 'production',
       ELECTRON_APP: 'true',
+      ELECTRON_USER_DATA: app.getPath('userData'),
       DATABASE_URL: process.env.DATABASE_URL,
       DIRECT_URL: process.env.DIRECT_URL
     };
