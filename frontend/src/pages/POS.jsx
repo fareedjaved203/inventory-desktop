@@ -229,11 +229,6 @@ function POS() {
       return;
     }
 
-    if (paidAmount < total) {
-      toast.error('Insufficient payment amount');
-      return;
-    }
-
     if (createSale.isLoading) return;
 
     const saleData = {
@@ -807,18 +802,12 @@ function POS() {
             </div>
 
             {/* Quick Payment Buttons */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               <button
                 onClick={() => setPaidAmount(total)}
                 className="px-2 lg:px-3 py-3 bg-gray-200 text-gray-700 rounded-md text-xs lg:text-sm hover:bg-gray-300 active:bg-gray-400 min-h-[48px]"
               >
                 Exact
-              </button>
-              <button
-                onClick={() => setPaidAmount(Math.ceil(total / 100) * 100)}
-                className="px-2 lg:px-3 py-3 bg-gray-200 text-gray-700 rounded-md text-xs lg:text-sm hover:bg-gray-300 active:bg-gray-400 min-h-[48px]"
-              >
-                Round Up
               </button>
               <button
                 onClick={previewReceipt}
@@ -832,7 +821,7 @@ function POS() {
             {/* Process Sale Button */}
             <button
               onClick={processSale}
-              disabled={createSale.isLoading || paidAmount < total}
+              disabled={createSale.isLoading}
               className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[52px] text-sm lg:text-base"
             >
               {createSale.isLoading ? (

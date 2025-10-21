@@ -28,7 +28,7 @@ const productSchema = z.object({
   perUnitPurchasePrice: z.number().min(0, "Per unit cost must be non-negative").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().min(0, "Quantity must be non-negative"),
-  unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
+  unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set", "ton", "ohm"]).optional(),
   unitValue: z.union([z.number().positive("Unit value must be positive"), z.null(), z.undefined()]).optional(),
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative"),
   isRawMaterial: z.boolean().optional(),
@@ -72,8 +72,6 @@ function Products() {
     perUnitPurchasePrice: '',
     categoryId: '',
     image: null,
-    colorVariants: [],
-    saleUnits: [],
   });
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -336,8 +334,6 @@ function Products() {
       perUnitPurchasePrice: product.perUnitPurchasePrice ? product.perUnitPurchasePrice.toString() : '',
       categoryId: product.categoryId || '',
       image: product.image || null,
-      colorVariants: product.colorVariants || [],
-      saleUnits: product.saleUnits || [],
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -1000,7 +996,7 @@ function Products() {
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                         </svg>
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          Total cost paid to supplier for this quantity
+                          Individual piece cost / total weighted item cost
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                         </div>
                       </div>
@@ -1035,31 +1031,33 @@ function Products() {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaDollarSign className="text-purple-500" /> Per Unit Cost
-                      <div className="relative group">
-                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          Cost per single unit for weighted items (Purchase Price / Quantity)
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                  {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <FaDollarSign className="text-purple-500" /> Per Unit Cost
+                        <div className="relative group">
+                          <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                            Cost per single unit for weighted items (Purchase Price / Quantity)
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                          </div>
                         </div>
-                      </div>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.perUnitPurchasePrice || ''}
-                      onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder="Cost per unit"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price / quantity</p>
-                  </div>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.perUnitPurchasePrice || ''}
+                        onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
+                        onWheel={(e) => e.target.blur()}
+                        className="w-full px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Cost per unit"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price / quantity</p>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Purchase price for profit calculation. Per unit cost for manufacturing cost calculation.'}</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1123,6 +1121,8 @@ function Products() {
                       <option value="bag">Bag</option>
                       <option value="pair">Pair</option>
                       <option value="set">Set</option>
+                      <option value="ton">Ton</option>
+                      <option value="ohm">Ohm</option>
                     </select>
                   </div>
                 </div>

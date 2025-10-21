@@ -10,17 +10,12 @@ export const productSchema = z.object({
   perUnitPurchasePrice: z.number().min(0, "Per unit cost must be non-negative").nullable().optional(),
   sku: z.string().optional(),
   quantity: z.number().min(0, "Quantity must be non-negative").max(1000000000, "Quantity cannot exceed 1 billion"),
-  unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set"]).optional(),
+  unit: z.enum(["pcs", "dozen", "kg", "gram", "ltr", "ml", "ft", "metre", "sqft", "carton", "roll", "sheet", "drum", "packet", "bottle", "bag", "pair", "set", "ton", "ohm"]).optional(),
   unitValue: z.union([z.number().positive("Unit value must be positive"), z.null(), z.undefined()]).optional(),
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative").optional(),
   isRawMaterial: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
-  colorVariants: z.array(z.string()).optional(),
-  saleUnits: z.array(z.object({
-    unit: z.string().min(1, "Unit is required"),
-    quantity: z.number().positive("Quantity must be positive")
-  })).optional(),
 });
 
 export const productUpdateSchema = productSchema.partial();

@@ -10,6 +10,7 @@ const DEFAULT_COLUMNS = {
   arrivalDate: { label: 'Arrival Date', visible: true },
   carNumber: { label: 'Car Number', visible: false },
   productName: { label: 'Product Name', visible: true },
+  category: { label: 'Category', visible: true },
   productDescription: { label: 'Description', visible: false },
   purchaseQuantity: { label: 'Purchase Qty', visible: true },
   purchasePrice: { label: 'Purchase Price', visible: true },
@@ -170,6 +171,7 @@ function DayBookReportModal({ isOpen, onClose }) {
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
                             {key === 'carNumber' && (item.carNumber || '-')}
                             {key === 'productName' && item.productName}
+                            {key === 'category' && (item.category || '-')}
                             {key === 'productDescription' && (item.productDescription || '-')}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}

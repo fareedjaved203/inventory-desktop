@@ -95,6 +95,7 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
     ['arrivalDate', { label: 'Arrival Date' }],
     ['carNumber', { label: 'Car Number' }],
     ['productName', { label: 'Product Name' }],
+    ['category', { label: 'Category' }],
     ['productDescription', { label: 'Description' }],
     ['purchaseQuantity', { label: 'Purchase Qty' }],
     ['purchasePrice', { label: 'Purchase Price' }],
@@ -139,6 +140,7 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
                 case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
                 case 'carNumber': return item.carNumber || '-';
                 case 'productName': return item.productName;
+                case 'category': return item.category || '-';
                 case 'productDescription': return item.productDescription || '-';
                 case 'purchaseQuantity': return item.purchaseQuantity || '-';
                 case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';

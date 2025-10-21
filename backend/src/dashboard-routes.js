@@ -108,7 +108,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       // Set to start and end of day
       reportStartDate.setHours(0, 0, 0, 0);
-      reportEndDate.setHours(23, 59, 59, 999);
+      // Add one day to end date and set to start of that day to include the full end date
+      reportEndDate.setDate(reportEndDate.getDate() + 1);
+      reportEndDate.setHours(0, 0, 0, 0);
     } else {
       reportStartDate = todayPakistan;
       reportEndDate = new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -430,7 +432,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             saleDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -440,7 +442,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             purchaseDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -450,7 +452,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             date: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -459,7 +461,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             saleDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -468,7 +470,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             purchaseDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -478,7 +480,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             returnDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           }
         }),
@@ -487,7 +489,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             saleDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           },
           include: { items: true }
@@ -497,7 +499,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             userId: req.userId,
             purchaseDate: { 
               gte: reportStartDate, 
-              lte: reportEndDate 
+              lt: reportEndDate 
             }
           },
           include: {
@@ -653,18 +655,26 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       const reportStartDate = new Date(startDate);
       const reportEndDate = new Date(endDate);
       reportStartDate.setHours(0, 0, 0, 0);
-      reportEndDate.setHours(23, 59, 59, 999);
+      // Add one day to end date and set to start of that day to include the full end date
+      reportEndDate.setDate(reportEndDate.getDate() + 1);
+      reportEndDate.setHours(0, 0, 0, 0);
       
       // Get all sales and purchases in the date range
       const [sales, purchases] = await Promise.all([
         prisma.sale.findMany({
           where: {
             userId: req.userId,
-            saleDate: { gte: reportStartDate, lte: reportEndDate }
+            saleDate: { gte: reportStartDate, lt: reportEndDate }
           },
           include: {
             items: {
-              include: { product: true }
+              include: { 
+                product: {
+                  include: {
+                    category: true
+                  }
+                }
+              }
             },
             contact: true
           }
@@ -672,11 +682,17 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         prisma.bulkPurchase.findMany({
           where: {
             userId: req.userId,
-            purchaseDate: { gte: reportStartDate, lte: reportEndDate }
+            purchaseDate: { gte: reportStartDate, lt: reportEndDate }
           },
           include: {
             items: {
-              include: { product: true }
+              include: { 
+                product: {
+                  include: {
+                    category: true
+                  }
+                }
+              }
             },
             contact: true
           }
@@ -693,6 +709,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             type: 'purchase',
             productDescription: item.product.description || '',
             productName: item.product.name,
+            category: item.product.category?.name || '',
             purchaseQuantity: Number(item.quantity),
             purchasePrice: Number(item.purchasePrice),
             transportCost: Number(purchase.transportCost || 0),
@@ -723,6 +740,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             type: 'sale',
             productDescription: item.product.description || '',
             productName: item.product.name,
+            category: item.product.category?.name || '',
             purchaseQuantity: 0,
             purchasePrice: purchasePrice,
             transportCost: Number(sale.transportCost || 0),
