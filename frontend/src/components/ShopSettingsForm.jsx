@@ -45,9 +45,21 @@ function ShopSettingsForm() {
   useEffect(() => {
     if (settings) {
       setFormData({
-        ...settings,
+        email: settings.email || '',
+        shopName: settings.shopName || '',
+        shopDescription: settings.shopDescription || '',
+        shopDescription2: settings.shopDescription2 || '',
+        userName1: settings.userName1 || '',
+        userPhone1: settings.userPhone1 || '',
+        userName2: settings.userName2 || '',
+        userPhone2: settings.userPhone2 || '',
+        userName3: settings.userName3 || '',
+        userPhone3: settings.userPhone3 || '',
+        brand1: settings.brand1 || '',
         brand1Registered: settings.brand1Registered || false,
+        brand2: settings.brand2 || '',
         brand2Registered: settings.brand2Registered || false,
+        brand3: settings.brand3 || '',
         brand3Registered: settings.brand3Registered || false,
         logo: settings.logo || '',
       });
@@ -56,12 +68,8 @@ function ShopSettingsForm() {
 
   const saveSettings = useMutation(
     async (data) => {
-      // If settings exist, update them; otherwise create new
-      if (settings && settings.id) {
-        return await API.updateShopSettings(settings.id, data);
-      } else {
-        return await API.createShopSettings(data);
-      }
+      // Always use POST endpoint as backend handles create/update automatically
+      return await API.createShopSettings(data);
     },
     {
       onSuccess: () => {
@@ -79,8 +87,17 @@ function ShopSettingsForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     try {
-      // Create a copy without logo if it's too large
+      // Create a copy and ensure all optional string fields are empty strings, not null
       const dataToSave = { ...formData };
+      
+      // Convert null/undefined values to empty strings for optional fields
+      const optionalStringFields = ['shopDescription', 'shopDescription2', 'userName2', 'userPhone2', 'userName3', 'userPhone3', 'brand1', 'brand2', 'brand3'];
+      optionalStringFields.forEach(field => {
+        if (dataToSave[field] === null || dataToSave[field] === undefined) {
+          dataToSave[field] = '';
+        }
+      });
+      
       if (dataToSave.logo && dataToSave.logo.length > 1000000) { // 1MB limit for base64
         alert(language === 'ur' ? 'لوگو بہت بڑا ہے، براہ کرم چھوٹا فائل استعمال کریں' : 'Logo is too large, please use a smaller file');
         return;

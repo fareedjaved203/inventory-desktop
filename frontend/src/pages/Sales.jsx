@@ -895,7 +895,7 @@ function Sales() {
                               if (returnItem.productId) {
                                 returnedQuantities[returnItem.productId] =
                                   (returnedQuantities[returnItem.productId] ||
-                                    0) + returnItem.quantity;
+                                    0) + Number(returnItem.quantity);
                               }
                             });
                           }
@@ -915,9 +915,9 @@ function Sales() {
                           } else {
                             consolidatedItems[item.product?.id] = {
                               product: item.product,
-                              quantity: item.quantity,
+                              quantity: Number(item.quantity),
                               returnedQuantity:
-                                returnedQuantities[item.product?.id] || 0,
+                                Number(returnedQuantities[item.product?.id]) || 0,
                             };
                           }
                         });
@@ -936,7 +936,7 @@ function Sales() {
                             </span>
                             {item.returnedQuantity > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
-                                -{item.returnedQuantity} returned
+                                -{Number(item.returnedQuantity)} returned
                               </span>
                             )}
                           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import toast from 'react-hot-toast';
+import API from '../utils/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import SaleInvoicePDF from './SaleInvoicePDF';
 import UrduInvoiceHTML from './UrduInvoiceHTML';
@@ -56,7 +57,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
   }, [isOpen, sale?.id]);
   
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/shop-settings`);
+    const response = await API.get('/shop-settings');
     return response.data;
   });
 
@@ -75,8 +76,8 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
         }));
         
         // Pay refund for specific return
-        response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/returns/${paymentData.returnId}/pay-credit`,
+        response = await API.post(
+          `/returns/${paymentData.returnId}/pay-credit`,
           { amount: paymentData.amount }
         );
       } else if (paymentData.saleId) {
@@ -90,8 +91,8 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
         }));
         
         // Pay direct credit refund
-        response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/sales/${paymentData.saleId}/pay-credit`,
+        response = await API.post(
+          `/sales/${paymentData.saleId}/pay-credit`,
           { amount: paymentData.amount }
         );
       }
@@ -113,6 +114,16 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
             }
           }));
         } else {
+          // For "Refund All", also update the sale object to show refunds as paid
+          if (sale.returns) {
+            sale.returns.forEach(ret => {
+              if (!ret.refundPaid && ret.refundAmount > 0) {
+                ret.refundPaid = true;
+                ret.refundDate = new Date().toISOString();
+              }
+            });
+          }
+          
           setCreditPayment(prev => ({
             ...prev,
             saleRefund: {
@@ -124,6 +135,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
         }
         
         const amount = variables.amount;
+        toast.success(`Refund of Rs.${amount} processed successfully!`);
         setSuccessMessage(`Refund of Rs.${amount} processed successfully!`);
         
         // Clear success message after 5 seconds
@@ -131,6 +143,10 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
           setSuccessMessage('');
         }, 5000);
       },
+      onError: (error) => {
+        const errorMessage = error.response?.data?.error || 'Failed to process refund';
+        toast.error(errorMessage);
+      }
     }
   );
 
@@ -318,7 +334,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                         if (returnRecord.items && Array.isArray(returnRecord.items)) {
                           returnRecord.items.forEach(returnItem => {
                             if (returnItem.productId) {
-                              returnedQuantities[returnItem.productId] = (returnedQuantities[returnItem.productId] || 0) + returnItem.quantity;
+                              returnedQuantities[returnItem.productId] = (returnedQuantities[returnItem.productId] || 0) + Number(returnItem.quantity);
                             }
                           });
                         }
@@ -334,9 +350,9 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                         } else {
                           consolidatedItems[item.product?.id] = {
                             product: item.product,
-                            quantity: item.quantity,
+                            quantity: Number(item.quantity),
                             price: item.price,
-                            returnedQuantity: returnedQuantities[item.product?.id] || 0
+                            returnedQuantity: Number(returnedQuantities[item.product?.id]) || 0
                           };
                         }
                       });
@@ -352,7 +368,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 mr-1">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                                 </svg>
-                                {item.returnedQuantity} Returned
+                                {Number(item.returnedQuantity)} Returned
                               </span>
                             )}
                             {item.returnedQuantity === item.quantity && (
@@ -363,10 +379,10 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          <div>{item.quantity}</div>
+                          <div>{Number(item.quantity)}</div>
                           {item.returnedQuantity > 0 && (
                             <div className="text-xs text-red-600">
-                              -{item.returnedQuantity}
+                              -{Number(item.returnedQuantity)}
                             </div>
                           )}
                         </td>
@@ -374,10 +390,10 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           Rs.{(Number(item.price) || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          <div>Rs.{((Number(item.price) || 0) * item.quantity).toFixed(2)}</div>
+                          <div>Rs.{((Number(item.price) || 0) * Number(item.quantity)).toFixed(2)}</div>
                           {item.returnedQuantity > 0 && (
                             <div className="text-xs text-red-600">
-                              -Rs.{((Number(item.price) || 0) * item.returnedQuantity).toFixed(2)}
+                              -Rs.{((Number(item.price) || 0) * Number(item.returnedQuantity)).toFixed(2)}
                             </div>
                           )}
                         </td>
@@ -480,10 +496,38 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                             Credit Balance
                           </td>
                           <td className="px-6 py-4 text-right font-medium text-green-600">
-                            Rs.{Math.abs(balance).toFixed(2)}
-                            <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                              {allCreditRefunded ? 'Refunded' : 'Overpaid'}
-                            </span>
+                            <div className="flex items-center justify-end gap-2">
+                              <span>Rs.{Math.abs(balance).toFixed(2)}</span>
+                              <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                {allCreditRefunded ? 'Refunded' : 'Overpaid'}
+                              </span>
+                              {!allCreditRefunded && Math.abs(balance) > 0 && (
+                                <button
+                                  onClick={() => {
+                                    const amount = Math.abs(balance);
+                                    // Mark all individual returns as completed when refunding all
+                                    const updatedCreditPayment = { ...creditPayment };
+                                    if (sale.returns) {
+                                      sale.returns.forEach(ret => {
+                                        if (!ret.refundPaid && ret.refundAmount > 0) {
+                                          updatedCreditPayment[ret.id] = {
+                                            amount: ret.refundAmount,
+                                            processing: false,
+                                            completed: true
+                                          };
+                                        }
+                                      });
+                                    }
+                                    setCreditPayment(updatedCreditPayment);
+                                    payCredit.mutate({ saleId: sale.id, amount });
+                                  }}
+                                  disabled={creditPayment.saleRefund?.processing}
+                                  className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  {creditPayment.saleRefund?.processing ? 'Processing...' : 'Refund All'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       </>
@@ -545,12 +589,24 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                           </div>
                           <div className="flex items-center gap-2 justify-end">
                             <div className={`text-xs px-2 py-1 rounded-full ${
-                              returnRecord.refundPaid 
+                              (returnRecord.refundPaid || creditPayment[returnRecord.id]?.completed)
                                 ? 'bg-green-100 text-green-800' 
                                 : (returnRecord.refundAmount > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600')
                             }`}>
-                              {returnRecord.refundPaid ? 'Paid' : (returnRecord.refundAmount > 0 ? 'Pending' : 'No Refund')}
+                              {(returnRecord.refundPaid || creditPayment[returnRecord.id]?.completed) ? 'Paid' : (returnRecord.refundAmount > 0 ? 'Pending' : 'No Refund')}
                             </div>
+                            {!returnRecord.refundPaid && !creditPayment[returnRecord.id]?.completed && returnRecord.refundAmount > 0 && (
+                              <button
+                                onClick={() => {
+                                  const amount = Number(returnRecord.refundAmount);
+                                  payCredit.mutate({ returnId: returnRecord.id, amount });
+                                }}
+                                disabled={creditPayment[returnRecord.id]?.processing}
+                                className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                {creditPayment[returnRecord.id]?.processing ? 'Processing...' : 'Pay Refund'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

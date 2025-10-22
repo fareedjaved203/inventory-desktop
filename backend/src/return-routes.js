@@ -29,7 +29,7 @@ export function setupReturnRoutes(app, prisma) {
         // Generate return number
         const returnNumber = `RET-${Date.now().toString().slice(-6)}`;
         
-        // Calculate total amount (0 for container returns)
+        // Calculate total amount (0 for container returns, actual amount for regular returns)
         const totalAmount = req.body.isContainerReturn ? 0 : req.body.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
         // Filter out items with zero quantity
@@ -37,7 +37,7 @@ export function setupReturnRoutes(app, prisma) {
         
         // Create return using raw SQL
         const returnId = crypto.randomUUID();
-        const refundAmount = req.body.isContainerReturn ? 0 : (req.body.refundAmount || 0);
+        const refundAmount = req.body.isContainerReturn ? 0 : totalAmount;
         const returnReason = req.body.isContainerReturn ? 'Empty container return' : (req.body.reason || null);
         
         await prisma.$executeRaw`
@@ -175,23 +175,35 @@ export function setupReturnRoutes(app, prisma) {
   });
 
   // Mark refund as paid
-  app.post('/api/returns/:returnId/pay-credit', async (req, res) => {
+  app.post('/api/returns/:returnId/pay-credit', authenticateToken, async (req, res) => {
     try {
       const { returnId } = req.params;
       const { amount } = req.body;
       
-      // Update the return record to mark refund as paid
-      const updatedReturn = await prisma.saleReturn.update({
-        where: { 
-          id: returnId,
-          userId: req.userId
-        },
-        data: {
-          refundPaid: true,
-          refundAmount: amount || undefined,
-          refundDate: new Date()
-        }
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(returnId)) {
+        return res.status(400).json({ error: 'Invalid return ID format' });
+      }
+      
+      // Update using raw SQL to avoid binary data format issues
+      await prisma.$executeRaw`
+        UPDATE "SaleReturn" 
+        SET "refundPaid" = true, 
+            "refundAmount" = ${amount ? Number(amount) : 0}::decimal, 
+            "refundDate" = NOW(),
+            "updatedAt" = NOW()
+        WHERE id = ${returnId} AND "userId" = ${req.userId}
+      `;
+      
+      // Get the updated return
+      const updatedReturn = await prisma.saleReturn.findUnique({
+        where: { id: returnId }
       });
+      
+      if (!updatedReturn) {
+        return res.status(404).json({ error: 'Return not found' });
+      }
       
       res.json(updatedReturn);
     } catch (error) {
@@ -210,20 +222,19 @@ export function setupReturnRoutes(app, prisma) {
         return res.status(400).json({ error: 'Valid refund amount is required' });
       }
       
-      // Create a dummy return record for tracking the refund
-      const returnNumber = `REF-${Date.now().toString().slice(-6)}`;
-      
-      const returnId = crypto.randomUUID();
+      // Mark all unpaid returns for this sale as paid
       await prisma.$executeRaw`
-        INSERT INTO "SaleReturn" (id, "returnNumber", "totalAmount", "refundAmount", "refundPaid", "refundDate", reason, "saleId", "userId", "createdAt", "updatedAt")
-        VALUES (${returnId}, ${returnNumber}, 0::decimal, ${amount}::decimal, true, NOW(), 'Credit balance refund', ${saleId}, ${req.userId}, NOW(), NOW())
+        UPDATE "SaleReturn" 
+        SET "refundPaid" = true, 
+            "refundDate" = NOW(),
+            "updatedAt" = NOW()
+        WHERE "saleId" = ${saleId} 
+          AND "userId" = ${req.userId} 
+          AND "refundPaid" = false 
+          AND "refundAmount" > 0
       `;
       
-      const creditReturn = await prisma.saleReturn.findUnique({
-        where: { id: returnId }
-      });
-      
-      res.json(creditReturn);
+      res.json({ success: true, message: 'All returns marked as paid' });
     } catch (error) {
       console.error('Error processing credit refund:', error);
       res.status(500).json({ error: error.message });
@@ -254,31 +265,5 @@ export function setupReturnRoutes(app, prisma) {
     }
   });
 
-  // Mark refund as paid
-  app.post('/api/returns/:returnId/pay-credit', authenticateToken, async (req, res) => {
-    try {
-      const returnRecord = await prisma.saleReturn.update({
-        where: { 
-          id: req.params.returnId,
-          userId: req.userId
-        },
-        data: {
-          refundPaid: true,
-          refundDate: new Date()
-        },
-        include: {
-          items: {
-            include: {
-              product: true
-            }
-          },
-          sale: true
-        }
-      });
 
-      res.json(returnRecord);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 }

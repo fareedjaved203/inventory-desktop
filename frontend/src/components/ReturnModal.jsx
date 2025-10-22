@@ -133,7 +133,7 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
       })),
       reason,
       removeFromStock,
-      refundAmount: isContainerReturn ? 0 : refundAmount,
+      refundAmount: isContainerReturn ? 0 : calculateReturnTotal(),
       isContainerReturn
     };
 
