@@ -8,6 +8,7 @@ import PurchaseStatementPDF from './PurchaseStatementPDF';
 import ExpenseStatementPDF from './ExpenseStatementPDF';
 import DayBookReportPDF from './DayBookReportPDF';
 import DayBookReportModal from './DayBookReportModal';
+import UrduDayBookReportModal from './UrduDayBookReportModal';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -16,6 +17,7 @@ function DashboardReportModal({ isOpen, onClose }) {
   const { language } = useLanguage();
   const t = useTranslation(language);
   const [showDayBookModal, setShowDayBookModal] = useState(false);
+  const [showUrduDayBookModal, setShowUrduDayBookModal] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 30);
@@ -251,7 +253,7 @@ function DashboardReportModal({ isOpen, onClose }) {
             </button>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {reportData && (
               <>
                 <PDFDownloadLink
@@ -307,6 +309,16 @@ function DashboardReportModal({ isOpen, onClose }) {
                   </svg>
                   Day Book
                 </button>
+                
+                <button
+                  onClick={() => setShowUrduDayBookModal(true)}
+                  className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2 text-sm font-urdu"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  روزنامچہ (اردو)
+                </button>
               </>
             )}
           </div>
@@ -317,6 +329,12 @@ function DashboardReportModal({ isOpen, onClose }) {
       <DayBookReportModal 
         isOpen={showDayBookModal} 
         onClose={() => setShowDayBookModal(false)} 
+      />
+      
+      {/* Urdu Day Book Modal */}
+      <UrduDayBookReportModal 
+        isOpen={showUrduDayBookModal} 
+        onClose={() => setShowUrduDayBookModal(false)} 
       />
     </div>
   );
