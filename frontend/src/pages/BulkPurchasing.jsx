@@ -201,7 +201,12 @@ function BulkPurchasing() {
   }, [queryClient]);
 
   const calculateSubtotal = () => {
-    return purchaseItems.reduce((sum, item) => sum + item.subtotal, 0);
+    return purchaseItems.reduce((sum, item) => {
+      // For weighted items (isTotalCostItem), subtotal is the purchasePrice itself
+      // For regular items, subtotal is quantity * purchasePrice
+      const subtotal = item.isTotalCostItem ? item.purchasePrice : (item.quantity * item.purchasePrice);
+      return sum + subtotal;
+    }, 0);
   };
 
   // Update total amount when purchase items or discount change
@@ -468,7 +473,7 @@ function BulkPurchasing() {
         productId: item.productId,
         quantity: item.quantity,
         purchasePrice: item.purchasePrice,
-        ...(item.perUnitCost && { perUnitCost: item.perUnitCost })
+        ...(item.isTotalCostItem && { perUnitCost: item.perUnitCost })
       })),
       totalAmount: totalAmount,
       discount: discountAmount,
@@ -531,7 +536,8 @@ function BulkPurchasing() {
         purchasePrice: purchasePrice,
         subtotal: subtotal,
         product: item.product, // Include product info for unit checking
-        ...(isTotalCostItem && { isTotalCostItem: true })
+        isTotalCostItem: isTotalCostItem,
+        ...(isTotalCostItem && { perUnitCost: purchasePrice / quantity })
       };
     }));
     
@@ -1106,7 +1112,11 @@ function BulkPurchasing() {
                             // Otherwise show purchase price directly (per-unit items)
                             return `${quantity} x Rs.${purchasePrice.toFixed(2)} = `;
                           })()}
-                          <span className="text-primary-800 font-medium">Rs.{Number(item.subtotal || 0).toFixed(2)}</span>
+                          <span className="text-primary-800 font-medium">Rs.{(() => {
+                            // For weighted items, subtotal is the total cost (purchasePrice)
+                            // For regular items, subtotal is quantity * purchasePrice
+                            return item.isTotalCostItem ? Number(item.purchasePrice || 0).toFixed(2) : Number(item.subtotal || 0).toFixed(2);
+                          })()}</span>
                         </div>
                       </div>
                       <button

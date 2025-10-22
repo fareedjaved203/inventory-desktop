@@ -67,7 +67,7 @@ class EmailService {
       } catch (error) {
         console.error('SMTP connection verification failed:', error.message);
         console.log('Falling back to test email service');
-        this.transporter = null; // Reset so it falls through to test service
+        // Fall through to create test account
       }
     } else {
       // Create a test account for development
@@ -189,6 +189,10 @@ class EmailService {
 
     // Initialize transporter if needed
     await this.initTransporter();
+    
+    if (!this.transporter) {
+      throw new Error('Email service not initialized');
+    }
     
     try {
       const info = await this.transporter.sendMail({

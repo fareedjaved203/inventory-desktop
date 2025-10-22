@@ -5,11 +5,17 @@ import { formatPakistaniCurrency } from '../utils/formatCurrency';
 
 const URDU_COLUMNS = {
   date: { label: 'تاریخ', visible: true },
+  loadingDate: { label: 'لوڈنگ تاریخ', visible: true },
+  arrivalDate: { label: 'آمد تاریخ', visible: true },
+  carNumber: { label: 'گاڑی نمبر', visible: false },
   productName: { label: 'پروڈکٹ کا نام', visible: true },
   category: { label: 'قسم', visible: true },
+  productDescription: { label: 'تفصیل', visible: false },
   purchaseQuantity: { label: 'خریداری مقدار', visible: true },
   purchasePrice: { label: 'خریداری قیمت', visible: true },
+  transportCost: { label: 'ٹرانسپورٹ لاگت', visible: false },
   supplierName: { label: 'سپلائر', visible: true },
+  totalPurchaseCost: { label: 'کل لاگت', visible: true },
   customerName: { label: 'کسٹمر', visible: true },
   saleQuantity: { label: 'فروخت مقدار', visible: true },
   saleUnitPrice: { label: 'یونٹ قیمت', visible: true },
@@ -27,7 +33,18 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
     return new Date().toISOString().split('T')[0];
   });
   const [columns, setColumns] = useState(URDU_COLUMNS);
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
   const printRef = useRef();
+
+  const toggleColumn = (columnKey) => {
+    setColumns(prev => ({
+      ...prev,
+      [columnKey]: {
+        ...prev[columnKey],
+        visible: !prev[columnKey].visible
+      }
+    }));
+  };
 
   const handlePrintPDF = () => {
     const printWindow = window.open('', '_blank');
@@ -117,15 +134,41 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              <div>
+              <div className="flex gap-2">
                 <button
                   onClick={() => refetch()}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-urdu"
                 >
                   تیار کریں
                 </button>
+                <button
+                  onClick={() => setShowColumnSettings(!showColumnSettings)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-urdu"
+                >
+                  کالمز
+                </button>
               </div>
             </div>
+
+            {/* Column Settings */}
+            {showColumnSettings && (
+              <div className="mt-4 p-4 bg-white rounded border">
+                <h4 className="font-medium mb-3 font-urdu text-center">کالمز دکھائیں/چھپائیں</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.entries(columns).map(([key, col]) => (
+                    <label key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded font-urdu" dir="rtl">
+                      <span className="text-sm mr-2">{col.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={col.visible}
+                        onChange={() => toggleColumn(key)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -135,11 +178,11 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
           ) : dayBookData?.data ? (
             <div className="flex-1 overflow-auto">
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-gray-200" dir="rtl">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full border border-gray-200 shadow-sm rounded-lg overflow-hidden" dir="rtl">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                     <tr>
                       {visibleColumns.map(([key, col]) => (
-                        <th key={key} className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase border-b font-urdu">
+                        <th key={key} className="px-4 py-3 text-right text-sm font-bold text-gray-700 border-b border-gray-300 font-urdu">
                           {col.label}
                         </th>
                       ))}
@@ -147,15 +190,21 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dayBookData.data.map((item, index) => (
-                      <tr key={index} className={item.type === 'purchase' ? 'bg-blue-100' : 'bg-green-100'}>
+                      <tr key={index} className={`hover:bg-gray-50 transition-colors ${item.type === 'purchase' ? 'bg-blue-50 border-r-4 border-blue-400' : 'bg-green-50 border-r-4 border-green-400'}`}>
                         {visibleColumns.map(([key]) => (
-                          <td key={key} className="px-3 py-2 text-sm text-gray-900 border-b text-right">
+                          <td key={key} className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200 text-right font-urdu">
                             {key === 'date' && new Date(item.date).toLocaleDateString()}
+                            {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
+                            {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
+                            {key === 'carNumber' && (item.carNumber || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
+                            {key === 'productDescription' && (item.productDescription || '-')}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}
+                            {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}
                             {key === 'supplierName' && (item.supplierName || '-')}
+                            {key === 'totalPurchaseCost' && (item.totalPurchaseCost ? formatPakistaniCurrency(item.totalPurchaseCost) : '-')}
                             {key === 'customerName' && (item.customerName || '-')}
                             {key === 'saleQuantity' && (item.saleQuantity || '-')}
                             {key === 'saleUnitPrice' && (item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-')}
@@ -172,14 +221,39 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* Summary */}
+              {dayBookData.summary && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-gray-200" dir="rtl">
+                  <h4 className="font-bold mb-4 font-urdu text-lg text-center text-gray-800">خلاصہ</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white p-3 rounded-lg shadow-sm border">
+                      <span className="text-gray-600 font-urdu text-sm block mb-1">کل خریداری:</span>
+                      <div className="font-bold text-blue-600 text-lg">{formatPakistaniCurrency(dayBookData.summary.totalPurchaseAmount || 0)}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border">
+                      <span className="text-gray-600 font-urdu text-sm block mb-1">کل فروخت:</span>
+                      <div className="font-bold text-green-600 text-lg">{formatPakistaniCurrency(dayBookData.summary.totalSaleAmount || 0)}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border">
+                      <span className="text-gray-600 font-urdu text-sm block mb-1">کل منافع:</span>
+                      <div className="font-bold text-emerald-600 text-lg">{formatPakistaniCurrency(dayBookData.summary.totalProfit || 0)}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border">
+                      <span className="text-gray-600 font-urdu text-sm block mb-1">کل اندراجات:</span>
+                      <div className="font-bold text-gray-800 text-lg">{dayBookData.summary.totalEntries || 0}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
 
         <div className="p-6 border-t bg-gray-50 flex justify-between">
           <div className="text-sm text-gray-600 font-urdu">
-            <span className="inline-block w-4 h-4 bg-blue-100 mr-2"></span>خریداری
-            <span className="inline-block w-4 h-4 bg-green-100 mr-2 ml-4"></span>فروخت
+            <span className="inline-block w-4 h-4 bg-blue-100 border-l-4 border-blue-500 mr-2"></span>خریداری اندراجات
+            <span className="inline-block w-4 h-4 bg-green-100 border-l-4 border-green-500 mr-2 ml-4"></span>فروخت اندراجات
           </div>
           <div className="flex gap-3">
             {dayBookData && (

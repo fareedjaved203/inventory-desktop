@@ -21,6 +21,7 @@
     "dist:publish:online": "npm run build && electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}",
     "dist:offline": "npm run build && electron-builder --win --publish=never --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
     "dist:publish:offline": "npm run build && npx --node-options=\"-r dotenv/config\" electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
+    "build:custom": "npm run build && npx electron-builder --win --publish=never --config.directories.output=build-output",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",

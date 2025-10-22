@@ -704,6 +704,12 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       // Process purchases
       purchases.forEach(purchase => {
         purchase.items.forEach(item => {
+          // For weighted items (isTotalCostItem: true), purchasePrice is already the total cost
+          // For regular items, multiply quantity by unit price
+          const totalPurchaseCost = item.isTotalCostItem 
+            ? Number(item.purchasePrice) 
+            : Number(item.quantity) * Number(item.purchasePrice);
+          
           dayBookEntries.push({
             date: purchase.purchaseDate,
             type: 'purchase',
@@ -717,7 +723,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             loadingDate: purchase.loadingDate || null,
             arrivalDate: purchase.arrivalDate || null,
             supplierName: purchase.contact?.name || '',
-            totalPurchaseCost: Number(item.quantity) * Number(item.purchasePrice),
+            totalPurchaseCost: totalPurchaseCost,
             customerName: '',
             saleQuantity: 0,
             saleUnitPrice: 0,
