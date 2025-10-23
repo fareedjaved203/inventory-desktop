@@ -37,9 +37,14 @@ function DashboardReportModal({ isOpen, onClose }) {
     async () => {
       console.log('Making API calls with dates:', { startDate, endDate });
       const [dashboardRes, statsRes, salesRes, purchasesRes, expensesRes, dayBookRes] = await Promise.all([
-        // Dashboard endpoints not available in API wrapper, return empty data
-        Promise.resolve({ data: {} }),
-        Promise.resolve({ data: {} }),
+        // Get dashboard stats with date range
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/stats?startDate=${startDate}&endDate=${endDate}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        }).then(res => res.json()).catch(() => ({ data: {} })),
+        // Get basic dashboard data
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        }).then(res => res.json()).catch(() => ({ data: {} })),
         API.getSales({ limit: 1000 }),
         API.getBulkPurchases({ limit: 1000 }),
         API.getExpenses({ limit: 1000 }),
@@ -66,21 +71,39 @@ function DashboardReportModal({ isOpen, onClose }) {
       const allExpenses = filteredExpenses;
 
       // Calculate totals from actual data
-      const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
-      const totalPurchases = filteredPurchases.reduce((sum, purchase) => sum + (purchase.totalAmount || 0), 0);
-      const totalExpenses = allExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+      const totalSales = filteredSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
+      const totalPurchases = filteredPurchases.reduce((sum, purchase) => sum + Number(purchase.totalAmount || 0), 0);
+      const totalExpenses = allExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
       const totalTransactions = filteredSales.length;
       const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
-      const totalSalesDueAmount = filteredSales.reduce((sum, sale) => sum + (sale.dueAmount || 0), 0);
+      
+      // Calculate due amount properly - (totalAmount - paidAmount) for each sale
+      const totalSalesDueAmount = filteredSales.reduce((sum, sale) => {
+        const totalAmount = Number(sale.totalAmount || 0);
+        const paidAmount = Number(sale.paidAmount || 0);
+        const dueAmount = Math.max(0, totalAmount - paidAmount);
+        return sum + dueAmount;
+      }, 0);
 
+      // Use backend calculated stats if available, otherwise use manual calculations
+      const backendStats = dashboardRes || {};
+      const hasBackendStats = backendStats.totalSales !== undefined;
+      
       return {
-        dashboardData: dashboardRes.data,
-        salesStats: {
+        dashboardData: statsRes || {},
+        salesStats: hasBackendStats ? {
+          totalSales: Number(backendStats.totalSales || 0),
+          totalPurchases: Number(backendStats.totalPurchases || 0),
+          totalExpenses: Number(backendStats.totalExpenses || 0),
+          totalTransactions: Number(backendStats.totalTransactions || 0),
+          averageSaleValue: Number(backendStats.averageSaleValue || 0),
+          totalSalesDueAmount: Number(backendStats.totalSalesDueAmount || 0)
+        } : {
           totalSales,
           totalPurchases,
           totalExpenses,
           totalTransactions,
-          averageSaleValue,
+          averageSaleValue: Math.round(averageSaleValue * 100) / 100,
           totalSalesDueAmount
         },
         salesData: filteredSales,
@@ -105,9 +128,11 @@ function DashboardReportModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const totalSales = reportData?.salesStats?.totalSales || 0;
-  const totalPurchases = reportData?.salesStats?.totalPurchases || 0;
-  const totalExpenses = reportData?.salesStats?.totalExpenses || 0;
+  const totalSales = Number(reportData?.salesStats?.totalSales || 0);
+  const totalPurchases = Number(reportData?.salesStats?.totalPurchases || 0);
+  const totalExpenses = Number(reportData?.salesStats?.totalExpenses || 0);
+  const totalTransactions = Number(reportData?.salesStats?.totalTransactions || 0);
+  const averageSaleValue = Number(reportData?.salesStats?.averageSaleValue || 0);
   const grossProfit = totalSales - totalPurchases;
   const netProfit = grossProfit - totalExpenses;
 
@@ -206,7 +231,7 @@ function DashboardReportModal({ isOpen, onClose }) {
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Total Sales</p>
-                  <p className="text-lg font-bold break-words">{formatPakistaniCurrency(reportData.salesStats?.totalSales || 0)}</p>
+                  <p className="text-lg font-bold break-words">{formatPakistaniCurrency(totalSales)}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Low Stock Items</p>
@@ -215,7 +240,7 @@ function DashboardReportModal({ isOpen, onClose }) {
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Sales Due</p>
                   <p className="text-lg font-bold text-orange-600 break-words">
-                    {formatPakistaniCurrency(reportData.salesStats?.totalSalesDueAmount || 0)}
+                    {formatPakistaniCurrency(Number(reportData.salesStats?.totalSalesDueAmount || 0))}
                   </p>
                 </div>
               </div>
@@ -224,11 +249,11 @@ function DashboardReportModal({ isOpen, onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Total Transactions</p>
-                  <p className="text-lg font-semibold break-words">{reportData.salesStats?.totalTransactions || 0}</p>
+                  <p className="text-lg font-semibold break-words">{totalTransactions}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Average Sale Value</p>
-                  <p className="text-lg font-semibold break-words">{formatPakistaniCurrency(reportData.salesStats?.averageSaleValue || 0)}</p>
+                  <p className="text-lg font-semibold break-words">{formatPakistaniCurrency(averageSaleValue)}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border shadow-sm">
                   <p className="text-sm text-gray-600 mb-2">Profit Margin</p>

@@ -540,17 +540,22 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       const reportRawMaterialExpensesAmount = calculateRawMaterialExpensesForReport(reportRawMaterialExpenses);
       
+      const totalSalesAmount = Number(reportSales._sum.totalAmount || 0);
+      const totalPurchasesAmount = Number(reportPurchases._sum.totalAmount || 0);
+      const totalExpensesAmount = Number(reportExpenses._sum.amount || 0);
+      const totalReturnsAmount = Number(reportReturns._sum.totalAmount || 0);
+      
       reportPeriodData = {
-        totalRevenue: Number(reportSales._sum.totalAmount || 0),
-        totalExpenses: Number(reportExpenses._sum.amount || 0),
-        totalSales: Number(reportSales._sum.totalAmount || 0),
-        totalPurchases: Number(reportPurchases._sum.totalAmount || 0),
+        totalRevenue: totalSalesAmount,
+        totalExpenses: totalExpensesAmount,
+        totalSales: totalSalesAmount,
+        totalPurchases: totalPurchasesAmount,
         totalTransactions: reportTransactions,
         totalPurchaseTransactions: reportPurchaseTransactions,
-        totalReturns: Number(reportReturns._sum.totalAmount || 0),
+        totalReturns: totalReturnsAmount,
         totalProfit: reportProfit,
-        averageSaleValue: reportTransactions > 0 ? Number(reportSales._sum.totalAmount || 0) / reportTransactions : 0,
-        averagePurchaseValue: reportPurchaseTransactions > 0 ? Number(reportPurchases._sum.totalAmount || 0) / reportPurchaseTransactions : 0,
+        averageSaleValue: reportTransactions > 0 ? Math.round((totalSalesAmount / reportTransactions) * 100) / 100 : 0,
+        averagePurchaseValue: reportPurchaseTransactions > 0 ? Math.round((totalPurchasesAmount / reportPurchaseTransactions) * 100) / 100 : 0,
         totalSuppliers: await prisma.contact.count({
           where: {
             userId: req.userId,

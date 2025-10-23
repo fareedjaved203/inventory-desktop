@@ -154,14 +154,17 @@ function SalesStatementPDF({ salesData, dateRange, shopSettings }) {
   
   let runningTotal = 0;
   const salesWithRunningTotal = sortedSales.map(sale => {
-    runningTotal += sale.totalAmount;
+    const saleAmount = Number(sale.totalAmount || 0);
+    runningTotal += saleAmount;
     return {
       ...sale,
+      totalAmount: saleAmount,
       runningTotal
     };
   });
 
   const totalSales = runningTotal;
+  const averageSaleValue = salesWithRunningTotal.length > 0 ? totalSales / salesWithRunningTotal.length : 0;
 
   return (
     <Document>
@@ -227,7 +230,7 @@ function SalesStatementPDF({ salesData, dateRange, shopSettings }) {
           <View style={styles.summaryRow}>
             <Text style={{ fontSize: 11, fontWeight: "bold" }}>Average Sale Value:</Text>
             <Text style={{ fontSize: 11, fontWeight: "bold" }}>
-              {formatPakistaniCurrencyPDF(salesWithRunningTotal?.length > 0 ? totalSales / salesWithRunningTotal.length : 0)}
+              {formatPakistaniCurrencyPDF(Math.round(averageSaleValue * 100) / 100)}
             </Text>
           </View>
           <View style={styles.summaryRow}>

@@ -149,9 +149,9 @@ function ProfitLossStatementPDF({ reportData, dateRange, shopSettings }) {
     return "Complete Profit & Loss Statement";
   };
 
-  const totalSales = salesStats?.totalSales || 0;
-  const totalPurchases = salesStats?.totalPurchases || 0;
-  const totalExpenses = salesStats?.totalExpenses || 0;
+  const totalSales = Number(salesStats?.totalSales || 0);
+  const totalPurchases = Number(salesStats?.totalPurchases || 0);
+  const totalExpenses = Number(salesStats?.totalExpenses || 0);
   const grossProfit = totalSales - totalPurchases;
   const netProfit = grossProfit - totalExpenses;
 
