@@ -34,7 +34,9 @@ import { useLicense } from './hooks/useLicense';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,
+      networkMode: 'always',
+      retry: 3,
+      retryDelay: 1000,
       staleTime: 0,
       cacheTime: 0,
       refetchOnWindowFocus: false,
@@ -44,7 +46,9 @@ const queryClient = new QueryClient({
       useErrorBoundary: false
     },
     mutations: {
-      retry: false
+      networkMode: 'always',
+      retry: 3,
+      retryDelay: 1000
     }
   }
 });
