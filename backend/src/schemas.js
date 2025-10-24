@@ -77,7 +77,7 @@ export const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
   address: z.string().optional(),
   phoneNumber: z.string().min(1, "Phone number is required"),
-  contactType: z.enum(["customer", "supplier"]).optional().default("customer"),
+  contactType: z.enum(["customer", "supplier", "both"]).optional().default("customer"),
 });
 
 export const contactUpdateSchema = contactSchema.partial();
@@ -90,5 +90,5 @@ export const querySchema = z.object({
   startDate: z.string().regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "Start date must be in DD/MM/YYYY format").optional(),
   endDate: z.string().regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "End date must be in DD/MM/YYYY format").optional(),
   vendorId: z.string().optional(),
-  contactType: z.enum(["customer", "supplier"]).optional(),
+  contactType: z.enum(["customer", "supplier", "both"]).optional(),
 });

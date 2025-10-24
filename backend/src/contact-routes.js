@@ -10,7 +10,8 @@ export function setupContactRoutes(app, prisma) {
 
       const where = {
         userId: req.userId,
-        ...(contactType && { contactType }),
+        ...(contactType && contactType !== 'both' && { contactType }),
+        ...(contactType === 'both' && { contactType: 'both' }),
         ...(search ? {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },

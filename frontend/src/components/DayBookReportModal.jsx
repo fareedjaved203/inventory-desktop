@@ -9,6 +9,7 @@ const DEFAULT_COLUMNS = {
   loadingDate: { label: 'Loading Date', visible: true },
   arrivalDate: { label: 'Arrival Date', visible: true },
   carNumber: { label: 'Car Number', visible: false },
+  barcode: { label: 'Barcode', visible: false },
   productName: { label: 'Product Name', visible: true },
   category: { label: 'Category', visible: true },
   productDescription: { label: 'Description', visible: false },
@@ -17,6 +18,9 @@ const DEFAULT_COLUMNS = {
   transportCost: { label: 'Transport Cost', visible: false },
   supplierName: { label: 'Supplier', visible: true },
   totalPurchaseCost: { label: 'Total Cost', visible: true },
+  paidAmount: { label: 'Paid Amount', visible: true },
+  paymentDifference: { label: 'Payment Difference', visible: true },
+  remainingAmount: { label: 'Remaining Amount', visible: true },
   customerName: { label: 'Customer', visible: true },
   saleQuantity: { label: 'Sale Qty', visible: true },
   saleUnitPrice: { label: 'Unit Price', visible: true },
@@ -26,9 +30,7 @@ const DEFAULT_COLUMNS = {
 
 function DayBookReportModal({ isOpen, onClose }) {
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
@@ -163,13 +165,14 @@ function DayBookReportModal({ isOpen, onClose }) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dayBookData.data.map((item, index) => (
-                      <tr key={index} className={item.type === 'purchase' ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-green-100 border-l-4 border-green-500'}>
+                      <tr key={index} className={item.type === 'purchase' || item.type === 'purchase-edit' ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-green-100 border-l-4 border-green-500'}>
                         {visibleColumns.map(([key]) => (
                           <td key={key} className="px-3 py-2 text-sm text-gray-900 border-b">
-                            {key === 'date' && new Date(item.date).toLocaleDateString()}
+                            {key === 'date' && `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
                             {key === 'carNumber' && (item.carNumber || '-')}
+                            {key === 'barcode' && (item.barcode || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
                             {key === 'productDescription' && (item.productDescription || '-')}
@@ -178,13 +181,24 @@ function DayBookReportModal({ isOpen, onClose }) {
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}
                             {key === 'supplierName' && (item.supplierName || '-')}
                             {key === 'totalPurchaseCost' && (item.totalPurchaseCost ? formatPakistaniCurrency(item.totalPurchaseCost) : '-')}
+                            {key === 'paidAmount' && (item.paidAmount ? formatPakistaniCurrency(item.paidAmount) : '-')}
+                            {key === 'paymentDifference' && (
+                              <span className={item.paymentDifference > 0 ? 'text-green-600 font-medium' : item.paymentDifference < 0 ? 'text-red-600 font-medium' : ''}>
+                                {item.paymentDifference ? formatPakistaniCurrency(item.paymentDifference) : '-'}
+                              </span>
+                            )}
+                            {key === 'remainingAmount' && (
+                              <span className={item.remainingAmount > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
+                                {formatPakistaniCurrency(item.remainingAmount || 0)}
+                              </span>
+                            )}
                             {key === 'customerName' && (item.customerName || '-')}
                             {key === 'saleQuantity' && (item.saleQuantity || '-')}
                             {key === 'saleUnitPrice' && (item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-')}
                             {key === 'totalSalePrice' && (item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-')}
                             {key === 'profitLoss' && (
                               <span className={item.profitLoss > 0 ? 'text-green-600' : item.profitLoss < 0 ? 'text-red-600' : ''}>
-                                {item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-'}
+                                {formatPakistaniCurrency(item.profitLoss || 0)}
                               </span>
                             )}
                           </td>

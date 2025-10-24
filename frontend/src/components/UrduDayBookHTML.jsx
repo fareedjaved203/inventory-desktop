@@ -6,11 +6,15 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
   
   const columnsToShow = visibleColumns.length > 0 ? visibleColumns : [
     ['date', { label: 'تاریخ' }],
+    ['barcode', { label: 'بار کوڈ' }],
     ['productName', { label: 'پروڈکٹ کا نام' }],
     ['category', { label: 'قسم' }],
     ['purchaseQuantity', { label: 'خریداری مقدار' }],
     ['purchasePrice', { label: 'خریداری قیمت' }],
     ['supplierName', { label: 'سپلائر' }],
+    ['paidAmount', { label: 'اداشدہ رقم' }],
+    ['paymentDifference', { label: 'ادائیگی فرق' }],
+    ['remainingAmount', { label: 'باقی رقم' }],
     ['customerName', { label: 'کسٹمر' }],
     ['saleQuantity', { label: 'فروخت مقدار' }],
     ['saleUnitPrice', { label: 'یونٹ قیمت' }],
@@ -20,11 +24,15 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
 
   const URDU_COLUMN_LABELS = {
     date: 'تاریخ',
+    barcode: 'بار کوڈ',
     productName: 'پروڈکٹ کا نام',
     category: 'قسم',
     purchaseQuantity: 'خریداری مقدار',
     purchasePrice: 'خریداری قیمت',
     supplierName: 'سپلائر',
+    paidAmount: 'اداشدہ رقم',
+    paymentDifference: 'ادائیگی فرق',
+    remainingAmount: 'باقی رقم',
     customerName: 'کسٹمر',
     saleQuantity: 'فروخت مقدار',
     saleUnitPrice: 'یونٹ قیمت',
@@ -34,17 +42,21 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
 
   const getCellValue = (item, key) => {
     switch (key) {
-      case 'date': return new Date(item.date).toLocaleDateString();
+      case 'date': return `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+      case 'barcode': return item.barcode || '-';
       case 'productName': return item.productName || '-';
       case 'category': return item.category || '-';
       case 'purchaseQuantity': return item.purchaseQuantity || '-';
       case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
       case 'supplierName': return item.supplierName || '-';
+      case 'paidAmount': return item.paidAmount ? formatPakistaniCurrency(item.paidAmount) : '-';
+      case 'paymentDifference': return item.paymentDifference ? formatPakistaniCurrency(item.paymentDifference) : '-';
+      case 'remainingAmount': return item.remainingAmount ? formatPakistaniCurrency(item.remainingAmount) : '-';
       case 'customerName': return item.customerName || '-';
       case 'saleQuantity': return item.saleQuantity || '-';
       case 'saleUnitPrice': return item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-';
       case 'totalSalePrice': return item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-';
-      case 'profitLoss': return item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-';
+      case 'profitLoss': return formatPakistaniCurrency(item.profitLoss || 0);
       default: return '-';
     }
   };
@@ -99,7 +111,7 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
         <tbody>
           {data.map((item, index) => (
             <tr key={index} style={{
-              backgroundColor: item.type === 'purchase' ? '#e3f2fd' : '#e8f5e8'
+              backgroundColor: item.type === 'purchase' || item.type === 'purchase-edit' ? '#e3f2fd' : '#e8f5e8'
             }}>
               {columnsToShow.map(([key]) => (
                 <td key={key} style={{

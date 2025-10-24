@@ -225,6 +225,20 @@ function Contacts() {
     const loanResult = await API.getLoanTransactions({ contactId });
     const loanTransactions = loanResult.transactions || [];
     
+    // Get audit trail changes for sales and purchases related to this contact
+    const auditChanges = [];
+    try {
+      const auditResponse = await fetch(`/api/audit-trail/contact/${contactId}`);
+      if (auditResponse.ok) {
+        const auditData = await auditResponse.json();
+        if (Array.isArray(auditData)) {
+          auditChanges.push(...auditData);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch audit trail:', error);
+    }
+    
     // Filter by date range if provided
     let filteredSales = contactSales;
     let filteredPurchases = contactPurchases;
@@ -245,6 +259,19 @@ function Contacts() {
       filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) <= end);
     }
     
+    // Detect edited transactions by comparing createdAt vs updatedAt
+    const editedSales = filteredSales.filter(sale => {
+      const created = new Date(sale.createdAt);
+      const updated = new Date(sale.updatedAt);
+      return Math.abs(updated - created) > 1000; // More than 1 second difference indicates edit
+    });
+    
+    const editedPurchases = filteredPurchases.filter(purchase => {
+      const created = new Date(purchase.createdAt);
+      const updated = new Date(purchase.updatedAt);
+      return Math.abs(updated - created) > 1000;
+    });
+
     // Combine and sort transactions by date
     const allTransactions = [
       ...filteredSales.map(sale => {
@@ -260,7 +287,9 @@ function Contacts() {
           arrivalDate: sale.arrivalDate || '',
           debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
           credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
-          balance: 0 // Will be calculated
+          balance: 0, // Will be calculated
+          isEdited: editedSales.some(edited => edited.id === sale.id),
+          editedAt: editedSales.find(edited => edited.id === sale.id)?.updatedAt
         };
       }),
       ...filteredPurchases.map(purchase => {
@@ -276,7 +305,9 @@ function Contacts() {
           arrivalDate: purchase.arrivalDate || '',
           debit: Number(purchase.paidAmount) || 0, // Amount we paid to supplier
           credit: Number(purchase.totalAmount) || 0, // Total purchase amount (what we owe)
-          balance: 0 // Will be calculated
+          balance: 0, // Will be calculated
+          isEdited: editedPurchases.some(edited => edited.id === purchase.id),
+          editedAt: editedPurchases.find(edited => edited.id === purchase.id)?.updatedAt
         };
       }),
       ...filteredLoans.map(loan => {
@@ -298,6 +329,54 @@ function Contacts() {
           debit,
           credit,
           balance: 0 // Will be calculated
+        };
+      }),
+      // Add audit trail entries for price changes
+      ...auditChanges.map(change => {
+        const oldValue = parseFloat(change.oldValue) || 0;
+        const newValue = parseFloat(change.newValue) || 0;
+        const difference = newValue - oldValue;
+        
+        return {
+          date: change.changedAt,
+          type: 'audit',
+          description: `${change.tableName} #${change.recordId} - ${change.fieldName} changed from Rs.${oldValue.toFixed(2)} to Rs.${newValue.toFixed(2)} (${difference >= 0 ? '+' : ''}${difference.toFixed(2)})`,
+          debit: 0,
+          credit: 0,
+          balance: 0,
+          isEdit: true,
+          editedAt: change.changedAt,
+          auditChange: {
+            fieldName: change.fieldName,
+            oldValue: change.oldValue,
+            newValue: change.newValue,
+            difference: difference
+          }
+        };
+      }),
+      // Add edit entries for modified transactions (timestamp-based)
+      ...editedSales.map(sale => {
+        return {
+          date: sale.updatedAt,
+          type: 'edit',
+          description: `Sale #${sale.billNumber} - Edited on ${new Date(sale.updatedAt).toLocaleDateString()}`,
+          debit: 0,
+          credit: 0,
+          balance: 0,
+          isEdit: true,
+          editedAt: sale.updatedAt
+        };
+      }),
+      ...editedPurchases.map(purchase => {
+        return {
+          date: purchase.updatedAt,
+          type: 'edit',
+          description: `Purchase #${purchase.invoiceNumber || purchase.id} - Edited on ${new Date(purchase.updatedAt).toLocaleDateString()}`,
+          debit: 0,
+          credit: 0,
+          balance: 0,
+          isEdit: true,
+          editedAt: purchase.updatedAt
         };
       })
     ].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -606,6 +685,7 @@ function Contacts() {
             <option value="">All Contacts</option>
             <option value="customer">Customers</option>
             <option value="supplier">Suppliers</option>
+            <option value="both">Both</option>
           </select>
           <button
             onClick={() => {
@@ -660,9 +740,9 @@ function Contacts() {
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     (contact.contactType || 'customer') === 'customer' 
                       ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-green-100 text-green-800'
+                      : (contact.contactType === 'supplier' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800')
                   }`}>
-                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : 'Supplier'}
+                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : (contact.contactType === 'supplier' ? 'Supplier' : 'Both')}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
@@ -781,6 +861,7 @@ function Contacts() {
                   >
                     <option value="customer">Customer</option>
                     <option value="supplier">Supplier</option>
+                    <option value="both">Both (Supplier + Customer)</option>
                   </select>
                   {errors.contactType && (
                     <p className="text-red-500 text-sm mt-1">{errors.contactType.message}</p>

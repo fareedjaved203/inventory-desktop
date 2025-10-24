@@ -24,12 +24,14 @@ import { setupEmployeeRoutes } from './employee-routes.js';
 import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { setupSyncRoutes } from './sync-routes.js';
+import { setupAuditRoutes } from './audit-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 import createExpenseRoutes from './expense-routes.js';
 import backupRoutes from './backup-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
+import { runMigrations } from './migrations.js';
 
 dotenv.config();
 
@@ -86,7 +88,6 @@ async function initializeApp() {
   console.log('Final Database URL:', process.env.DATABASE_URL);
   console.log('Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
   
-  await checkAndMigrate();
 }
 
 // Start initialization with error handling
@@ -96,11 +97,6 @@ initializeApp().catch(error => {
 });
 
 const port = process.env.PORT || 3000;
-
-// PostgreSQL migrations are handled manually
-async function checkAndMigrate() {
-  console.log('Database setup complete - tables should be created manually');
-}
 
 // Test database connection
 async function ensureDatabaseExists() {
@@ -200,6 +196,7 @@ setupEmployeeRoutes(app, prisma);
 setupEmployeeStatsRoutes(app, prisma);
 setupSuperAdminRoutes(app, prisma);
 setupSyncRoutes(app, prisma);
+setupAuditRoutes(app, prisma);
 
 // License routes
 app.use('/api/license', licenseRoutes);

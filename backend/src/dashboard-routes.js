@@ -1,5 +1,6 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { safeQuery } from './db-utils.js';
+import { getAuditChangesForPeriod } from './audit-utils.js';
 
 export function setupDashboardRoutes(app, prisma) {
   // Get basic dashboard data
@@ -199,63 +200,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       }).catch(() => [])
     ]);
 
-    const [profitToday, profitLast7Days, profitLast30Days, profitLast365Days] = await Promise.all([
-      // Profit Today
-      prisma.sale.findMany({
-        where: {
-          userId: req.userId,
-          saleDate: {
-            gte: todayPakistan,
-            lt: tomorrowStart
-          }
-        },
-        include: {
-          items: true
-        }
-      }),
-      
-      // Profit Last 7 Days
-      prisma.sale.findMany({
-        where: {
-          userId: req.userId,
-          saleDate: {
-            gte: sevenDaysAgo,
-            lt: tomorrowStart
-          }
-        },
-        include: {
-          items: true
-        }
-      }),
-      
-      // Profit Last 30 Days
-      prisma.sale.findMany({
-        where: {
-          userId: req.userId,
-          saleDate: {
-            gte: thirtyDaysAgo,
-            lt: tomorrowStart
-          }
-        },
-        include: {
-          items: true
-        }
-      }),
-      
-      // Profit Last 365 Days
-      prisma.sale.findMany({
-        where: {
-          userId: req.userId,
-          saleDate: {
-            gte: yearAgo,
-            lt: tomorrowStart
-          }
-        },
-        include: {
-          items: true
-        }
-      })
-    ]);
+    // Profit calculations are now done inline with the new calculateProfit function
 
     const [expensesToday, expensesLast7Days, expensesLast30Days, expensesLast365Days] = await Promise.all([
       // Expenses Today - Fixed to use 'date' field instead of 'createdAt'
@@ -389,23 +334,28 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       })
     ]);
 
-    // Calculate profit for each period using stored purchase prices
-    const calculateProfit = (sales) => {
-      if (!Array.isArray(sales)) return 0;
-      return sales.reduce((totalProfit, sale) => {
-        const saleProfit = sale.items.reduce((itemProfit, item) => {
-          const sellPrice = Number(item.price);
-          const purchasePrice = Number(item.purchasePrice || 0);
-          const quantity = Number(item.quantity);
-          
-          // Only calculate profit if purchase price is set (> 0)
-          if (purchasePrice > 0) {
-            return itemProfit + ((sellPrice - purchasePrice) * quantity);
+    // Calculate profit as Total Sales - Total Purchases for the period
+    const calculateProfit = async (startDate, endDate) => {
+      const [totalSales, totalPurchases] = await Promise.all([
+        prisma.sale.aggregate({
+          _sum: { totalAmount: true },
+          where: {
+            userId: req.userId,
+            saleDate: { gte: startDate, lt: endDate }
           }
-          return itemProfit;
-        }, 0);
-        return totalProfit + saleProfit;
-      }, 0);
+        }),
+        prisma.bulkPurchase.aggregate({
+          _sum: { totalAmount: true },
+          where: {
+            userId: req.userId,
+            purchaseDate: { gte: startDate, lt: endDate }
+          }
+        })
+      ]);
+      
+      const salesAmount = Number(totalSales._sum.totalAmount || 0);
+      const purchasesAmount = Number(totalPurchases._sum.totalAmount || 0);
+      return salesAmount - purchasesAmount;
     };
 
     // Calculate net profit by subtracting expenses from gross profit
@@ -425,7 +375,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         userId: req.userId
       });
       
-      const [reportSales, reportPurchases, reportExpenses, reportTransactions, reportPurchaseTransactions, reportReturns, reportProfitSales, reportRawMaterialExpenses] = await Promise.all([
+      const [reportSales, reportPurchases, reportExpenses, reportTransactions, reportPurchaseTransactions, reportReturns, reportRawMaterialExpenses] = await Promise.all([
         prisma.sale.aggregate({
           _sum: { totalAmount: true },
           where: {
@@ -484,16 +434,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             }
           }
         }),
-        prisma.sale.findMany({
-          where: {
-            userId: req.userId,
-            saleDate: { 
-              gte: reportStartDate, 
-              lt: reportEndDate 
-            }
-          },
-          include: { items: true }
-        }),
+
         prisma.bulkPurchase.findMany({
           where: {
             userId: req.userId,
@@ -521,12 +462,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         reportPurchases: reportPurchases._sum.totalAmount,
         reportTransactions: reportTransactions,
         reportPurchaseTransactions: reportPurchaseTransactions,
-        reportReturns: reportReturns._sum.totalAmount,
-        reportProfitSales: reportProfitSales.length
+        reportReturns: reportReturns._sum.totalAmount
       });
       
       // Calculate profit for report period
-      const reportProfit = calculateProfit(reportProfitSales);
+      const reportProfit = await calculateProfit(reportStartDate, reportEndDate);
       
       // Calculate raw material expenses from bulk purchases
       const calculateRawMaterialExpensesForReport = (purchases) => {
@@ -633,10 +573,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           return balance < 0 ? Math.abs(balance) : 0;
         })
         .reduce((sum, credit) => sum + credit, 0),
-      profitToday: calculateProfit(profitToday),
-      profitLast7Days: calculateProfit(profitLast7Days),
-      profitLast30Days: calculateProfit(profitLast30Days),
-      profitLast365Days: calculateProfit(profitLast365Days),
+      profitToday: await calculateProfit(todayPakistan, tomorrowStart),
+      profitLast7Days: await calculateProfit(sevenDaysAgo, tomorrowStart),
+      profitLast30Days: await calculateProfit(thirtyDaysAgo, tomorrowStart),
+      profitLast365Days: await calculateProfit(yearAgo, tomorrowStart),
       expensesToday: Number(expensesToday?._sum?.amount || 0),
       expensesLast7Days: Number(expensesLast7Days?._sum?.amount || 0),
       expensesLast30Days: Number(expensesLast30Days?._sum?.amount || 0),
@@ -704,7 +644,37 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         })
       ]);
       
+      // Detect edited transactions
+      const editedSales = sales.filter(sale => {
+        const created = new Date(sale.createdAt);
+        const updated = new Date(sale.updatedAt);
+        return Math.abs(updated - created) > 1000;
+      });
+      
+      const editedPurchases = purchases.filter(purchase => {
+        const created = new Date(purchase.createdAt);
+        const updated = new Date(purchase.updatedAt);
+        return Math.abs(updated - created) > 1000;
+      });
+      
       const dayBookEntries = [];
+      
+      // Get original paid amounts for purchases that have been edited
+      const purchaseAudits = await Promise.all(
+        purchases.map(async (purchase) => {
+          const firstAudit = await prisma.auditTrail.findFirst({
+            where: {
+              tableName: 'BulkPurchase',
+              recordId: purchase.id,
+              fieldName: 'paidAmount'
+            },
+            orderBy: { changedAt: 'asc' }
+          });
+          return { purchaseId: purchase.id, originalPaidAmount: firstAudit ? parseFloat(firstAudit.oldValue) : null };
+        })
+      );
+      
+      const purchaseAuditMap = new Map(purchaseAudits.map(audit => [audit.purchaseId, audit.originalPaidAmount]));
       
       // Process purchases
       purchases.forEach(purchase => {
@@ -715,9 +685,13 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             ? Number(item.purchasePrice) 
             : Number(item.quantity) * Number(item.purchasePrice);
           
+          const originalPaidAmount = purchaseAuditMap.get(purchase.id);
+          const displayPaidAmount = originalPaidAmount !== null ? originalPaidAmount : Number(purchase.paidAmount || 0);
+          
           dayBookEntries.push({
             date: purchase.purchaseDate,
             type: 'purchase',
+            barcode: item.product.sku || '-',
             productDescription: item.product.description || '',
             productName: item.product.name,
             category: item.product.category?.name || '',
@@ -729,6 +703,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             arrivalDate: purchase.arrivalDate || null,
             supplierName: purchase.contact?.name || '',
             totalPurchaseCost: totalPurchaseCost,
+            paidAmount: displayPaidAmount,
+            paymentDifference: 0,
+            remainingAmount: Math.max(0, Number(purchase.totalAmount || 0) - displayPaidAmount),
             customerName: '',
             saleQuantity: 0,
             saleUnitPrice: 0,
@@ -738,6 +715,23 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         });
       });
       
+      // Get original paid amounts for sales that have been edited
+      const saleAudits = await Promise.all(
+        sales.map(async (sale) => {
+          const firstAudit = await prisma.auditTrail.findFirst({
+            where: {
+              tableName: 'Sale',
+              recordId: sale.id,
+              fieldName: 'paidAmount'
+            },
+            orderBy: { changedAt: 'asc' }
+          });
+          return { saleId: sale.id, originalPaidAmount: firstAudit ? parseFloat(firstAudit.oldValue) : null };
+        })
+      );
+      
+      const saleAuditMap = new Map(saleAudits.map(audit => [audit.saleId, audit.originalPaidAmount]));
+      
       // Process sales
       sales.forEach(sale => {
         sale.items.forEach(item => {
@@ -746,9 +740,13 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           const quantity = Number(item.quantity);
           const profit = purchasePrice > 0 ? (salePrice - purchasePrice) * quantity : 0;
           
+          const originalPaidAmount = saleAuditMap.get(sale.id);
+          const displayPaidAmount = originalPaidAmount !== null ? originalPaidAmount : Number(sale.paidAmount || 0);
+          
           dayBookEntries.push({
             date: sale.saleDate,
             type: 'sale',
+            barcode: item.product.sku || '-',
             productDescription: item.product.description || '',
             productName: item.product.name,
             category: item.product.category?.name || '',
@@ -760,6 +758,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             arrivalDate: sale.arrivalDate || null,
             supplierName: '',
             totalPurchaseCost: 0,
+            paidAmount: displayPaidAmount,
+            paymentDifference: 0,
+            remainingAmount: Math.max(0, Number(sale.totalAmount || 0) - displayPaidAmount),
             customerName: sale.contact?.name || 'Walk-in Customer',
             saleQuantity: quantity,
             saleUnitPrice: salePrice,
@@ -769,14 +770,108 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         });
       });
       
+      // Get audit trail changes for the period - only for records that were updated
+      const auditChanges = await getAuditChangesForPeriod(prisma, reportStartDate, reportEndDate);
+      
+      // Process audit trail changes - only show paid amount changes for updated records
+      for (const change of auditChanges) {
+        const isPaidAmountChange = change.fieldName === 'paidAmount';
+        if (isPaidAmountChange) {
+          // Find the original sale/purchase to get quantities
+          let originalRecord = null;
+          if (change.tableName === 'Sale') {
+            originalRecord = sales.find(s => s.id === change.recordId);
+          } else if (change.tableName === 'BulkPurchase') {
+            originalRecord = purchases.find(p => p.id === change.recordId);
+          }
+          
+          // Only show if the record was actually updated (not just created)
+          if (originalRecord) {
+            const created = new Date(originalRecord.createdAt);
+            const updated = new Date(originalRecord.updatedAt);
+            const wasUpdated = Math.abs(updated - created) > 1000; // More than 1 second difference
+            
+            if (wasUpdated) {
+              const oldValue = parseFloat(change.oldValue) || 0;
+              const newValue = parseFloat(change.newValue) || 0;
+              const difference = newValue - oldValue;
+              
+              // Get quantities and product names from original record
+              const totalQuantity = originalRecord.items?.reduce((sum, item) => sum + Number(item.quantity), 0) || 0;
+              const productNames = originalRecord.items?.map(item => item.product?.name).filter(Boolean).join(', ') || 'Unknown Product';
+              const barcodes = originalRecord.items?.map(item => item.product?.sku).filter(Boolean).join(', ') || '-';
+              
+              // Calculate profit/loss for sales
+              let profitLoss = 0;
+              if (change.tableName === 'Sale') {
+                profitLoss = originalRecord.items?.reduce((sum, item) => {
+                  const salePrice = Number(item.price || 0);
+                  const purchasePrice = Number(item.purchasePrice || 0);
+                  const quantity = Number(item.quantity || 0);
+                  return sum + (purchasePrice > 0 ? (salePrice - purchasePrice) * quantity : 0);
+                }, 0) || 0;
+              }
+              
+              // Calculate average prices for display
+              const avgPurchasePrice = originalRecord.items?.length > 0 ? 
+                originalRecord.items.reduce((sum, item) => {
+                  if (item.isTotalCostItem) {
+                    // For weighted items, divide total cost by quantity to get per unit price
+                    return sum + (Number(item.purchasePrice || 0) / Number(item.quantity || 1));
+                  }
+                  return sum + Number(item.purchasePrice || 0);
+                }, 0) / originalRecord.items.length : 0;
+              
+              const avgSalePrice = originalRecord.items?.length > 0 ? 
+                originalRecord.items.reduce((sum, item) => sum + Number(item.price || 0), 0) / originalRecord.items.length : 0;
+              
+              dayBookEntries.push({
+                date: change.changedAt,
+                type: change.tableName === 'BulkPurchase' ? 'purchase-edit' : 'sale-edit',
+                barcode: barcodes,
+                productDescription: `Payment Update: ${change.fieldName} updated`,
+                productName: productNames,
+                category: originalRecord.items?.[0]?.product?.category?.name || '',
+                purchaseQuantity: change.tableName === 'BulkPurchase' ? totalQuantity : 0,
+                purchasePrice: change.tableName === 'BulkPurchase' ? avgPurchasePrice : 0,
+                transportCost: Number(originalRecord.transportCost || 0),
+                carNumber: originalRecord.carNumber || '',
+                loadingDate: originalRecord.loadingDate || null,
+                arrivalDate: originalRecord.arrivalDate || null,
+                supplierName: change.tableName === 'BulkPurchase' ? (originalRecord.contact?.name || 'Unknown Supplier') : '',
+                totalPurchaseCost: change.tableName === 'BulkPurchase' ? Number(originalRecord.totalAmount || 0) : 0,
+                paidAmount: newValue,
+                paymentDifference: difference,
+                remainingAmount: Math.max(0, Number(originalRecord.totalAmount || 0) - newValue),
+                customerName: change.tableName === 'Sale' ? (originalRecord.contact?.name || 'Walk-in Customer') : '',
+                saleQuantity: change.tableName === 'Sale' ? totalQuantity : 0,
+                saleUnitPrice: change.tableName === 'Sale' ? avgSalePrice : 0,
+                totalSalePrice: change.tableName === 'Sale' ? Number(originalRecord.totalAmount || 0) : 0,
+                profitLoss,
+                isEdit: true,
+                editedAt: change.changedAt,
+                auditChange: {
+                  fieldName: change.fieldName,
+                  oldValue: change.oldValue,
+                  newValue: change.newValue,
+                  difference: difference
+                }
+              });
+            }
+          }
+        }
+      }
+      
+
+      
       // Sort by date
       dayBookEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
       
-      // Calculate summary totals
+      // Calculate summary totals - exclude audit entries
       const summary = {
-        totalPurchaseAmount: dayBookEntries.reduce((sum, item) => sum + item.totalPurchaseCost, 0),
-        totalSaleAmount: dayBookEntries.reduce((sum, item) => sum + item.totalSalePrice, 0),
-        totalProfit: dayBookEntries.reduce((sum, item) => sum + item.profitLoss, 0),
+        totalPurchaseAmount: dayBookEntries.filter(item => !item.type.includes('edit')).reduce((sum, item) => sum + item.totalPurchaseCost, 0),
+        totalSaleAmount: dayBookEntries.filter(item => !item.type.includes('edit')).reduce((sum, item) => sum + item.totalSalePrice, 0),
+        totalProfit: dayBookEntries.filter(item => !item.type.includes('edit')).reduce((sum, item) => sum + item.profitLoss, 0),
         totalEntries: dayBookEntries.length
       };
       

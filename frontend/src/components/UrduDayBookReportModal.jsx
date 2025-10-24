@@ -8,6 +8,7 @@ const URDU_COLUMNS = {
   loadingDate: { label: 'لوڈنگ تاریخ', visible: true },
   arrivalDate: { label: 'آمد تاریخ', visible: true },
   carNumber: { label: 'گاڑی نمبر', visible: false },
+  barcode: { label: 'بار کوڈ', visible: false },
   productName: { label: 'پروڈکٹ کا نام', visible: true },
   category: { label: 'قسم', visible: true },
   productDescription: { label: 'تفصیل', visible: false },
@@ -16,6 +17,9 @@ const URDU_COLUMNS = {
   transportCost: { label: 'ٹرانسپورٹ لاگت', visible: false },
   supplierName: { label: 'سپلائر', visible: true },
   totalPurchaseCost: { label: 'کل لاگت', visible: true },
+  paidAmount: { label: 'ادا شدہ رقم', visible: true },
+  paymentDifference: { label: 'ادائیگی فرق', visible: true },
+  remainingAmount: { label: 'باقی رقم', visible: true },
   customerName: { label: 'کسٹمر', visible: true },
   saleQuantity: { label: 'فروخت مقدار', visible: true },
   saleUnitPrice: { label: 'یونٹ قیمت', visible: true },
@@ -25,9 +29,7 @@ const URDU_COLUMNS = {
 
 function UrduDayBookReportModal({ isOpen, onClose }) {
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
@@ -190,13 +192,14 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dayBookData.data.map((item, index) => (
-                      <tr key={index} className={`hover:bg-gray-50 transition-colors ${item.type === 'purchase' ? 'bg-blue-50 border-r-4 border-blue-400' : 'bg-green-50 border-r-4 border-green-400'}`}>
+                      <tr key={index} className={`hover:bg-gray-50 transition-colors ${item.type === 'purchase' || item.type === 'purchase-edit' ? 'bg-blue-50 border-r-4 border-blue-400' : 'bg-green-50 border-r-4 border-green-400'}`}>
                         {visibleColumns.map(([key]) => (
                           <td key={key} className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200 text-right font-urdu">
-                            {key === 'date' && new Date(item.date).toLocaleDateString()}
+                            {key === 'date' && `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
                             {key === 'carNumber' && (item.carNumber || '-')}
+                            {key === 'barcode' && (item.barcode || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
                             {key === 'productDescription' && (item.productDescription || '-')}
@@ -205,13 +208,24 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}
                             {key === 'supplierName' && (item.supplierName || '-')}
                             {key === 'totalPurchaseCost' && (item.totalPurchaseCost ? formatPakistaniCurrency(item.totalPurchaseCost) : '-')}
+                            {key === 'paidAmount' && (item.paidAmount ? formatPakistaniCurrency(item.paidAmount) : '-')}
+                            {key === 'paymentDifference' && (
+                              <span className={item.paymentDifference > 0 ? 'text-green-600 font-medium' : item.paymentDifference < 0 ? 'text-red-600 font-medium' : ''}>
+                                {item.paymentDifference ? formatPakistaniCurrency(item.paymentDifference) : '-'}
+                              </span>
+                            )}
+                            {key === 'remainingAmount' && (
+                              <span className={item.remainingAmount > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
+                                {formatPakistaniCurrency(item.remainingAmount || 0)}
+                              </span>
+                            )}
                             {key === 'customerName' && (item.customerName || '-')}
                             {key === 'saleQuantity' && (item.saleQuantity || '-')}
                             {key === 'saleUnitPrice' && (item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-')}
                             {key === 'totalSalePrice' && (item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-')}
                             {key === 'profitLoss' && (
                               <span className={item.profitLoss > 0 ? 'text-green-600' : item.profitLoss < 0 ? 'text-red-600' : ''}>
-                                {item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-'}
+                                {formatPakistaniCurrency(item.profitLoss || 0)}
                               </span>
                             )}
                           </td>

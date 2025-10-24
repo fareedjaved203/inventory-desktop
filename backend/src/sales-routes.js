@@ -3,25 +3,22 @@ import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { saleSchema, querySchema } from './schemas.js';
 import { withTransaction, safeQuery } from './db-utils.js';
+import { logAuditChange } from './audit-utils.js';
 
 // Helper function to get current Pakistan time
 function getCurrentPakistanTime() {
-  const now = new Date();
-  const pakistanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Karachi"}));
-  return pakistanTime;
+  return new Date();
 }
 
 // Helper function to create date from YYYY-MM-DD string in Pakistan timezone
 function createPakistanDate(dateString) {
-  if (!dateString) return getCurrentPakistanTime();
+  if (!dateString) return new Date();
   
   const [year, month, day] = dateString.split('-').map(Number);
-  const pakistanTime = new Date();
-  const currentPakTime = new Date(pakistanTime.toLocaleString("en-US", {timeZone: "Asia/Karachi"}));
+  const now = new Date();
   
-  // Create date in Pakistan timezone with current time
-  const pakistanDate = new Date(year, month - 1, day, currentPakTime.getHours(), currentPakTime.getMinutes(), currentPakTime.getSeconds());
-  return pakistanDate;
+  // Create date with current time
+  return new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
 }
 
 function parseDateDDMMYYYY(dateString) {
@@ -80,7 +77,8 @@ export function setupSalesRoutes(app, prisma) {
             }
           }
 
-          const saleDate = req.body.saleDate ? createPakistanDate(req.body.saleDate) : getCurrentPakistanTime();
+          const saleDate = req.body.saleDate ? createPakistanDate(req.body.saleDate) : new Date();
+          console.log('Sale date being saved:', saleDate);
           // Get product details including purchase prices
           const productDetails = await Promise.all(
             req.body.items.map(item => 
@@ -647,6 +645,11 @@ export function setupSalesRoutes(app, prisma) {
 
           if (!existingSale) {
             throw new Error('Sale not found');
+          }
+
+          // Log audit changes only for paidAmount
+          if (existingSale.paidAmount !== req.body.paidAmount) {
+            await logAuditChange(prisma, 'Sale', req.params.id, 'paidAmount', existingSale.paidAmount, req.body.paidAmount);
           }
 
           for (const item of existingSale.items) {

@@ -66,6 +66,7 @@ model Sale {
   employee            Employee?    @relation(fields: [employeeId], references: [id])
   items               SaleItem[]
   returns             SaleReturn[]
+  auditTrail          AuditTrail[]
 
   @@index([userId])
   @@index([userId, saleDate])
@@ -125,6 +126,7 @@ model BulkPurchase {
   discount      Decimal            @default(0)
   contact       Contact            @relation(fields: [contactId], references: [id])
   items         BulkPurchaseItem[]
+  auditTrail    AuditTrail[]
 
   @@index([userId])
   @@index([contactId])
@@ -372,5 +374,25 @@ model Category {
   @@unique([userId, name])
   @@index([userId])
   @@index([userId, name])
+}
+
+model AuditTrail {
+  id         String   @id @default(uuid())
+  tableName  String
+  recordId   String
+  fieldName  String
+  oldValue   String?
+  newValue   String?
+  changedAt  DateTime @default(now())
+  changedBy  String   @default("system")
+  saleId     String?
+  purchaseId String?
+  sale       Sale?    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  purchase   BulkPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([tableName, recordId])
+  @@index([changedAt])
+  @@index([saleId])
+  @@index([purchaseId])
 }
 
