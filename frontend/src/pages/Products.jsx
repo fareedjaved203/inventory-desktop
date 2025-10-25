@@ -536,7 +536,7 @@ function Products() {
                   wholesalePrice: '',
                   purchasePrice: '',
                   sku: '',
-                  quantity: '',
+                  quantity: '0',
                   unit: 'pcs',
                   unitValue: '',
                   lowStockThreshold: '10',

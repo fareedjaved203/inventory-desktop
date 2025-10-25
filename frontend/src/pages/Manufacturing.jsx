@@ -7,7 +7,7 @@ import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
-import { FaSearch, FaPlus, FaCog, FaIndustry, FaTrash, FaEdit } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaCog, FaIndustry, FaTrash, FaEdit, FaTh, FaList } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -30,6 +30,7 @@ function Manufacturing() {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [maxProduction, setMaxProduction] = useState(0);
   const [productionCost, setProductionCost] = useState(0);
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'tiles'
 
   const {
     register,
@@ -308,7 +309,7 @@ function Manufacturing() {
   };
 
   const addIngredient = () => {
-    setIngredients([...ingredients, { rawMaterialId: '', quantity: '', unit: 'pcs' }]);
+    setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }, ...ingredients]);
   };
 
   const removeIngredient = (index) => {
@@ -318,6 +319,15 @@ function Manufacturing() {
   const updateIngredient = (index, field, value) => {
     const updated = [...ingredients];
     updated[index][field] = value;
+    
+    // Auto-detect unit when raw material is selected
+    if (field === 'rawMaterialId' && value) {
+      const selectedMaterial = rawMaterialsData?.data?.items?.find(m => m.id === value);
+      if (selectedMaterial) {
+        updated[index]['unit'] = selectedMaterial.unit;
+      }
+    }
+    
     setIngredients(updated);
   };
 
@@ -342,7 +352,7 @@ function Manufacturing() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800 flex items-center gap-2">
           <FaIndustry />
-          Manufacturing
+          Recipe
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative">
@@ -380,77 +390,141 @@ function Manufacturing() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 mb-6">
-        <button
-          onClick={() => setActiveTab('recipes')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeTab === 'recipes'
-              ? 'bg-primary-100 text-primary-800 border border-primary-200'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <FaCog className="inline mr-2" />
-          Recipes
-        </button>
-        <button
-          onClick={() => setActiveTab('production')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeTab === 'production'
-              ? 'bg-primary-100 text-primary-800 border border-primary-200'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <FaIndustry className="inline mr-2" />
-          Production History
-        </button>
+      {/* Tabs and View Toggle */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex space-x-1">
+          <button
+            onClick={() => setActiveTab('recipes')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === 'recipes'
+                ? 'bg-primary-100 text-primary-800 border border-primary-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <FaCog className="inline mr-2" />
+            Recipes
+          </button>
+          <button
+            onClick={() => setActiveTab('production')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === 'production'
+                ? 'bg-primary-100 text-primary-800 border border-primary-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <FaIndustry className="inline mr-2" />
+            Production History
+          </button>
+        </div>
+        
+        {/* View Mode Toggle - Only show for recipes tab */}
+        {activeTab === 'recipes' && (
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white text-primary-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <FaList className="inline mr-1" />
+              Table
+            </button>
+            <button
+              onClick={() => setViewMode('tiles')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'tiles'
+                  ? 'bg-white text-primary-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <FaTh className="inline mr-1" />
+              Tiles
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-lg shadow-md overflow-x-auto border border-gray-100">
-        {activeTab === 'recipes' ? (
-          <table className="min-w-full">
-            <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Recipe Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Ingredients
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {data?.data?.items?.map((recipe) => (
-                <tr key={recipe.id} className="hover:bg-primary-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
-                    {recipe.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                    {recipe.product?.name}
-                  </td>
-                  <td className="px-6 py-4 text-gray-700">
-                    <div className="text-sm">
-                      {recipe.ingredients?.map((ing, idx) => (
-                        <div key={idx}>
-                          {ing.quantity} {ing.unit} {ing.rawMaterial?.name}
-                        </div>
-                      ))}
+      {activeTab === 'recipes' ? (
+        viewMode === 'tiles' ? (
+          /* Tiles View */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {data?.data?.items?.map((recipe) => {
+              const totalIngredients = recipe.ingredients?.length || 0;
+              const estimatedCost = recipe.ingredients?.reduce((total, ing) => {
+                const rawMaterial = rawMaterialsData?.data?.items?.find(rm => rm.id === ing.rawMaterialId);
+                const cost = rawMaterial?.perUnitPurchasePrice && ing.quantity 
+                  ? parseFloat(rawMaterial.perUnitPurchasePrice) * parseFloat(ing.quantity)
+                  : 0;
+                return total + cost;
+              }, 0) || 0;
+              
+              return (
+                <div key={recipe.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group hover:scale-105">
+                  {/* Header */}
+                  <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-4 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <h3 className="font-bold text-lg mb-1 truncate">{recipe.name}</h3>
+                      <p className="text-primary-100 text-sm truncate">{recipe.product?.name}</p>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-4">
+                    {/* Stats */}
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary-600">{totalIngredients}</div>
+                        <div className="text-xs text-gray-500">Ingredients</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600">
+                          {estimatedCost > 0 ? formatPakistaniCurrency(estimatedCost) : '-'}
+                        </div>
+                        <div className="text-xs text-gray-500">Est. Cost</div>
+                      </div>
+                    </div>
+                    
+                    {/* Ingredients Preview */}
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Ingredients:</h4>
+                      <div className="space-y-1 h-28 overflow-y-auto">
+                        {recipe.ingredients?.slice(0, 4).map((ing, idx) => (
+                          <div key={idx} className="flex justify-between text-xs bg-gray-50 rounded px-2 py-1">
+                            <span className="text-gray-600 truncate flex-1 mr-2">{ing.rawMaterial?.name}</span>
+                            <span className="text-primary-600 font-medium whitespace-nowrap">
+                              {ing.quantity} {ing.unit}
+                            </span>
+                          </div>
+                        ))}
+                        {recipe.ingredients?.length > 4 && (
+                          <div className="text-xs text-gray-500 text-center py-1">
+                            +{recipe.ingredients.length - 4} more...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Description */}
+                    {recipe.description && (
+                      <div className="mb-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">{recipe.description}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="px-4 pb-4">
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditRecipe(recipe)}
-                        className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1"
+                        className="flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                       >
-                        <FaEdit className="w-4 h-4" />
+                        <FaEdit className="w-3 h-3" />
                         Edit
                       </button>
                       <button
@@ -458,18 +532,94 @@ function Manufacturing() {
                           setSelectedItem(recipe);
                           setShowDeleteModal(true);
                         }}
-                        className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
+                        className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                       >
-                        <FaTrash className="w-4 h-4" />
+                        <FaTrash className="w-3 h-3" />
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Empty State for Tiles */}
+            {(!data?.data?.items || data.data.items.length === 0) && (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+                <FaCog className="w-16 h-16 mb-4 text-gray-300" />
+                <h3 className="text-lg font-medium mb-2">No Recipes Found</h3>
+                <p className="text-sm text-center">Create your first recipe to get started with manufacturing.</p>
+              </div>
+            )}
+          </div>
         ) : (
+          /* Table View */
+          <div className="bg-white rounded-lg shadow-md overflow-x-auto border border-gray-100">
+            <table className="min-w-full">
+              <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                    Recipe Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                    Product
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                    Ingredients
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data?.data?.items?.map((recipe) => (
+                  <tr key={recipe.id} className="hover:bg-primary-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
+                      {recipe.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                      {recipe.product?.name}
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">
+                      <div className="text-sm">
+                        {recipe.ingredients?.map((ing, idx) => (
+                          <div key={idx}>
+                            {ing.quantity} {ing.unit} {ing.rawMaterial?.name}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEditRecipe(recipe)}
+                          className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedItem(recipe);
+                            setShowDeleteModal(true);
+                          }}
+                          className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : (
+        /* Production History Table */
+        <div className="bg-white rounded-lg shadow-md overflow-x-auto border border-gray-100">
           <table className="min-w-full">
             <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
               <tr>
@@ -533,8 +683,8 @@ function Manufacturing() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Recipe Modal */}
       {showRecipeModal && (
@@ -581,28 +731,10 @@ function Manufacturing() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  {...register('description')}
-                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  rows="3"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
+                <div className="mb-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Ingredients (per 1 unit of final product)
                   </label>
-                  <button
-                    type="button"
-                    onClick={addIngredient}
-                    className="text-primary-600 hover:text-primary-800 text-sm"
-                  >
-                    + Add Ingredient
-                  </button>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
                   Specify how much of each raw material is needed to make 1 unit of the final product. Set per unit costs in Products section for cost estimation.
@@ -619,12 +751,13 @@ function Manufacturing() {
                         <select
                           value={ingredient.rawMaterialId}
                           onChange={(e) => updateIngredient(index, 'rawMaterialId', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 max-h-40 overflow-y-auto"
+                          style={{ maxHeight: '10rem' }}
                         >
                           <option value="">Select Raw Material</option>
                           {rawMaterialsData?.data?.items?.map((material) => (
                             <option key={material.id} value={material.id}>
-                              {material.name} {material.perUnitPurchasePrice ? `(${formatPakistaniCurrency(material.perUnitPurchasePrice)}/unit)` : '(No cost set)'}
+                              {material.name} {material.perUnitPurchasePrice ? `(${formatPakistaniCurrency(material.perUnitPurchasePrice)}/${material.unit})` : '(No cost set)'}
                             </option>
                           ))}
                         </select>
@@ -637,17 +770,13 @@ function Manufacturing() {
                           className="w-32 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                           title="Amount needed per 1 unit of final product"
                         />
-                        <select
+                        <input
+                          type="text"
                           value={ingredient.unit}
-                          onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                          className="w-20 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="pcs">pcs</option>
-                          <option value="kg">kg</option>
-                          <option value="gram">g</option>
-                          <option value="ltr">ltr</option>
-                          <option value="ml">ml</option>
-                        </select>
+                          readOnly
+                          className="w-20 px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                          title="Unit is auto-detected from selected raw material"
+                        />
                         {ingredients.length > 1 && (
                           <button
                             type="button"
@@ -669,6 +798,16 @@ function Manufacturing() {
                     </div>
                   );
                 })}
+                
+                {/* Add Ingredient Button */}
+                <button
+                  type="button"
+                  onClick={addIngredient}
+                  className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+                >
+                  <FaPlus className="w-4 h-4" />
+                  Add New Ingredient
+                </button>
                 
                 {/* Recipe Cost Summary */}
                 {ingredients.some(ing => ing.rawMaterialId && ing.quantity) && (
@@ -710,6 +849,17 @@ function Manufacturing() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  {...register('description')}
+                  className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows="3"
+                />
               </div>
 
               </form>

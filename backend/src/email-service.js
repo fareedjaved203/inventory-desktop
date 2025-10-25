@@ -238,7 +238,7 @@ class EmailService {
     try {
       const info = await this.transporter.sendMail({
         from: process.env.EMAIL_FROM || 'fareedjaved203@gmail.com',
-        to: 'fareedjaved203@gmail.com',
+        to: userEmail || 'fareedjaved203@gmail.com',
         subject: 'New User Signup - Hisab Ghar',
         text: `A new user has signed up: ${userEmail}`,
         html: `

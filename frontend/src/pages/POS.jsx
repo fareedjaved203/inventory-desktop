@@ -23,6 +23,7 @@ function POS() {
   const [showCart, setShowCart] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [barcodeLoading, setBarcodeLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -77,15 +78,47 @@ function POS() {
     }
   );
 
-  // Fetch categories with products for POS
-  const { data: categoriesWithProducts = [], isLoading: categoriesLoading } = useQuery(
-    ['pos-categories'],
+  // Fetch all categories
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery(
+    ['categories'],
     async () => {
-      const response = await API.get('/categories/with-products');
-      return response.data || [];
+      const response = await API.get('/categories');
+      const cats = Array.isArray(response.data) ? response.data : (response.data?.items || []);
+      // Add "Other Products" category for uncategorized products
+      const otherCategory = {
+        id: 'other',
+        name: 'Other Products',
+        color: '#6B7280',
+        icon: '📦'
+      };
+      return [...cats, otherCategory];
+    }
+  );
+
+  // Auto-select first category when categories load
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategory) {
+      setSelectedCategory(categories[0]);
+    }
+  }, [categories, selectedCategory]);
+
+  // Fetch products for selected category
+  const { data: categoryProducts = [], isLoading: categoryProductsLoading } = useQuery(
+    ['category-products', selectedCategory?.id],
+    async () => {
+      if (!selectedCategory?.id) return [];
+      if (selectedCategory.id === 'other') {
+        // Fetch products without category
+        const response = await API.getProducts({ limit: 100 });
+        const allProducts = response.items || [];
+        return allProducts.filter(product => !product.categoryId);
+      }
+      const response = await API.getProducts({ limit: 100 });
+      const allProducts = response.items || [];
+      return allProducts.filter(product => product.categoryId === selectedCategory.id);
     },
     {
-      enabled: !debouncedSearchTerm // Only fetch when not searching
+      enabled: !!selectedCategory?.id
     }
   );
 
@@ -444,7 +477,7 @@ function POS() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row bg-gray-50 relative">
+    <div className="h-full flex flex-col lg:flex-row bg-gradient-to-br from-gray-50 to-gray-100 relative">
       {/* Mobile Cart Toggle Button */}
       {isMobile && (
         <div className="fixed bottom-4 right-4 z-30">
@@ -518,91 +551,197 @@ function POS() {
           </div>
         </div>
 
-        {/* Product Grid */}
-        <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 flex-1 overflow-auto">
-          <h3 className="text-base lg:text-lg font-semibold mb-3 lg:mb-4">Products</h3>
-          {(productsLoading || categoriesLoading) ? (
+        {/* Product Display Area - 70% */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-4 flex-1 overflow-auto">
+          {(productsLoading || categoriesLoading || categoryProductsLoading) ? (
             <div className="flex justify-center items-center h-32">
               <LoadingSpinner size="w-8 h-8" />
             </div>
           ) : debouncedSearchTerm ? (
             // Show search results
-            products.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <p>No products found</p>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Search Results</h3>
+                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  {products.length} products found
+                </span>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 lg:gap-3">
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
+              {products.length === 0 ? (
+                <div className="text-center text-gray-500 py-12">
+                  <FaSearch className="mx-auto text-4xl mb-4 opacity-30" />
+                  <p className="text-lg">No products found</p>
+                  <p className="text-sm">Try a different search term</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {products.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      className="group bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100 rounded-xl p-3 cursor-pointer hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="relative">
+                        {product.image ? (
+                          <ProductImage
+                            filename={product.image}
+                            alt={product.name}
+                            className="w-full h-20 object-cover rounded-lg mb-3 group-hover:shadow-md transition-shadow"
+                          />
+                        ) : (
+                          <div className="w-full h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 flex items-center justify-center">
+                            <FaShoppingCart className="text-gray-400 text-2xl" />
+                          </div>
+                        )}
+                        {Number(product.quantity) <= 5 && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            Low Stock
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <div className="space-y-1">
+                        <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                        {product.sku && (
+                          <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : selectedCategory ? (
+            // Show selected category products
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    {product.image && (
-                      <ProductImage
-                        filename={product.image}
-                        alt={product.name}
-                        className="w-full h-16 object-cover rounded mb-2"
-                      />
-                    )}
-                    <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
-                    <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                    <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
-                    {product.sku && (
-                      <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
-                    )}
+                    <FaTimes className="text-gray-500" />
+                  </button>
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                    style={{ backgroundColor: selectedCategory.color }}
+                  >
+                    {selectedCategory.icon}
                   </div>
-                ))}
+                  <h3 className="text-2xl font-bold text-gray-800">{selectedCategory.name}</h3>
+                </div>
+                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  {categoryProducts.length} products
+                </span>
               </div>
-            )
+              {categoryProductsLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <LoadingSpinner size="w-8 h-8" />
+                </div>
+              ) : categoryProducts.length === 0 ? (
+                <div className="text-center text-gray-500 py-12">
+                  <FaShoppingCart className="mx-auto text-4xl mb-4 opacity-30" />
+                  <p className="text-lg">No products in this category</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {categoryProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      className="group bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100 rounded-xl p-3 cursor-pointer hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="relative">
+                        {product.image ? (
+                          <ProductImage
+                            filename={product.image}
+                            alt={product.name}
+                            className="w-full h-20 object-cover rounded-lg mb-3 group-hover:shadow-md transition-shadow"
+                          />
+                        ) : (
+                          <div className="w-full h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 flex items-center justify-center">
+                            <FaShoppingCart className="text-gray-400 text-2xl" />
+                          </div>
+                        )}
+                        {Number(product.quantity) <= 5 && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            Low Stock
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <div className="space-y-1">
+                        <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                        {product.sku && (
+                          <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
-            // Show categories with products
-            categoriesWithProducts.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <p>No products available</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {categoriesWithProducts.map((category) => (
-                  <div key={category.id} className="">
-                    <div className="flex items-center gap-3 mb-3">
+            // Show welcome message when no category selected
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <FaShoppingCart className="text-6xl mb-4 opacity-30" />
+              <h3 className="text-2xl font-semibold mb-2">Welcome to POS</h3>
+              <p className="text-lg mb-4">Select a category below to browse products</p>
+              <p className="text-sm">Or use the search bar to find specific items</p>
+            </div>
+          )}
+        </div>
+
+        {/* Categories Section */}
+        <div className="bg-white rounded-xl shadow-lg p-4 min-h-[200px] max-h-[300px]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800">Categories</h3>
+            <span className="text-sm text-gray-500">
+              {Array.isArray(categories) ? categories.length : 0} categories
+            </span>
+          </div>
+          {!Array.isArray(categories) || categories.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <p>No categories available</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="flex gap-3 pb-2">
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`group cursor-pointer rounded-lg p-4 transition-all duration-200 border flex-shrink-0 w-40 ${
+                      selectedCategory?.id === category.id
+                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg border-primary-600'
+                        : 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-primary-50 hover:to-primary-100 border-gray-200 hover:border-primary-300'
+                    }`}
+                  >
+                    <div className="text-center">
                       <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
-                        style={{ backgroundColor: category.color }}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl mx-auto mb-3 shadow-sm ${
+                          selectedCategory?.id === category.id ? 'bg-white bg-opacity-20' : ''
+                        }`}
+                        style={{ backgroundColor: selectedCategory?.id === category.id ? 'rgba(255,255,255,0.2)' : category.color }}
                       >
                         {category.icon}
                       </div>
-                      <h4 className="text-lg font-semibold text-gray-800">{category.name}</h4>
-                      <span className="text-sm text-gray-500">({category.products.length} items)</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 lg:gap-3">
-                      {category.products.map((product) => (
-                        <div
-                          key={product.id}
-                          onClick={() => addToCart(product)}
-                          className="border border-gray-200 rounded-lg p-2 lg:p-3 cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors active:bg-primary-100 min-h-[100px] lg:min-h-[120px]"
-                        >
-                          {product.image && (
-                            <ProductImage
-                              filename={product.image}
-                              alt={product.name}
-                              className="w-full h-16 object-cover rounded mb-2"
-                            />
-                          )}
-                          <h4 className="font-medium text-xs lg:text-sm mb-1 truncate leading-tight">{product.name}</h4>
-                          <p className="text-primary-600 font-semibold text-sm lg:text-base">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
-                          {product.sku && (
-                            <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
-                          )}
-                        </div>
-                      ))}
+                      <h4 className={`font-semibold text-sm mb-1 line-clamp-1 ${
+                        selectedCategory?.id === category.id ? 'text-white' : 'text-gray-800 group-hover:text-primary-700'
+                      }`}>
+                        {category.name}
+                      </h4>
+                      <p className={`text-xs ${
+                        selectedCategory?.id === category.id ? 'text-primary-100' : 'text-gray-500'
+                      }`}>
+                        Click to view
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-            )
+            </div>
           )}
         </div>
       </div>
