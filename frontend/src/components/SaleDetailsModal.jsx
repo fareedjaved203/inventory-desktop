@@ -43,6 +43,24 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
   const [pdfPreferences, setPdfPreferences] = useState({});
   const queryClient = useQueryClient();
   
+  // Fetch audit trail for this sale
+  const { data: auditTrail } = useQuery(
+    ['sale-audit-trail', sale?.id],
+    async () => {
+      if (!sale?.id) return [];
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audit-trail/Sale/${sale.id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching audit trail:', error);
+        return [];
+      }
+    },
+    { enabled: Boolean(sale?.id && isOpen) }
+  );
+  
   // Reset state when modal opens with a new sale
   useEffect(() => {
     if (isOpen && sale) {
@@ -102,6 +120,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
     {
       onSuccess: (data, variables) => {
         queryClient.invalidateQueries(['sales']);
+        queryClient.invalidateQueries(['sale-audit-trail']);
         
         // Reset processing state but keep the amount for UI feedback
         if (variables.returnId) {
@@ -613,6 +632,53 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Audit Trail Section */}
+          {auditTrail && auditTrail.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-2">Payment History</h3>
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="space-y-3">
+                  {auditTrail
+                    .filter(audit => audit.fieldName === 'paidAmount')
+                    .map((audit, index) => (
+                      <div key={index} className="flex items-start justify-between p-3 bg-white rounded border border-blue-100">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm font-medium text-blue-800">
+                              Payment Updated
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(audit.changedAt).toLocaleDateString()} at {new Date(audit.changedAt).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          {audit.description && (
+                            <div className="text-sm text-gray-700 mb-2 italic">
+                              "{audit.description}"
+                            </div>
+                          )}
+                          <div className="text-sm text-gray-600">
+                            Amount changed from <span className="font-medium text-red-600">Rs.{audit.oldValue}</span> to <span className="font-medium text-green-600">Rs.{audit.newValue}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-sm font-medium ${
+                            Number(audit.newValue) > Number(audit.oldValue) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {Number(audit.newValue) > Number(audit.oldValue) ? '+' : ''}
+                            Rs.{(Number(audit.newValue) - Number(audit.oldValue)).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
               </div>
             </div>
           )}

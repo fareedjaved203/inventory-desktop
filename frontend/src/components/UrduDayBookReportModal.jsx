@@ -202,7 +202,21 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                             {key === 'barcode' && (item.barcode || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
-                            {key === 'productDescription' && (item.productDescription || '-')}
+                            {key === 'productDescription' && (
+                              <div>
+                                <div>{item.productDescription || '-'}</div>
+                                {item.auditChange?.description && !item.isEdit && (
+                                  <div className="text-xs text-blue-600 mt-1 italic">
+                                    {item.auditChange.description}
+                                  </div>
+                                )}
+                                {item.isEdit && item.auditChange?.description && (
+                                  <div className="text-xs text-blue-600 mt-1 italic font-medium">
+                                    ادائیگی اپڈیٹ: {item.auditChange.description}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}

@@ -829,7 +829,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                 date: change.changedAt,
                 type: change.tableName === 'BulkPurchase' ? 'purchase-edit' : 'sale-edit',
                 barcode: barcodes,
-                productDescription: `Payment Update: ${change.fieldName} updated`,
+                productDescription: change.description || `Payment Update: ${change.fieldName} updated`,
                 productName: productNames,
                 category: originalRecord.items?.[0]?.product?.category?.name || '',
                 purchaseQuantity: change.tableName === 'BulkPurchase' ? totalQuantity : 0,
@@ -854,7 +854,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                   fieldName: change.fieldName,
                   oldValue: change.oldValue,
                   newValue: change.newValue,
-                  difference: difference
+                  difference: difference,
+                  description: change.description
                 }
               });
             }

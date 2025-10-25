@@ -6,6 +6,7 @@ CREATE TABLE "AuditTrail" (
     "fieldName" TEXT NOT NULL,
     "oldValue" TEXT,
     "newValue" TEXT,
+    "description" TEXT,
     "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "changedBy" TEXT NOT NULL DEFAULT 'system',
     "saleId" TEXT,

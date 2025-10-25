@@ -85,6 +85,7 @@ function Sales() {
   const [transportCost, setTransportCost] = useState('');
   const [loadingDate, setLoadingDate] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
+  const [paymentDescription, setPaymentDescription] = useState('');
 
   const updateSale = useMutation(
     async (updatedSale) => {
@@ -93,6 +94,7 @@ function Sales() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["sales"]);
+        queryClient.invalidateQueries(['sales-audit-trails']);
         setIsModalOpen(false);
         setSaleItems([]);
         setSelectedProduct(null);
@@ -235,6 +237,40 @@ function Sales() {
     }
   );
 
+  // Fetch audit trail for sales that have been edited
+  const { data: auditTrails } = useQuery(
+    ['sales-audit-trails', sales?.items?.map(s => s.id)],
+    async () => {
+      if (!sales?.items?.length) return {};
+      
+      const auditPromises = sales.items
+        .filter(sale => {
+          const created = new Date(sale.createdAt);
+          const updated = new Date(sale.updatedAt);
+          return Math.abs(updated - created) > 1000; // More than 1 second difference
+        })
+        .map(async (sale) => {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audit-trail/Sale/${sale.id}`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+            });
+            const auditData = await response.json();
+            return { saleId: sale.id, auditData };
+          } catch (error) {
+            console.error('Error fetching audit trail:', error);
+            return { saleId: sale.id, auditData: [] };
+          }
+        });
+      
+      const results = await Promise.all(auditPromises);
+      return results.reduce((acc, { saleId, auditData }) => {
+        acc[saleId] = auditData;
+        return acc;
+      }, {});
+    },
+    { enabled: Boolean(sales?.items?.length) }
+  );
+
   // Maintain search input focus
   useEffect(() => {
     if (searchInputRef.current) {
@@ -249,6 +285,7 @@ function Sales() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["sales"]);
+        queryClient.invalidateQueries(['sales-audit-trails']);
         queryClient.invalidateQueries(["products"]); // Refresh products to show updated stock
         setIsModalOpen(false);
         setSaleItems([]);
@@ -301,6 +338,7 @@ function Sales() {
           }
         );
         queryClient.invalidateQueries(["products"]); // Still need to refresh products for stock
+        queryClient.invalidateQueries(['sales-audit-trails']);
         setDeleteError(null);
         setDeleteModalOpen(false);
         setSaleToDelete(null);
@@ -580,6 +618,7 @@ function Sales() {
       loadingDate: loadingDate || null,
       arrivalDate: arrivalDate || null,
       ...(employeeId && { employeeId }),
+      ...(paymentDescription && { paymentDescription }),
     };
     console.log('Sale data being sent:', saleData);
 
@@ -842,7 +881,7 @@ function Sales() {
               sales?.items?.map((sale) => (
               <tr
                 key={sale.id}
-                className="hover:bg-primary-50 transition-colors"
+                className={`hover:bg-primary-50 transition-colors ${auditTrails?.[sale.id]?.length > 0 ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
               >
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
                   #{sale.billNumber}
@@ -943,86 +982,120 @@ function Sales() {
                         )
                       );
                     })()}
+                    {auditTrails?.[sale.id]?.length > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                        <div className="text-xs text-blue-700 font-medium mb-1">Payment Updates:</div>
+                        {auditTrails[sale.id]
+                          .filter(audit => audit.fieldName === 'paidAmount')
+                          .slice(0, 2)
+                          .map((audit, idx) => (
+                            <div key={idx} className="text-xs text-blue-600">
+                              {audit.description && (
+                                <div className="italic">{audit.description}</div>
+                              )}
+                              <div>
+                                {new Date(audit.changedAt).toLocaleDateString()} - 
+                                Rs.{audit.oldValue} → Rs.{audit.newValue}
+                              </div>
+                            </div>
+                          ))}
+                        {auditTrails[sale.id].filter(audit => audit.fieldName === 'paidAmount').length > 2 && (
+                          <div className="text-xs text-blue-500 italic">+{auditTrails[sale.id].filter(audit => audit.fieldName === 'paidAmount').length - 2} more updates</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
                   {formatPakistaniCurrency(sale.totalAmount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {(() => {
-                    const originalAmount = Number(sale.totalAmount);
-                    const returnedAmount = Array.isArray(sale.returns)
-                      ? sale.returns.reduce(
-                          (sum, ret) => sum + Number(ret.totalAmount || 0),
-                          0
-                        )
-                      : 0;
-                    const totalRefunded = Array.isArray(sale.returns)
-                      ? sale.returns.reduce(
-                          (sum, ret) =>
-                            sum +
-                            (ret.refundPaid
-                              ? Number(ret.refundAmount || 0)
-                              : 0),
-                          0
-                        )
-                      : 0;
-                    const netAmount = Math.max(
-                      originalAmount - returnedAmount,
-                      0
-                    );
-                    const balance =
-                      netAmount - Number(sale.paidAmount || 0) + totalRefunded;
+                  <div>
+                    {(() => {
+                      const originalAmount = Number(sale.totalAmount);
+                      const returnedAmount = Array.isArray(sale.returns)
+                        ? sale.returns.reduce(
+                            (sum, ret) => sum + Number(ret.totalAmount || 0),
+                            0
+                          )
+                        : 0;
+                      const totalRefunded = Array.isArray(sale.returns)
+                        ? sale.returns.reduce(
+                            (sum, ret) =>
+                              sum +
+                              (ret.refundPaid
+                                ? Number(ret.refundAmount || 0)
+                                : 0),
+                            0
+                          )
+                        : 0;
+                      const netAmount = Math.max(
+                        originalAmount - returnedAmount,
+                        0
+                      );
+                      const balance =
+                        netAmount - Number(sale.paidAmount || 0) + totalRefunded;
 
-                    if (balance > 0) {
-                      return (
-                        <div className="flex items-center">
-                          <span className="text-yellow-600 font-medium">
-                            {formatPakistaniCurrency(sale.paidAmount)}
-                          </span>
-                          <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
-                            {t('due')}: {formatPakistaniCurrency(balance)}
-                          </span>
-                        </div>
-                      );
-                    } else if (balance < 0) {
-                      return (
-                        <div className="flex items-center">
-                          <span className="text-green-600 font-medium">
-                            {formatPakistaniCurrency(sale.paidAmount)}
-                          </span>
-                          <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-red-50 to-red-100 text-red-800 rounded-full border border-red-200 shadow-sm">
-                            {t('credit')}: {formatPakistaniCurrency(Math.abs(balance))}
-                          </span>
-                        </div>
-                      );
-                    } else {
-                      // Check if there were returns and refunds
-                      const hasReturns =
-                        Array.isArray(sale.returns) && sale.returns.length > 0;
-                      const hasRefunds =
-                        hasReturns &&
-                        sale.returns.some((ret) => ret.refundPaid);
+                      if (balance > 0) {
+                        return (
+                          <div className="flex items-center">
+                            <span className="text-yellow-600 font-medium">
+                              {formatPakistaniCurrency(sale.paidAmount)}
+                            </span>
+                            <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
+                              {t('due')}: {formatPakistaniCurrency(balance)}
+                            </span>
+                          </div>
+                        );
+                      } else if (balance < 0) {
+                        return (
+                          <div className="flex items-center">
+                            <span className="text-green-600 font-medium">
+                              {formatPakistaniCurrency(sale.paidAmount)}
+                            </span>
+                            <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-red-50 to-red-100 text-red-800 rounded-full border border-red-200 shadow-sm">
+                              {t('credit')}: {formatPakistaniCurrency(Math.abs(balance))}
+                            </span>
+                          </div>
+                        );
+                      } else {
+                        // Check if there were returns and refunds
+                        const hasReturns =
+                          Array.isArray(sale.returns) && sale.returns.length > 0;
+                        const hasRefunds =
+                          hasReturns &&
+                          sale.returns.some((ret) => ret.refundPaid);
 
-                      return (
-                        <div className="flex items-center">
-                          <span className="text-green-600 font-medium">
-                            {formatPakistaniCurrency(sale.paidAmount)}
-                          </span>
-                          {hasRefunds && (
-                            <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 rounded-full border border-blue-200 shadow-sm">
-                              {t('refunded')}
+                        return (
+                          <div className="flex items-center">
+                            <span className="text-green-600 font-medium">
+                              {formatPakistaniCurrency(sale.paidAmount)}
                             </span>
-                          )}
-                          {!hasRefunds && (
-                            <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-green-50 to-green-100 text-green-800 rounded-full border border-green-200 shadow-sm">
-                              {t('settled')}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    }
-                  })()}
+                            {hasRefunds && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 rounded-full border border-blue-200 shadow-sm">
+                                {t('refunded')}
+                              </span>
+                            )}
+                            {!hasRefunds && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-green-50 to-green-100 text-green-800 rounded-full border border-green-200 shadow-sm">
+                                {t('settled')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      }
+                    })()}
+                    {auditTrails?.[sale.id]?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          Updated
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex space-x-2">
@@ -1613,6 +1686,22 @@ function Sales() {
                     )}
                   </div>
                 </div>
+
+                {/* Payment Description */}
+                {isEditMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Update Reason ({t('optional')})
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentDescription}
+                      onChange={(e) => setPaymentDescription(e.target.value)}
+                      placeholder="e.g., Received cash payment, Bank transfer..."
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                )}
 
                 {/* Total validation error */}
                 {validationErrors.total && (

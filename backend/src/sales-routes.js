@@ -649,7 +649,7 @@ export function setupSalesRoutes(app, prisma) {
 
           // Log audit changes only for paidAmount
           if (existingSale.paidAmount !== req.body.paidAmount) {
-            await logAuditChange(prisma, 'Sale', req.params.id, 'paidAmount', existingSale.paidAmount, req.body.paidAmount);
+            await logAuditChange(prisma, 'Sale', req.params.id, 'paidAmount', existingSale.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated');
           }
 
           for (const item of existingSale.items) {

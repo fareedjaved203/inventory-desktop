@@ -182,13 +182,14 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             invoiceNumber = `BP-${Date.now().toString().slice(-6)}`;
           }
 
-          // Create the bulk purchase using raw SQL
+          // Create the bulk purchase using Prisma create instead of raw SQL
           const purchaseId = crypto.randomUUID();
-          const purchaseDate = req.body.purchaseDate ? createPakistanDate(req.body.purchaseDate) : new Date();
+          const purchaseDate = req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date();
           console.log('Purchase date being saved:', purchaseDate);
+          
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${invoiceNumber}, ${req.body.totalAmount}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount}::decimal, ${purchaseDate}, ${req.body.carNumber || null}, ${req.body.transportCost || null}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
+            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create purchase items
@@ -296,7 +297,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Log audit changes only for paidAmount
           if (existingPurchase.paidAmount !== req.body.paidAmount) {
-            await logAuditChange(prisma, 'BulkPurchase', req.params.id, 'paidAmount', existingPurchase.paidAmount, req.body.paidAmount);
+            await logAuditChange(prisma, 'BulkPurchase', req.params.id, 'paidAmount', existingPurchase.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated');
           }
 
           // Revert quantities from old purchase items
@@ -319,14 +320,15 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           });
 
           // Update the purchase using raw SQL
+          const updateDate = req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date();
           await prisma.$executeRaw`
             UPDATE "BulkPurchase" 
-            SET "totalAmount" = ${req.body.totalAmount}::decimal,
-                discount = ${req.body.discount || 0}::decimal,
-                "paidAmount" = ${req.body.paidAmount}::decimal,
-                "purchaseDate" = ${req.body.purchaseDate ? createPakistanDate(req.body.purchaseDate) : getCurrentPakistanTime()},
+            SET "totalAmount" = ${Number(req.body.totalAmount)},
+                discount = ${Number(req.body.discount || 0)},
+                "paidAmount" = ${Number(req.body.paidAmount)},
+                "purchaseDate" = ${updateDate},
                 "carNumber" = ${req.body.carNumber || null},
-                "transportCost" = ${req.body.transportCost || null},
+                "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
                 "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},
                 "arrivalDate" = ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null},
                 "contactId" = ${req.body.contactId},

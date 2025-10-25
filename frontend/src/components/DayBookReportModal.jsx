@@ -12,7 +12,7 @@ const DEFAULT_COLUMNS = {
   barcode: { label: 'Barcode', visible: false },
   productName: { label: 'Product Name', visible: true },
   category: { label: 'Category', visible: true },
-  productDescription: { label: 'Description', visible: false },
+  productDescription: { label: 'Description', visible: true },
   purchaseQuantity: { label: 'Purchase Qty', visible: true },
   purchasePrice: { label: 'Purchase Price', visible: true },
   transportCost: { label: 'Transport Cost', visible: false },
@@ -175,7 +175,16 @@ function DayBookReportModal({ isOpen, onClose }) {
                             {key === 'barcode' && (item.barcode || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
-                            {key === 'productDescription' && (item.productDescription || '-')}
+                            {key === 'productDescription' && (
+                              <div>
+                                <div>{item.productDescription || '-'}</div>
+                                {item.auditChange?.description && !item.isEdit && (
+                                  <div className="text-xs text-blue-600 mt-1 italic">
+                                    {item.auditChange.description}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}

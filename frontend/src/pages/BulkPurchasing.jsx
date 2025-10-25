@@ -72,6 +72,7 @@ function BulkPurchasing() {
   const [transportCost, setTransportCost] = useState('');
   const [loadingDate, setLoadingDate] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
+  const [paymentDescription, setPaymentDescription] = useState('');
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -144,6 +145,40 @@ function BulkPurchasing() {
     }
   );
 
+  // Fetch audit trail for purchases that have been edited
+  const { data: auditTrails } = useQuery(
+    ['audit-trails', purchases?.items?.map(p => p.id)],
+    async () => {
+      if (!purchases?.items?.length) return {};
+      
+      const auditPromises = purchases.items
+        .filter(purchase => {
+          const created = new Date(purchase.createdAt);
+          const updated = new Date(purchase.updatedAt);
+          return Math.abs(updated - created) > 1000; // More than 1 second difference
+        })
+        .map(async (purchase) => {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audit-trail/BulkPurchase/${purchase.id}`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+            });
+            const auditData = await response.json();
+            return { purchaseId: purchase.id, auditData };
+          } catch (error) {
+            console.error('Error fetching audit trail:', error);
+            return { purchaseId: purchase.id, auditData: [] };
+          }
+        });
+      
+      const results = await Promise.all(auditPromises);
+      return results.reduce((acc, { purchaseId, auditData }) => {
+        acc[purchaseId] = auditData;
+        return acc;
+      }, {});
+    },
+    { enabled: Boolean(purchases?.items?.length) }
+  );
+
   // Fetch contacts for dropdown with search
   const { data: contacts, isLoading: contactsLoading } = useQuery(
     ['contacts', debouncedContactSearchTerm],
@@ -179,6 +214,22 @@ function BulkPurchasing() {
         t.driverName?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase())
       ) || [];
     }
+  );
+
+  // Fetch last bulk purchase for selected product
+  const { data: lastBulkPurchase } = useQuery(
+    ['last-bulk-purchase', selectedProduct?.id],
+    async () => {
+      if (!selectedProduct?.id) return null;
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/bulk-purchases?productId=${selectedProduct.id}&limit=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const result = await response.json();
+      return result.items?.[0] || null;
+    },
+    { enabled: Boolean(selectedProduct?.id) }
   );
 
 
@@ -226,6 +277,7 @@ function BulkPurchasing() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['bulk-purchases']);
+        queryClient.invalidateQueries(['audit-trails']);
         queryClient.invalidateQueries({ queryKey: ['products'] });
         setIsModalOpen(false);
         resetForm();
@@ -246,6 +298,7 @@ function BulkPurchasing() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['bulk-purchases']);
+        queryClient.invalidateQueries(['audit-trails']);
         queryClient.invalidateQueries({ queryKey: ['products'] });
         setIsModalOpen(false);
         resetForm();
@@ -265,6 +318,7 @@ function BulkPurchasing() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['bulk-purchases']);
+        queryClient.invalidateQueries(['audit-trails']);
         setDeleteError(null);
         setDeleteModalOpen(false);
         setPurchaseToDelete(null);
@@ -303,6 +357,7 @@ function BulkPurchasing() {
     setTransportCost('');
     setLoadingDate('');
     setArrivalDate('');
+    setPaymentDescription('');
   };
 
   const handleAddItem = async () => {
@@ -482,7 +537,8 @@ function BulkPurchasing() {
       carNumber: transportSearchTerm || null,
       transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
       loadingDate: loadingDate || null,
-      arrivalDate: arrivalDate || null
+      arrivalDate: arrivalDate || null,
+      ...(paymentDescription && { paymentDescription })
     };
 
     // Debug logging
@@ -657,7 +713,7 @@ function BulkPurchasing() {
               </tr>
             ) : (
               purchases?.items?.map((purchase) => (
-              <tr key={purchase.id} className={`hover:bg-primary-50 transition-colors ${purchase.totalAmount > purchase.paidAmount ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''}`}>
+              <tr key={purchase.id} className={`hover:bg-primary-50 transition-colors ${purchase.totalAmount > purchase.paidAmount ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''} ${auditTrails?.[purchase.id]?.length > 0 ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
                   {purchase.invoiceNumber || `#${purchase.id.slice(-6)}`}
                 </td>
@@ -680,22 +736,56 @@ function BulkPurchasing() {
                     ) : (
                       <span className="text-gray-400 text-sm">No items</span>
                     )}
+                    {auditTrails?.[purchase.id]?.length > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                        <div className="text-xs text-blue-700 font-medium mb-1">Payment Updates:</div>
+                        {auditTrails[purchase.id]
+                          .filter(audit => audit.fieldName === 'paidAmount')
+                          .slice(0, 2)
+                          .map((audit, idx) => (
+                            <div key={idx} className="text-xs text-blue-600">
+                              {audit.description && (
+                                <div className="italic">{audit.description}</div>
+                              )}
+                              <div>
+                                {new Date(audit.changedAt).toLocaleDateString()} - 
+                                Rs.{audit.oldValue} → Rs.{audit.newValue}
+                              </div>
+                            </div>
+                          ))}
+                        {auditTrails[purchase.id].filter(audit => audit.fieldName === 'paidAmount').length > 2 && (
+                          <div className="text-xs text-blue-500 italic">+{auditTrails[purchase.id].filter(audit => audit.fieldName === 'paidAmount').length - 2} more updates</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
                   {formatPakistaniCurrency(purchase.totalAmount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {purchase.totalAmount > purchase.paidAmount ? (
-                    <div className="flex items-center">
-                      <span className="text-yellow-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
-                      <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
-                        {t('due')}: {formatPakistaniCurrency(purchase.totalAmount - purchase.paidAmount)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-green-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
-                  )}
+                  <div>
+                    {purchase.totalAmount > purchase.paidAmount ? (
+                      <div className="flex items-center">
+                        <span className="text-yellow-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
+                        <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
+                          {t('due')}: {formatPakistaniCurrency(purchase.totalAmount - purchase.paidAmount)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-green-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
+                    )}
+                    {auditTrails?.[purchase.id]?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          Updated
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex space-x-2">
@@ -952,6 +1042,11 @@ function BulkPurchasing() {
                                     setSelectedProduct(product);
                                     setProductSearchTerm(product.name);
                                     isProductSelected(true);
+                                    // Auto-switch to total cost mode for weight-based units
+                                    const weightUnits = ['g', 'kg', 'ltr', 'ml', 'ton', 'gram', 'liter', 'litre'];
+                                    if (weightUnits.includes(product.unit?.toLowerCase())) {
+                                      setPriceInputMode('totalCost');
+                                    }
                                     setValidationErrors({
                                       ...validationErrors,
                                       product: undefined
@@ -977,6 +1072,39 @@ function BulkPurchasing() {
                     )}
                     {validationErrors.product && (
                       <p className="text-red-500 text-sm mt-1">{validationErrors.product}</p>
+                    )}
+                    {selectedProduct && lastBulkPurchase && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                        <div className="text-xs font-medium text-blue-700 mb-1">Last Bulk Purchase:</div>
+                        {(() => {
+                          const purchaseItem = lastBulkPurchase.items?.find(item => item.productId === selectedProduct.id);
+                          if (!purchaseItem) return null;
+                          
+                          const quantity = Number(purchaseItem.quantity);
+                          const purchasePrice = Number(purchaseItem.purchasePrice);
+                          const unit = selectedProduct.unit || 'unit';
+                          
+                          if (purchaseItem.isTotalCostItem) {
+                            // For weighted items, show per-unit cost
+                            const perUnitCost = purchasePrice / quantity;
+                            return (
+                              <div className="text-xs text-blue-600">
+                                Rs.{perUnitCost.toFixed(2)} per {unit} ({quantity} {unit} for Rs.{purchasePrice.toFixed(2)})
+                              </div>
+                            );
+                          } else {
+                            // For regular items, show unit price
+                            return (
+                              <div className="text-xs text-blue-600">
+                                Rs.{purchasePrice.toFixed(2)} per {unit}
+                              </div>
+                            );
+                          }
+                        })()}
+                        <div className="text-xs text-gray-500 mt-1">
+                          From: {lastBulkPurchase.contact?.name} on {new Date(lastBulkPurchase.purchaseDate).toLocaleDateString()}
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-4">
@@ -1267,6 +1395,22 @@ function BulkPurchasing() {
                   )}
                 </div>
               </div>
+
+              {/* Payment Description */}
+              {isEditMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Update Reason ({t('optional')})
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentDescription}
+                    onChange={(e) => setPaymentDescription(e.target.value)}
+                    placeholder="e.g., Bank transfer to supplier, Cash payment..."
+                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              )}
 
               </form>
             </div>

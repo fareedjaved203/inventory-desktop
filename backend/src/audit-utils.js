@@ -1,5 +1,5 @@
 // Utility functions for audit trail
-export async function logAuditChange(prisma, tableName, recordId, fieldName, oldValue, newValue) {
+export async function logAuditChange(prisma, tableName, recordId, fieldName, oldValue, newValue, description = null) {
   if (oldValue === newValue) return; // No change
   
   try {
@@ -8,7 +8,8 @@ export async function logAuditChange(prisma, tableName, recordId, fieldName, old
       recordId,
       fieldName,
       oldValue: oldValue?.toString() || null,
-      newValue: newValue?.toString() || null
+      newValue: newValue?.toString() || null,
+      description
     };
     
     // Set proper foreign key based on table

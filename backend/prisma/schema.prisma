@@ -377,18 +377,19 @@ model Category {
 }
 
 model AuditTrail {
-  id         String   @id @default(uuid())
-  tableName  String
-  recordId   String
-  fieldName  String
-  oldValue   String?
-  newValue   String?
-  changedAt  DateTime @default(now())
-  changedBy  String   @default("system")
-  saleId     String?
-  purchaseId String?
-  sale       Sale?    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  purchase   BulkPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  tableName   String
+  recordId    String
+  fieldName   String
+  oldValue    String?
+  newValue    String?
+  description String?
+  changedAt   DateTime @default(now())
+  changedBy   String   @default("system")
+  saleId      String?
+  purchaseId  String?
+  sale        Sale?    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  purchase    BulkPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@index([tableName, recordId])
   @@index([changedAt])
