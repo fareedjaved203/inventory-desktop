@@ -591,7 +591,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   // Day Book Report
   app.get('/api/dashboard/day-book', authenticateToken, async (req, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, productId } = req.query;
       
       if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start date and end date are required' });
@@ -604,13 +604,36 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       reportEndDate.setDate(reportEndDate.getDate() + 1);
       reportEndDate.setHours(0, 0, 0, 0);
       
+      // Build where conditions for product filtering
+      const saleWhere = {
+        userId: req.userId,
+        saleDate: { gte: reportStartDate, lt: reportEndDate }
+      };
+      
+      const purchaseWhere = {
+        userId: req.userId,
+        purchaseDate: { gte: reportStartDate, lt: reportEndDate }
+      };
+      
+      // Add product filtering if productId is provided
+      if (productId) {
+        saleWhere.items = {
+          some: {
+            productId: productId
+          }
+        };
+        
+        purchaseWhere.items = {
+          some: {
+            productId: productId
+          }
+        };
+      }
+      
       // Get all sales and purchases in the date range
       const [sales, purchases] = await Promise.all([
         prisma.sale.findMany({
-          where: {
-            userId: req.userId,
-            saleDate: { gte: reportStartDate, lt: reportEndDate }
-          },
+          where: saleWhere,
           include: {
             items: {
               include: { 
@@ -625,10 +648,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           }
         }),
         prisma.bulkPurchase.findMany({
-          where: {
-            userId: req.userId,
-            purchaseDate: { gte: reportStartDate, lt: reportEndDate }
-          },
+          where: purchaseWhere,
           include: {
             items: {
               include: { 
@@ -678,7 +698,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       // Process purchases
       purchases.forEach(purchase => {
-        purchase.items.forEach(item => {
+        purchase.items
+          .filter(item => !productId || item.productId === productId)
+          .forEach(item => {
           // For weighted items (isTotalCostItem: true), purchasePrice is already the total cost
           // For regular items, multiply quantity by unit price
           const totalPurchaseCost = item.isTotalCostItem 
@@ -734,7 +756,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       // Process sales
       sales.forEach(sale => {
-        sale.items.forEach(item => {
+        sale.items
+          .filter(item => !productId || item.productId === productId)
+          .forEach(item => {
           const purchasePrice = Number(item.purchasePrice || 0);
           const salePrice = Number(item.price);
           const quantity = Number(item.quantity);

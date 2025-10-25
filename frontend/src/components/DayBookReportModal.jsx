@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import DayBookReportPDF from './DayBookReportPDF';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
+import API from '../utils/api';
 
 const DEFAULT_COLUMNS = {
   date: { label: 'Date', visible: true },
@@ -35,6 +36,7 @@ function DayBookReportModal({ isOpen, onClose }) {
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
 
@@ -47,12 +49,27 @@ function DayBookReportModal({ isOpen, onClose }) {
     return result.items?.[0] || {};
   });
 
+  // Fetch products for dropdown
+  const { data: products } = useQuery(
+    ['products-for-daybook'],
+    async () => {
+      const result = await API.getProducts({ limit: 1000 });
+      return result.items || [];
+    },
+    { enabled: isOpen }
+  );
+
   const { data: dayBookData, isLoading, refetch } = useQuery(
-    ['day-book-report', startDate, endDate],
+    ['day-book-report', startDate, endDate, selectedProductId],
     async () => {
       const token = localStorage.getItem('authToken');
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        ...(selectedProductId && { productId: selectedProductId })
+      });
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/dashboard/day-book?startDate=${startDate}&endDate=${endDate}`,
+        `${import.meta.env.VITE_API_URL}/api/dashboard/day-book?${params}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.json();
@@ -89,7 +106,7 @@ function DayBookReportModal({ isOpen, onClose }) {
         <div className="p-6 flex-1 overflow-hidden flex flex-col">
           {/* Controls */}
           <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                 <input
@@ -107,6 +124,21 @@ function DayBookReportModal({ isOpen, onClose }) {
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Product Filter</label>
+                <select
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">All Products</option>
+                  {products?.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-2">
                 <button
