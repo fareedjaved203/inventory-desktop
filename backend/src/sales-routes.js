@@ -77,7 +77,7 @@ export function setupSalesRoutes(app, prisma) {
             }
           }
 
-          const saleDate = req.body.saleDate ? createPakistanDate(req.body.saleDate) : new Date();
+          const saleDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
           console.log('Sale date being saved:', saleDate);
           // Get product details including purchase prices
           const productDetails = await Promise.all(
@@ -667,7 +667,7 @@ export function setupSalesRoutes(app, prisma) {
             where: { saleId: req.params.id }
           });
 
-          const saleDate = req.body.saleDate ? createPakistanDate(req.body.saleDate) : undefined;
+          const saleDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
           console.log("to update sale: ",req.body)
           
           // Get product details including purchase prices for update

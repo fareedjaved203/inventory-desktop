@@ -2,6 +2,8 @@ import { authenticateToken } from './middleware.js';
 import { getAuditTrail, getAuditChangesForPeriod } from './audit-utils.js';
 
 export function setupAuditRoutes(app, prisma) {
+  console.log('Setting up audit routes...');
+  
   // Get audit trail for a specific record
   app.get('/api/audit-trail/:tableName/:recordId', authenticateToken, async (req, res) => {
     try {
@@ -15,9 +17,12 @@ export function setupAuditRoutes(app, prisma) {
   });
 
   // Get audit changes for a contact (sales and purchases)
-  app.get('/api/audit-trail/contact/:contactId', authenticateToken, async (req, res) => {
+  console.log('Registering contact audit route: /api/audit/contact/:contactId');
+  app.get('/api/audit/contact/:contactId', authenticateToken, async (req, res) => {
     try {
+      console.log("at correct place")
       const { contactId } = req.params;
+      console.log('Fetching audit trail for contact:', contactId, 'user:', req.userId);
       
       // Get sales and purchases for this contact
       const [sales, purchases] = await Promise.all([
@@ -30,6 +35,8 @@ export function setupAuditRoutes(app, prisma) {
           select: { id: true }
         })
       ]);
+      
+      console.log('Found sales:', sales.length, 'purchases:', purchases.length);
       
       const saleIds = sales.map(s => s.id);
       const purchaseIds = purchases.map(p => p.id);
@@ -59,6 +66,8 @@ export function setupAuditRoutes(app, prisma) {
             changedAt: 'desc'
           }
         });
+        
+        console.log('Found audit changes:', auditChanges.length);
       }
       
       res.json(auditChanges);

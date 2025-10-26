@@ -228,7 +228,12 @@ function Contacts() {
     // Get audit trail changes for sales and purchases related to this contact
     const auditChanges = [];
     try {
-      const auditResponse = await fetch(`/api/audit-trail/contact/${contactId}`);
+      const token = localStorage.getItem('authToken');
+      const auditResponse = await fetch(`/api/audit/contact/${contactId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (auditResponse.ok) {
         const auditData = await auditResponse.json();
         if (Array.isArray(auditData)) {
@@ -238,6 +243,10 @@ function Contacts() {
     } catch (error) {
       console.warn('Could not fetch audit trail:', error);
     }
+    
+    // Create maps for quick lookup of original transactions
+    const salesMap = new Map(contactSales.map(sale => [sale.id, sale]));
+    const purchasesMap = new Map(contactPurchases.map(purchase => [purchase.id, purchase]));
     
     // Filter by date range if provided
     let filteredSales = contactSales;
@@ -259,24 +268,13 @@ function Contacts() {
       filteredLoans = filteredLoans.filter(loan => new Date(loan.date || loan.createdAt) <= end);
     }
     
-    // Detect edited transactions by comparing createdAt vs updatedAt
-    const editedSales = filteredSales.filter(sale => {
-      const created = new Date(sale.createdAt);
-      const updated = new Date(sale.updatedAt);
-      return Math.abs(updated - created) > 1000; // More than 1 second difference indicates edit
-    });
-    
-    const editedPurchases = filteredPurchases.filter(purchase => {
-      const created = new Date(purchase.createdAt);
-      const updated = new Date(purchase.updatedAt);
-      return Math.abs(updated - created) > 1000;
-    });
+
 
     // Combine and sort transactions by date
     const allTransactions = [
       ...filteredSales.map(sale => {
         return {
-          date: sale.saleDate,
+          date: sale.createdAt || sale.saleDate,
           type: 'sale',
           description: `Sale #${sale.billNumber}`,
           saleDescription: sale.description || '',
@@ -285,16 +283,14 @@ function Contacts() {
           carNumber: sale.carNumber || '',
           loadingDate: sale.loadingDate || '',
           arrivalDate: sale.arrivalDate || '',
-          debit: Number(sale.totalAmount) || 0, // Total sale amount increases customer debt
-          credit: Number(sale.paidAmount) || 0, // Amount paid by customer reduces debt
-          balance: 0, // Will be calculated
-          isEdited: editedSales.some(edited => edited.id === sale.id),
-          editedAt: editedSales.find(edited => edited.id === sale.id)?.updatedAt
+          debit: Number(sale.totalAmount) || 0, // Banaam: Total sale amount owed by customer
+          credit: 0, // Jama: No payment shown in initial record
+          balance: 0 // Will be calculated
         };
       }),
       ...filteredPurchases.map(purchase => {
         return {
-          date: purchase.purchaseDate,
+          date: purchase.createdAt || purchase.purchaseDate,
           type: 'purchase',
           description: `Purchase #${purchase.invoiceNumber || purchase.id}`,
           saleDescription: purchase.description || '',
@@ -303,11 +299,9 @@ function Contacts() {
           carNumber: purchase.carNumber || '',
           loadingDate: purchase.loadingDate || '',
           arrivalDate: purchase.arrivalDate || '',
-          debit: Number(purchase.paidAmount) || 0, // Amount we paid to supplier
-          credit: Number(purchase.totalAmount) || 0, // Total purchase amount (what we owe)
-          balance: 0, // Will be calculated
-          isEdited: editedPurchases.some(edited => edited.id === purchase.id),
-          editedAt: editedPurchases.find(edited => edited.id === purchase.id)?.updatedAt
+          debit: 0, // Banaam: No payment shown in initial record
+          credit: Number(purchase.totalAmount) || 0, // Jama: Total purchase amount (what we owe)
+          balance: 0 // Will be calculated
         };
       }),
       ...filteredLoans.map(loan => {
@@ -331,60 +325,93 @@ function Contacts() {
           balance: 0 // Will be calculated
         };
       }),
-      // Add audit trail entries for price changes
-      ...auditChanges.map(change => {
-        const oldValue = parseFloat(change.oldValue) || 0;
-        const newValue = parseFloat(change.newValue) || 0;
-        const difference = newValue - oldValue;
-        
-        return {
-          date: change.changedAt,
-          type: 'audit',
-          description: `${change.tableName} #${change.recordId} - ${change.fieldName} changed from Rs.${oldValue.toFixed(2)} to Rs.${newValue.toFixed(2)} (${difference >= 0 ? '+' : ''}${difference.toFixed(2)})`,
+      // Add initial payment entries for sales and purchases that have payments
+      ...filteredSales
+        .filter(sale => Number(sale.paidAmount) > 0)
+        .map(sale => ({
+          date: sale.createdAt || sale.saleDate,
+          type: 'payment',
+          description: `Sale #${sale.billNumber} - Initial Payment`,
+          saleDescription: '',
           debit: 0,
+          credit: Number(sale.paidAmount), // Jama: Initial payment received
+          balance: 0
+        })),
+      ...filteredPurchases
+        .filter(purchase => Number(purchase.paidAmount) > 0)
+        .map(purchase => ({
+          date: purchase.createdAt || purchase.purchaseDate,
+          type: 'payment',
+          description: `Purchase #${purchase.invoiceNumber || purchase.id} - Initial Payment`,
+          saleDescription: '',
+          debit: Number(purchase.paidAmount), // Banaam: Initial payment made
           credit: 0,
-          balance: 0,
-          isEdit: true,
-          editedAt: change.changedAt,
-          auditChange: {
-            fieldName: change.fieldName,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
-            difference: difference
+          balance: 0
+        })),
+      // Add audit trail entries for sales and purchase updates (only payment-related changes)
+      ...auditChanges
+        .filter(change => {
+          // Only include payment-related field changes, not creation entries
+          return change.fieldName === 'paidAmount' && 
+                 (change.tableName === 'Sale' || change.tableName === 'BulkPurchase') &&
+                 change.oldValue !== null && change.oldValue !== undefined;
+        })
+        .map(change => {
+          const originalTransaction = change.tableName === 'Sale' 
+            ? salesMap.get(change.recordId) 
+            : purchasesMap.get(change.recordId);
+          
+          if (originalTransaction) {
+            const isSale = change.tableName === 'Sale';
+            const billNumber = isSale ? originalTransaction.billNumber : (originalTransaction.invoiceNumber || originalTransaction.id);
+            const totalAmount = Number(originalTransaction.totalAmount) || 0;
+            const currentPaidAmount = Number(change.newValue) || 0; // Use the new paid amount from audit
+            const previousPaidAmount = Number(change.oldValue) || 0; // Previous paid amount
+            const paymentDifference = currentPaidAmount - previousPaidAmount;
+            const remainingAmount = totalAmount - currentPaidAmount;
+            
+            return {
+              date: change.changedAt,
+              type: 'update',
+              description: `${isSale ? 'Sale' : 'Purchase'} #${billNumber} - Payment Updated${change.description ? ` - ${change.description}` : ''}`,
+              saleDescription: change.description || '',
+              debit: isSale ? 0 : Math.max(0, paymentDifference), // For purchases: increase in payment
+              credit: isSale ? Math.max(0, paymentDifference) : 0, // For sales: increase in payment reduces debt
+              balance: 0, // Will be calculated
+              isEdit: true,
+              editedAt: change.changedAt,
+              updateDetails: {
+                totalAmount: formatPakistaniCurrency(totalAmount),
+                paidAmount: formatPakistaniCurrency(currentPaidAmount),
+                remainingAmount: formatPakistaniCurrency(remainingAmount),
+                paymentDifference: formatPakistaniCurrency(paymentDifference),
+                fieldChanged: change.fieldName,
+                oldValue: change.oldValue,
+                newValue: change.newValue
+              }
+            };
           }
-        };
-      }),
-      // Add edit entries for modified transactions (timestamp-based)
-      ...editedSales.map(sale => {
-        return {
-          date: sale.updatedAt,
-          type: 'edit',
-          description: `Sale #${sale.billNumber} - Edited on ${new Date(sale.updatedAt).toLocaleDateString()}`,
-          debit: 0,
-          credit: 0,
-          balance: 0,
-          isEdit: true,
-          editedAt: sale.updatedAt
-        };
-      }),
-      ...editedPurchases.map(purchase => {
-        return {
-          date: purchase.updatedAt,
-          type: 'edit',
-          description: `Purchase #${purchase.invoiceNumber || purchase.id} - Edited on ${new Date(purchase.updatedAt).toLocaleDateString()}`,
-          debit: 0,
-          credit: 0,
-          balance: 0,
-          isEdit: true,
-          editedAt: purchase.updatedAt
-        };
-      })
+          return null;
+        })
+        .filter(Boolean)
     ].sort((a, b) => new Date(a.date) - new Date(b.date));
     
     // Calculate running balance
     let runningBalance = 0;
     allTransactions.forEach(transaction => {
       runningBalance += (transaction.debit || 0) - (transaction.credit || 0);
+      
+      // Check if this is an audit trail update where payment equals total amount
+      if (transaction.type === 'update' && transaction.updateDetails) {
+        const totalAmount = parseFloat(transaction.updateDetails.totalAmount.replace(/[^0-9.-]/g, ''));
+        const paidAmount = parseFloat(transaction.updateDetails.paidAmount.replace(/[^0-9.-]/g, ''));
+        if (paidAmount >= totalAmount) {
+          transaction.balance = 0;
+          runningBalance = 0;
+          return;
+        }
+      }
+      
       transaction.balance = runningBalance;
     });
     
@@ -546,21 +573,49 @@ function Contacts() {
         ` : ''}
         
         <div style="margin-bottom: 8px;">
-          ${statementData.transactions.map(transaction => `
-            <div class="transaction">
-              <div class="transaction-header">${new Date(transaction.date).toLocaleDateString()}</div>
-              <div class="transaction-details">
-                <span>${transaction.description}</span>
-              </div>
-              <div class="transaction-details">
-                <span>Total: ${formatPakistaniCurrency(transaction.debit || transaction.credit)}</span>
-                <span>Paid: ${formatPakistaniCurrency(transaction.credit || 0)}</span>
-              </div>
-              <div class="transaction-details">
-                <span>Remaining: ${formatPakistaniCurrency((transaction.debit || 0) - (transaction.credit || 0))}</span>
-              </div>
-            </div>
-          `).join('')}
+          ${statementData.transactions.map(transaction => {
+            if (transaction.type === 'update' && transaction.updateDetails) {
+              return `
+                <div class="transaction" style="background-color: #fff3cd; border-left: 3px solid #ffc107;">
+                  <div class="transaction-header">${new Date(transaction.date).toLocaleDateString()} - PAYMENT UPDATE</div>
+                  <div class="transaction-details">
+                    <span>${transaction.description}</span>
+                  </div>
+                  <div class="transaction-details" style="font-size: 9px; color: #666;">
+                    <span>Total: ${transaction.updateDetails.totalAmount}</span>
+                    <span>Now Paid: ${transaction.updateDetails.paidAmount}</span>
+                  </div>
+                  <div class="transaction-details" style="font-size: 9px; color: #666;">
+                    <span>Remaining: ${transaction.updateDetails.remainingAmount}</span>
+                    <span>Payment +${transaction.updateDetails.paymentDifference}</span>
+                  </div>
+                  ${transaction.saleDescription ? `
+                    <div style="font-size: 8px; color: #888; margin-top: 2px;">
+                      ${transaction.saleDescription}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            } else {
+              return `
+                <div class="transaction">
+                  <div class="transaction-header">${new Date(transaction.date).toLocaleDateString()}</div>
+                  <div class="transaction-details">
+                    <span>${transaction.description}</span>
+                  </div>
+                  <div class="transaction-details">
+                    <span>Amount: ${formatPakistaniCurrency(transaction.debit || transaction.credit)}</span>
+                    <span>Balance: ${formatPakistaniCurrency(transaction.balance)}</span>
+                  </div>
+                  ${transaction.saleDescription ? `
+                    <div style="font-size: 9px; color: #666; margin-top: 2px;">
+                      ${transaction.saleDescription}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }
+          }).join('')}
         </div>
         
         <div class="summary">

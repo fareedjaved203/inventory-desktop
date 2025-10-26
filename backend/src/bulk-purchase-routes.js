@@ -90,7 +90,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
   // Get all bulk purchases with search and pagination
   app.get('/api/bulk-purchases', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', contactId = '' } = req.query;
+      const { page = 1, limit = 10, search = '', contactId = '', productId = '' } = req.query;
 
       const where = { userId: req.userId };
       
@@ -106,6 +106,15 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       // Add contact filter
       if (contactId) {
         where.contactId = contactId;
+      }
+      
+      // Add product filter
+      if (productId) {
+        where.items = {
+          some: {
+            productId: productId
+          }
+        };
       }
 
       const [total, items] = await Promise.all([
@@ -184,7 +193,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Create the bulk purchase using Prisma create instead of raw SQL
           const purchaseId = crypto.randomUUID();
-          const purchaseDate = req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date();
+          const purchaseDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
           console.log('Purchase date being saved:', purchaseDate);
           
           await prisma.$executeRaw`
@@ -320,7 +329,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           });
 
           // Update the purchase using raw SQL
-          const updateDate = req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date();
+          const updateDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
           await prisma.$executeRaw`
             UPDATE "BulkPurchase" 
             SET "totalAmount" = ${Number(req.body.totalAmount)},

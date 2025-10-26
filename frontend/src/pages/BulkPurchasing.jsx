@@ -1073,34 +1073,26 @@ function BulkPurchasing() {
                     {validationErrors.product && (
                       <p className="text-red-500 text-sm mt-1">{validationErrors.product}</p>
                     )}
-                    {selectedProduct && lastBulkPurchase && (
+                    {selectedProduct && lastBulkPurchase && lastBulkPurchase.items?.find(item => item.productId === selectedProduct.id) && (
                       <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                         <div className="text-xs font-medium text-blue-700 mb-1">Last Bulk Purchase:</div>
-                        {(() => {
-                          const purchaseItem = lastBulkPurchase.items?.find(item => item.productId === selectedProduct.id);
-                          if (!purchaseItem) return null;
-                          
-                          const quantity = Number(purchaseItem.quantity);
-                          const purchasePrice = Number(purchaseItem.purchasePrice);
-                          const unit = selectedProduct.unit || 'unit';
-                          
-                          if (purchaseItem.isTotalCostItem) {
-                            // For weighted items, show per-unit cost
-                            const perUnitCost = purchasePrice / quantity;
-                            return (
-                              <div className="text-xs text-blue-600">
-                                Rs.{perUnitCost.toFixed(2)} per {unit} ({quantity} {unit} for Rs.{purchasePrice.toFixed(2)})
-                              </div>
-                            );
-                          } else {
-                            // For regular items, show unit price
-                            return (
-                              <div className="text-xs text-blue-600">
-                                Rs.{purchasePrice.toFixed(2)} per {unit}
-                              </div>
-                            );
+                        <div className="text-xs text-blue-600">
+                          {(() => {
+                            const purchaseItem = lastBulkPurchase.items.find(item => item.productId === selectedProduct.id);
+                            const quantity = Number(purchaseItem.quantity);
+                            const purchasePrice = Number(purchaseItem.purchasePrice);
+                            const unit = selectedProduct.unit || 'unit';
+                            
+                            if (purchaseItem.isTotalCostItem) {
+                              const perUnitCost = purchasePrice / quantity;
+                              return `Rs.${perUnitCost.toFixed(2)} per ${unit} (${quantity} ${unit} for Rs.${purchasePrice.toFixed(2)})`;
+                            } else {
+                              const totalCost = purchasePrice * quantity;
+                              return `Rs.${purchasePrice.toFixed(2)} per ${unit} (${quantity} ${unit} for Rs.${totalCost.toFixed(2)})`;
+                            }
+                          })()
                           }
-                        })()}
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           From: {lastBulkPurchase.contact?.name} on {new Date(lastBulkPurchase.purchaseDate).toLocaleDateString()}
                         </div>

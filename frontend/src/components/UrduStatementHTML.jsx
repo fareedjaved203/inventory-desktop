@@ -321,7 +321,7 @@ function generateUrduStatementHTML(statementData, shopSettings, startDate, endDa
                   ${preferences.showDebit !== false ? `<td>${transaction.debit > 0 ? formatPakistaniCurrency(transaction.debit) : '-'}</td>` : ''}
                   ${preferences.showCredit !== false ? `<td>${transaction.credit > 0 ? formatPakistaniCurrency(transaction.credit) : '-'}</td>` : ''}
                   ${preferences.showBalance !== false ? `<td style="color: ${transaction.balance >= 0 ? '#2d3748' : '#4a5568'}; font-weight: bold;">
-                    ${formatPakistaniCurrency(Math.abs(transaction.balance))}${transaction.balance >= 0 ? ' Dr' : ' Cr'}
+                    ${formatPakistaniCurrency(Math.abs(transaction.balance))}${transaction.balance >= 0 ? ' بقایا' : ' جمع'}
                   </td>` : ''}
                 </tr>
               `;
