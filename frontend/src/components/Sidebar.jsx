@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import API from '../utils/api';
-import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaIndustry } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaUtensils } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -66,7 +66,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
     { path: '/employee-stats', label: t('employeeStats'), icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
     { path: '/products', label: t('products'), icon: <FaBoxOpen />, permission: 'products' },
     { path: '/categories', label: 'Categories', icon: <FaTag />, permission: 'categories' },
-    { path: '/manufacturing', label: 'Manufacturing', icon: <FaIndustry />, permission: 'manufacturing' },
+    { path: '/manufacturing', label: 'Recipe', icon: <FaUtensils />, permission: 'manufacturing' },
     { path: '/product-labels', label: t('productLabels'), icon: <FaTag />, permission: 'products' },
     { path: '/sales', label: t('sales'), icon: <FaMoneyBillWave />, permission: 'sales' },
     { path: '/contacts', label: t('contacts'), icon: <FaBuilding />, permission: 'contacts' },

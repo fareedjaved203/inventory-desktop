@@ -7,7 +7,7 @@ import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
-import { FaSearch, FaPlus, FaCog, FaIndustry, FaTrash, FaEdit, FaTh, FaList } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaCog, FaUtensils, FaTrash, FaEdit, FaTh, FaList } from 'react-icons/fa';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
@@ -30,7 +30,7 @@ function Manufacturing() {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [maxProduction, setMaxProduction] = useState(0);
   const [productionCost, setProductionCost] = useState(0);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'tiles'
+  const [viewMode, setViewMode] = useState('tiles'); // 'table' or 'tiles'
 
   const {
     register,
@@ -231,10 +231,10 @@ function Manufacturing() {
         queryClient.invalidateQueries(['products']);
         setShowProductionModal(false);
         reset();
-        toast.success('Production completed successfully!');
+        toast.success('Recipe completed successfully!');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to complete production');
+        toast.error(error.response?.data?.error || 'Failed to complete recipe');
       }
     }
   );
@@ -251,10 +251,10 @@ function Manufacturing() {
         setShowDeleteModal(false);
         setSelectedItem(null);
         setDeleteError(null);
-        toast.success('Manufacturing record deleted successfully!');
+        toast.success('Recipe record deleted successfully!');
       },
       onError: (error) => {
-        setDeleteError(error.response?.data?.error || 'Failed to delete manufacturing record');
+        setDeleteError(error.response?.data?.error || 'Failed to delete recipe record');
       }
     }
   );
@@ -351,7 +351,7 @@ function Manufacturing() {
     <div className={`p-6 ${language === 'ur' ? 'font-urdu' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800 flex items-center gap-2">
-          <FaIndustry />
+          <FaUtensils />
           Recipe
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -385,7 +385,7 @@ function Manufacturing() {
             className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2 w-full sm:w-auto"
           >
             <FaPlus />
-            {activeTab === 'recipes' ? 'Add Recipe' : 'Start Production'}
+            {activeTab === 'recipes' ? 'Add Recipe' : 'Start Recipe'}
           </button>
         </div>
       </div>
@@ -412,8 +412,8 @@ function Manufacturing() {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <FaIndustry className="inline mr-2" />
-            Production History
+            <FaUtensils className="inline mr-2" />
+            Recipe History
           </button>
         </div>
         
@@ -546,9 +546,9 @@ function Manufacturing() {
             {/* Empty State for Tiles */}
             {(!data?.data?.items || data.data.items.length === 0) && (
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
-                <FaCog className="w-16 h-16 mb-4 text-gray-300" />
+                <FaUtensils className="w-16 h-16 mb-4 text-gray-300" />
                 <h3 className="text-lg font-medium mb-2">No Recipes Found</h3>
-                <p className="text-sm text-center">Create your first recipe to get started with manufacturing.</p>
+                <p className="text-sm text-center">Create your first recipe to get started.</p>
               </div>
             )}
           </div>
@@ -633,10 +633,10 @@ function Manufacturing() {
                   Product
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Quantity Produced
+                  Quantity Made
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Manufacturing Cost
+                  Recipe Cost
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                   Notes
@@ -897,7 +897,7 @@ function Manufacturing() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                Start Production
+                Start Recipe
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
@@ -935,7 +935,7 @@ function Manufacturing() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity to Produce
+                  Quantity to Make
                   {maxProduction > 0 && (
                     <span className="text-green-600 text-sm ml-2">
                       (Max: {maxProduction} units)
