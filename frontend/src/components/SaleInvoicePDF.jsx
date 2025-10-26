@@ -31,151 +31,173 @@ function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 11,
+    padding: 20,
+    fontSize: 10,
     fontFamily: "Helvetica",
-    color: "#333",
+    color: "#000",
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    borderBottom: "2px solid #2563eb",
-    paddingBottom: 10,
+  // Header section
+  companyHeader: {
+    textAlign: "center",
+    marginBottom: 10,
+    borderBottom: "2px solid #000",
+    paddingBottom: 8,
   },
-  logo: {
-    maxWidth: 100,
-    maxHeight: 100,
-    objectFit: 'contain',
-  },
-  companyInfo: {
-    textAlign: "right",
-    fontSize: 10,
-    lineHeight: 1.4,
-  },
-  shopName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  brands: {
-    fontSize: 10,
-    color: "#666",
-    marginBottom: 2,
-  },
-  recipientBox: {
-    marginTop: 20,
-    marginBottom: 15,
-  },
-  recipientTitle: {
-    fontSize: 10,
+  companyName: {
+    fontSize: 16,
     fontWeight: "bold",
     marginBottom: 2,
   },
-  recipientName: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  invoiceBox: {
-    backgroundColor: "white",
-    color: "black",
-    padding: 12,
-    borderRadius: 4,
-    width: 200,
-    marginLeft: "auto",
-  },
-  invoiceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  companySubtitle: {
     fontSize: 10,
-    marginBottom: 4,
+    marginBottom: 5,
   },
-  invoiceTotal: {
+  invoiceTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    textAlign: "right",
-    marginTop: 4,
+    textAlign: "center",
+    marginBottom: 10,
   },
+  // Invoice info section
+  invoiceInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+  dateSection: {
+    fontSize: 10,
+  },
+  invoiceNumber: {
+    fontSize: 10,
+    textAlign: "right",
+  },
+  // Bill to section
+  billToSection: {
+    marginBottom: 15,
+    border: "1px solid #000",
+    padding: 8,
+  },
+  billToTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  customerInfo: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  // Table styles
   table: {
-    marginTop: 20,
+    border: "1px solid #000",
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#000",
+    color: "#fff",
     fontWeight: "bold",
-    padding: 4,
-    borderBottom: "1px solid #ccc",
-    fontSize: 8,
+    fontSize: 9,
+    padding: 5,
   },
   tableRow: {
     flexDirection: "row",
-    padding: 4,
-    borderBottom: "1px solid #eee",
-    fontSize: 8,
+    borderBottom: "1px solid #000",
+    fontSize: 9,
+    padding: 3,
+    minHeight: 20,
   },
-  col1: { flex: 2 },
-  col2: { flex: 1, textAlign: "right" },
-  col3: { flex: 1, textAlign: "right" },
-  col4: { flex: 1, textAlign: "right" },
-  summary: {
-    marginTop: 15,
-    marginLeft: "auto",
-    width: 200,
+  // Column widths
+  colSr: { width: "8%", textAlign: "center", borderRight: "1px solid #ccc" },
+  colDescription: { width: "35%", paddingLeft: 3, borderRight: "1px solid #ccc" },
+  colUom: { width: "12%", textAlign: "center", borderRight: "1px solid #ccc" },
+  colQty: { width: "10%", textAlign: "center", borderRight: "1px solid #ccc" },
+  colPrice: { width: "15%", textAlign: "right", paddingRight: 3, borderRight: "1px solid #ccc" },
+  colAmount: { width: "20%", textAlign: "right", paddingRight: 3 },
+  // Summary section
+  summarySection: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+  summaryLeft: {
+    width: "50%",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  summaryRight: {
+    width: "50%",
+    border: "1px solid #000",
+    borderLeft: "none",
+    padding: 5,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 3,
+    fontSize: 9,
   },
-  summaryTotal: {
+  summaryLabel: {
     fontWeight: "bold",
-    fontSize: 12,
-    borderTop: "1px solid #000",
-    marginTop: 6,
-    paddingTop: 6,
+    fontSize: 9,
   },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+    fontSize: 10,
+    fontWeight: "bold",
+    borderTop: "1px solid #000",
+    paddingTop: 3,
+    marginTop: 3,
+  },
+  // Status section
+  statusSection: {
+    marginTop: 10,
+    border: "1px solid #000",
+    padding: 8,
+  },
+  statusTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  statusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+    fontSize: 9,
+  },
+  // Footer
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    fontSize: 9,
-    color: "#666",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    textAlign: "left",
+    fontSize: 8,
+    paddingTop: 5,
   },
-  statusTag: {
-    padding: '3 6',
-    borderRadius: 4,
-    fontSize: 10,
-    marginLeft: 5,
-  },
-  statusPaid: {
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-  },
-  statusDue: {
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-  },
-  statusCredit: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-  },
-  statusRefunded: {
-    backgroundColor: '#e0f2fe',
-    color: '#0369a1',
+  shopDescriptionFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#000',
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 8,
+    padding: 5,
+    margin: 0,
   },
   returnsSection: {
-    marginTop: 20,
-    marginBottom: 15,
+    marginTop: 10,
+    marginBottom: 10,
   },
   returnsTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "bold",
-    marginBottom: 10,
-    backgroundColor: "#fef2f2",
-    padding: 6,
+    marginBottom: 5,
+    backgroundColor: "#f0f0f0",
+    padding: 3,
   },
 });
 
@@ -222,205 +244,173 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          {shopSettings?.logo && (
-            <Image src={shopSettings.logo} style={styles.logo} />
+        {/* Company Header */}
+        <View style={styles.companyHeader}>
+          <Text style={styles.companyName}>{shopSettings?.shopName || "COMPANY NAME"}</Text>
+          {brands.length > 0 && (
+            <Text style={styles.companySubtitle}>{brands.join(" • ")}</Text>
           )}
-          <View style={styles.companyInfo}>
-            <Text style={styles.shopName}>{shopSettings?.shopName || "INVOICE"}</Text>
-            {brands.length > 0 && (
-              <Text style={styles.brands}>{brands.join(" • ")}</Text>
-            )}
-            {shopSettings?.shopDescription && (
-              <Text>{shopSettings.shopDescription}</Text>
-            )}
-            {shopSettings?.shopDescription2 && (
-              <Text>{shopSettings.shopDescription2}</Text>
-            )}
-            <Text> </Text>
-            {shopSettings?.userName1 && (
-              <Text>{shopSettings.userName1}: {shopSettings.userPhone1}</Text>
-            )}
-            {shopSettings?.userName2 && (
-              <Text>{shopSettings.userName2}: {shopSettings.userPhone2}</Text>
-            )}
-            {shopSettings?.userName3 && (
-              <Text>{shopSettings.userName3}: {shopSettings.userPhone3}</Text>
-            )}
-          </View>
+          {shopSettings?.shopDescription && (
+            <Text style={styles.companySubtitle}>{shopSettings.shopDescription}</Text>
+          )}
         </View>
 
-        {/* Recipient */}
-        <View style={styles.recipientBox}>
-          <Text style={styles.recipientTitle}>RECIPIENT:</Text>
-          <Text style={styles.recipientName}>
-            {sale.contact?.name || "Walk-in Customer"}
-          </Text>
-          {Number(sale.contact?.phoneNumber) && preferences.showContactPhone !== false && (
-            <Text>Phone: {sale.contact.phoneNumber}</Text>
+        {/* Invoice Title */}
+        <Text style={styles.invoiceTitle}>INVOICE</Text>
+
+        {/* Date and Invoice Number */}
+        <View style={styles.invoiceInfo}>
+          <Text style={styles.dateSection}>DATE: {new Date(sale.saleDate).toLocaleDateString()}</Text>
+          <Text style={styles.invoiceNumber}>INVOICE NO.: {sale.billNumber}</Text>
+        </View>
+
+        {/* Bill To Section */}
+        <View style={styles.billToSection}>
+          <Text style={styles.billToTitle}>BILL TO:</Text>
+          <Text style={styles.customerInfo}>CUSTOMER NAME: {sale.contact?.name || "Walk-in Customer"}</Text>
+          {sale.contact?.phoneNumber && preferences.showContactPhone !== false && (
+            <Text style={styles.customerInfo}>CONTACT #: {sale.contact.phoneNumber}</Text>
           )}
           {sale.contact?.address && preferences.showContactAddress !== false && (
-            <Text>{sale.contact.address}</Text>
+            <Text style={styles.customerInfo}>ADDRESS: {sale.contact.address}</Text>
           )}
         </View>
 
-
-        {/* Invoice Box */}
-        <View style={styles.invoiceBox}>
-          <Text>Invoice #{sale.billNumber}</Text>
-          <View style={styles.invoiceRow}>
-            <Text>Issued</Text>
-            <Text>{new Date(sale.saleDate).toLocaleDateString()}</Text>
-          </View>
-          <View style={styles.invoiceRow}>
-            <Text>Time</Text>
-            <Text>{new Date(sale.saleDate).toLocaleTimeString()}</Text>
-          </View>
-          <View style={styles.invoiceRow}>
-            <Text>Status</Text>
-            <Text style={[styles.statusTag, statusStyle]}>{status}</Text>
-          </View>
-          <Text style={styles.invoiceTotal}>
-            {formatPakistaniCurrencyPDF(sale.totalAmount)}
-          </Text>
-        </View>
-
-                {/* Single Table with All Data */}
+        {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            {preferences.showProductName !== false && <Text style={styles.col1}>PRODUCT</Text>}
-            {preferences.showUnitPrice !== false && <Text style={styles.col2}>UNIT PRICE</Text>}
-            {preferences.showQuantity !== false && <Text style={styles.col3}>QTY</Text>}
-            {preferences.showTotal !== false && <Text style={styles.col4}>TOTAL</Text>}
-            {preferences.showCarNumber !== false && <Text style={styles.col2}>CAR NUMBER</Text>}
-            {preferences.showLoadingDate !== false && <Text style={styles.col3}>LOADING DATE</Text>}
-            {preferences.showArrivalDate !== false && <Text style={styles.col3}>ARRIVAL DATE</Text>}
-            {preferences.showDescription !== false && <Text style={styles.col4}>DESCRIPTION</Text>}
+            <Text style={styles.colSr}>SR.</Text>
+            <Text style={styles.colDescription}>ITEM DESCRIPTION</Text>
+            <Text style={styles.colUom}>UOM</Text>
+            <Text style={styles.colQty}>QTY</Text>
+            <Text style={styles.colPrice}>UNIT PRICE</Text>
+            <Text style={styles.colAmount}>AMOUNT</Text>
           </View>
 
           {sale.items.map((item, i) => (
             <View style={styles.tableRow} key={i}>
-              {preferences.showProductName !== false && <Text style={styles.col1}>{item.product.name}</Text>}
-              {preferences.showUnitPrice !== false && <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.price)}</Text>}
-              {preferences.showQuantity !== false && <Text style={styles.col3}>{item.quantity}</Text>}
-              {preferences.showTotal !== false && <Text style={styles.col4}>{formatPakistaniCurrencyPDF(item.price * item.quantity)}</Text>}
-              {preferences.showCarNumber !== false && <Text style={styles.col2}>{sale.transport?.carNumber || '-'}</Text>}
-              {preferences.showLoadingDate !== false && <Text style={styles.col3}>{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</Text>}
-              {preferences.showArrivalDate !== false && <Text style={styles.col3}>{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</Text>}
-              {preferences.showDescription !== false && <Text style={styles.col4}>{sale.description || '-'}</Text>}
+              <Text style={styles.colSr}>{i + 1}</Text>
+              <Text style={styles.colDescription}>{item.product.name}</Text>
+              <Text style={styles.colUom}>{item.product.unit || 'PCS'}</Text>
+              <Text style={styles.colQty}>{item.quantity}</Text>
+              <Text style={styles.colPrice}>{formatPakistaniCurrencyPDF(item.price, false)}</Text>
+              <Text style={styles.colAmount}>{formatPakistaniCurrencyPDF(item.price * item.quantity, false)}</Text>
             </View>
           ))}
+          
+          {/* Empty rows to fill space */}
+          {Array.from({ length: Math.max(0, 20 - sale.items.length) }).map((_, i) => (
+            <View style={styles.tableRow} key={`empty-${i}`}>
+              <Text style={styles.colSr}>{sale.items.length + i + 1}</Text>
+              <Text style={styles.colDescription}></Text>
+              <Text style={styles.colUom}></Text>
+              <Text style={styles.colQty}></Text>
+              <Text style={styles.colPrice}></Text>
+              <Text style={styles.colAmount}></Text>
+            </View>
+          ))}
+          
+          {/* TOTAL Row in table */}
+          <View style={[styles.tableRow, { backgroundColor: "#fff", fontWeight: "bold", borderTop: "2px solid #000" }]}>
+            <Text style={styles.colSr}></Text>
+            <Text style={[styles.colDescription, { fontWeight: "bold" }]}>TOTAL</Text>
+            <Text style={styles.colUom}></Text>
+            <Text style={styles.colQty}></Text>
+            <Text style={styles.colPrice}></Text>
+            <Text style={[styles.colAmount, { fontWeight: "bold" }]}>{formatPakistaniCurrencyPDF(sale.totalAmount, false)}</Text>
+          </View>
+        </View>
+
+        {/* Summary Section */}
+        <View style={styles.summarySection}>
+          <View style={styles.summaryLeft}>
+            {Number(sale.discount) > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>DISCOUNT</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.discount || 0, false)}</Text>
+              </View>
+            )}
+            {sale.returns && sale.returns.length > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>RETURNS</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0), false)}</Text>
+              </View>
+            )}
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>BALANCE</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance > 0 ? balance : 0, false)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>CASH PAID</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.paidAmount, false)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>CREDIT</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance < 0 ? Math.abs(balance) : 0, false)}</Text>
+            </View>
+          </View>
+          <View style={styles.summaryRight}>
+            <Text style={{ fontWeight: "bold", fontSize: 9 }}>WITH THE ORDER:</Text>
+            <Text style={{ fontSize: 8, marginTop: 3 }}>{sale.description || ''}</Text>
+            <Text> </Text>
+            <Text> </Text>
+            <Text style={{ fontWeight: "bold", fontSize: 9 }}>RECEIVED BY:</Text>
+          </View>
+        </View>
+
+        {/* Payment Status Section */}
+        <View style={styles.statusSection}>
+          {sale.returns && sale.returns.length > 0 && (
+            <View style={styles.statusRow}>
+              <Text>Net Amount (After Returns):</Text>
+              <Text>{formatPakistaniCurrencyPDF(netAmount > 0 ? netAmount : 0)}</Text>
+            </View>
+          )}
+          <View style={styles.statusRow}>
+            <Text>Amount Paid:</Text>
+            <Text>{formatPakistaniCurrencyPDF(sale.paidAmount)}</Text>
+          </View>
+          {totalRefunded > 0 && (
+            <View style={styles.statusRow}>
+              <Text>Amount Refunded:</Text>
+              <Text>{formatPakistaniCurrencyPDF(totalRefunded)}</Text>
+            </View>
+          )}
+          <View style={styles.statusRow}>
+            <Text style={styles.summaryLabel}>
+              {balance > 0 ? 'Amount Due:' : balance < 0 ? 'Credit Balance:' : 'Status:'}
+            </Text>
+            <Text style={styles.summaryLabel}>
+              {balance > 0 ? formatPakistaniCurrencyPDF(balance) : balance < 0 ? formatPakistaniCurrencyPDF(Math.abs(balance)) : 'FULLY PAID'}
+            </Text>
+          </View>
         </View>
 
         {/* Returns Section */}
         {sale.returns && sale.returns.length > 0 && (
           <View style={styles.returnsSection}>
-            <Text style={styles.returnsTitle}>RETURNED ITEMS</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.col1}>Return #</Text>
-                <Text style={styles.col2}>Date</Text>
-                <Text style={styles.col3}>Items</Text>
-                <Text style={styles.col4}>Amount</Text>
-              </View>
-              {sale.returns.map((returnRecord, index) => (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={styles.col1}>{returnRecord.returnNumber}</Text>
-                  <Text style={styles.col2}>
-                    {new Date(returnRecord.returnDate).toLocaleDateString()}
-                  </Text>
-                  <Text style={styles.col3}>
-                    {returnRecord.items
-                      .map(
-                        (item) =>
-                          `${item.product?.name || "Unknown Product"} x${
-                            item.quantity
-                          }`
-                      )
-                      .join(", ")}
-                  </Text>
-                  <Text style={styles.col4}>
-                    {formatPakistaniCurrencyPDF(returnRecord.totalAmount)}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <Text style={styles.returnsTitle}>RETURNED ITEMS:</Text>
+            {sale.returns.map((returnRecord, index) => (
+              <Text key={index} style={{ fontSize: 8, marginBottom: 2 }}>
+                Return #{returnRecord.returnNumber} ({new Date(returnRecord.returnDate).toLocaleDateString()}): 
+                {returnRecord.items.map(item => `${item.product?.name || "Unknown"} x${item.quantity}`).join(", ")} 
+                - {formatPakistaniCurrencyPDF(returnRecord.totalAmount)}
+              </Text>
+            ))}
           </View>
         )}
 
-        {/* Summary */}
-        <View style={styles.summary}>
-          {Number(sale.discount) > 0 && (
-            <>
-              <View style={styles.summaryRow}>
-                <Text>Subtotal</Text>
-                <Text>{formatPakistaniCurrencyPDF(sale.totalAmount + (sale.discount || 0))}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text>Discount</Text>
-                <Text>-{formatPakistaniCurrencyPDF(sale.discount || 0)}</Text>
-              </View>
-            </>
-          )}
-          <View style={styles.summaryRow}>
-            <Text>Total Amount</Text>
-            <Text>{formatPakistaniCurrencyPDF(sale.totalAmount)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text>Paid Amount</Text>
-            <Text>{formatPakistaniCurrencyPDF(sale.paidAmount)}</Text>
-          </View>
-          {sale.returns && sale.returns.length > 0 && (
-            <>
-              <View style={styles.summaryRow}>
-                <Text>Total Returned</Text>
-                <Text>{formatPakistaniCurrencyPDF(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0))}</Text>
-              </View>
-              {totalRefunded > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text>Total Refunded</Text>
-                  <Text>{formatPakistaniCurrencyPDF(totalRefunded)}</Text>
-                </View>
-              )}
-              <View style={styles.summaryRow}>
-                <Text>Net Total After Returns</Text>
-                <Text>{formatPakistaniCurrencyPDF(netAmount > 0 ? netAmount : 0)}</Text>
-              </View>
-            </>
-          )}
-          {balance > 0 ? (
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text>Balance Due</Text>
-              <Text>{formatPakistaniCurrencyPDF(balance)}</Text>
-            </View>
-          ) : balance < 0 ? (
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text>Credit Balance</Text>
-              <Text>{formatPakistaniCurrencyPDF(Math.abs(balance) <= sale.paidAmount ? Math.abs(balance) : 0)}</Text>
-            </View>
-          ) : (
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text>Status</Text>
-              <Text>Fully Paid</Text>
-            </View>
-          )}
-        </View>
-
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={{ fontSize: 8 }}>
-            Need system like this? Contact: 03145292649
-          </Text>
-          <View style={{ border: '1px solid #666', padding: 5, borderRadius: 3 }}>
-            <Text style={{ fontSize: 8 }}>
-              Goods will not be returned or exchanged after use.
-            </Text>
-            <Text style={{ fontSize: 8 }}>
-              No Return / Exchange after use.
-            </Text>
-          </View>
+          <Text style={{marginTop: '4px', marginBottom: '4px'}}>CHECK & APPROVED BY: _________________________</Text>
         </View>
+        
+        {/* Shop Description Footer */}
+        {shopSettings?.shopDescription2 && (
+          <View style={styles.shopDescriptionFooter}>
+            <Text>{shopSettings.shopDescription2}</Text>
+          </View>
+        )}
       </Page>
     </Document>
   );

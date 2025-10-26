@@ -37,242 +37,380 @@ function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 11,
+    padding: 20,
+    fontSize: 10,
     fontFamily: "NotoSansUrdu",
-    color: "#333",
+    color: "#000",
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    borderBottom: "2px solid #2563eb",
-    paddingBottom: 10,
-  },
-  companyInfo: {
-    textAlign: "right",
-    fontSize: 10,
-    lineHeight: 1.4,
-  },
-  shopName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
+  // Header section
+  companyHeader: {
     textAlign: "center",
+    marginBottom: 10,
+    borderBottom: "2px solid #000",
+    paddingBottom: 8,
   },
-  title: {
+  companyName: {
     fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  recipientBox: {
-    marginTop: 20,
-    marginBottom: 15,
-    textAlign: "right",
-  },
-  recipientTitle: {
-    fontSize: 10,
     fontWeight: "bold",
     marginBottom: 2,
   },
-  recipientName: {
-    fontSize: 12,
+  companySubtitle: {
+    fontSize: 10,
+    marginBottom: 5,
+  },
+  invoiceTitle: {
+    fontSize: 14,
     fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
   },
-  invoiceBox: {
-    backgroundColor: "white",
-    color: "black",
-    padding: 12,
-    borderRadius: 4,
-    width: 200,
-    marginRight: "auto",
-    textAlign: "right",
-  },
-  invoiceRow: {
+  // Invoice info section
+  invoiceInfo: {
     flexDirection: "row",
     justifyContent: "space-between",
-    fontSize: 10,
-    marginBottom: 4,
+    marginBottom: 15,
   },
+  dateSection: {
+    fontSize: 10,
+  },
+  invoiceNumber: {
+    fontSize: 10,
+    textAlign: "right",
+  },
+  // Bill to section
+  billToSection: {
+    marginBottom: 15,
+    border: "1px solid #000",
+    padding: 8,
+  },
+  billToTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  customerInfo: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  // Table styles
   table: {
-    marginTop: 20,
+    border: "1px solid #000",
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#000",
+    color: "#fff",
     fontWeight: "bold",
-    padding: 6,
-    borderBottom: "1px solid #ccc",
+    fontSize: 9,
+    padding: 5,
   },
   tableRow: {
     flexDirection: "row",
-    padding: 6,
-    borderBottom: "1px solid #eee",
+    borderBottom: "1px solid #000",
+    fontSize: 9,
+    padding: 3,
+    minHeight: 20,
   },
-  col1: { flex: 2, textAlign: "right" },
-  col2: { flex: 1, textAlign: "center" },
-  col3: { flex: 1, textAlign: "center" },
-  col4: { flex: 1, textAlign: "center" },
-  summary: {
-    marginTop: 15,
-    marginRight: "auto",
-    width: 200,
+  // Column widths (RTL)
+  colSr: { width: "8%", textAlign: "center", borderLeft: "1px solid #ccc" },
+  colDescription: { width: "35%", paddingRight: 3, borderLeft: "1px solid #ccc", textAlign: "right" },
+  colUom: { width: "12%", textAlign: "center", borderLeft: "1px solid #ccc" },
+  colQty: { width: "10%", textAlign: "center", borderLeft: "1px solid #ccc" },
+  colPrice: { width: "15%", textAlign: "right", paddingLeft: 3, borderLeft: "1px solid #ccc" },
+  colAmount: { width: "20%", textAlign: "right", paddingLeft: 3 },
+  // Summary section
+  summarySection: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+  summaryLeft: {
+    width: "50%",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  summaryRight: {
+    width: "50%",
+    border: "1px solid #000",
+    borderRight: "none",
+    padding: 5,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  summaryTotal: {
-    fontWeight: "bold",
-    fontSize: 12,
-    borderTop: "1px solid #000",
-    marginTop: 6,
-    paddingTop: 6,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 3,
     fontSize: 9,
-    color: "#666",
-    textAlign: "center",
   },
-  transportSection: {
-    marginTop: 15,
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 4,
-  },
-  transportTitle: {
-    fontSize: 12,
+  summaryLabel: {
     fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
+    fontSize: 9,
   },
-  transportRow: {
+  totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 3,
     fontSize: 10,
+    fontWeight: "bold",
+    borderTop: "1px solid #000",
+    paddingTop: 3,
+    marginTop: 3,
+  },
+  // Status section
+  statusSection: {
+    marginTop: 10,
+    border: "1px solid #000",
+    padding: 8,
+  },
+  statusTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  statusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+    fontSize: 9,
+  },
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    textAlign: "left",
+    fontSize: 8,
+    paddingTop: 5,
+  },
+  shopDescriptionFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#000',
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 8,
+    padding: 5,
+    margin: 0,
+  },
+  returnsSection: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  returnsTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+    backgroundColor: "#f0f0f0",
+    padding: 3,
   },
 });
 
 function UrduInvoicePDF({ sale, shopSettings, preferences = {} }) {
+  // Create brand array with registered trademark symbols
+  const brands = [];
+  
+  if (shopSettings?.brand1) {
+    brands.push(shopSettings.brand1 + (shopSettings.brand1Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand2) {
+    brands.push(shopSettings.brand2 + (shopSettings.brand2Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand3) {
+    brands.push(shopSettings.brand3 + (shopSettings.brand3Registered ? '®' : ''));
+  }
+
+  // Calculate payment status
+  const netAmount = (sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0);
+  const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0) || 0);
+  const balance = netAmount - sale.paidAmount + totalRefunded;
+  
+  // Determine status in Urdu
+  let status = '';
+  
+  if (balance > 0) {
+    status = 'ادائیگی باقی';
+  } else if (balance < 0) {
+    const allRefundsPaid = sale.returns?.every(ret => ret.refundPaid) || false;
+    if (allRefundsPaid && totalRefunded > 0) {
+      status = 'واپس کیا گیا';
+    } else {
+      status = 'کریڈٹ بیلنس';
+    }
+  } else {
+    status = 'مکمل ادا شدہ';
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.companyInfo}>
-            <Text style={styles.shopName}>{shopSettings?.shopName || "رانا قدیر صاحب"}</Text>
-          </View>
+        {/* Company Header */}
+        <View style={styles.companyHeader}>
+          <Text style={styles.companyName}>{shopSettings?.shopName || "کمپنی کا نام"}</Text>
+          {brands.length > 0 && (
+            <Text style={styles.companySubtitle}>{brands.join(" • ")}</Text>
+          )}
+          {shopSettings?.shopDescription && (
+            <Text style={styles.companySubtitle}>{shopSettings.shopDescription}</Text>
+          )}
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>Raseed</Text>
+        {/* Invoice Title */}
+        <Text style={styles.invoiceTitle}>رسید</Text>
 
-        {/* Recipient */}
-        <View style={styles.recipientBox}>
-          <Text style={styles.recipientTitle}>Grahak:</Text>
-          <Text style={styles.recipientName}>
-            {sale.contact?.name || "Walk-in Customer"}
-          </Text>
+        {/* Date and Invoice Number */}
+        <View style={styles.invoiceInfo}>
+          <Text style={styles.dateSection}>تاریخ: {new Date(sale.saleDate).toLocaleDateString('ur-PK')}</Text>
+          <Text style={styles.invoiceNumber}>رسید نمبر: {sale.billNumber}</Text>
+        </View>
+
+        {/* Bill To Section */}
+        <View style={styles.billToSection}>
+          <Text style={styles.billToTitle}>بل کی تفصیلات:</Text>
+          <Text style={styles.customerInfo}>گاہک کا نام: {sale.contact?.name || "واک ان کسٹمر"}</Text>
           {sale.contact?.phoneNumber && preferences.showContactPhone !== false && (
-            <Text>Phone: {sale.contact.phoneNumber}</Text>
+            <Text style={styles.customerInfo}>رابطہ نمبر: {sale.contact.phoneNumber}</Text>
           )}
           {sale.contact?.address && preferences.showContactAddress !== false && (
-            <Text>Pata: {sale.contact.address}</Text>
+            <Text style={styles.customerInfo}>پتہ: {sale.contact.address}</Text>
           )}
         </View>
 
-        {/* Invoice Info */}
-        <View style={styles.invoiceBox}>
-          <View style={styles.invoiceRow}>
-            <Text>Tareekh</Text>
-            <Text>{new Date(sale.saleDate).toLocaleDateString('ur-PK')}</Text>
-          </View>
-          <View style={styles.invoiceRow}>
-            <Text>Bill Number</Text>
-            <Text>#{sale.billNumber}</Text>
-          </View>
-        </View>
-
-        {/* Transport Section */}
-        {preferences.showTransportDetails !== false && (sale.transport || sale.transportCost || sale.loadingDate || sale.arrivalDate) && (
-          <View style={styles.transportSection}>
-            <Text style={styles.transportTitle}>Transport Ki Tafseelatت</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                {preferences.showCarNumber !== false && <Text style={styles.col1}>Gaari Number</Text>}
-                {preferences.showLoadingDate !== false && <Text style={styles.col2}>Loading Ki Tareekh</Text>}
-                {preferences.showArrivalDate !== false && <Text style={styles.col3}>Pahunchne Ki Tareekh</Text>}
-                {preferences.showTransportCost !== false && <Text style={styles.col4}>Transport Ki Lagat</Text>}
-              </View>
-              <View style={styles.tableRow}>
-                {preferences.showCarNumber !== false && <Text style={styles.col1}>{sale.transport?.carNumber || '-'}</Text>}
-                {preferences.showLoadingDate !== false && <Text style={styles.col2}>{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</Text>}
-                {preferences.showArrivalDate !== false && <Text style={styles.col3}>{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</Text>}
-                {preferences.showTransportCost !== false && <Text style={styles.col4}>{sale.transportCost ? formatPakistaniCurrencyPDF(sale.transportCost) : '-'}</Text>}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Description */}
-        {preferences.showDescription !== false && sale.description && (
-          <View style={{ marginTop: 15, marginBottom: 15 }}>
-            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 4 }}>Tafseel:</Text>
-            <Text style={{ fontSize: 10 }}>{sale.description}</Text>
-          </View>
-        )}
-
-        {/* Table */}
+        {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>Product</Text>
-            <Text style={styles.col2}>Rate</Text>
-            <Text style={styles.col3}>Miqdaar</Text>
-            <Text style={styles.col4}>Kul</Text>
+            <Text style={styles.colAmount}>رقم</Text>
+            <Text style={styles.colPrice}>فی یونٹ ریٹ</Text>
+            <Text style={styles.colQty}>مقدار</Text>
+            <Text style={styles.colUom}>یونٹ</Text>
+            <Text style={styles.colDescription}>اشیاء کی تفصیل</Text>
+            <Text style={styles.colSr}>سیریل</Text>
           </View>
 
           {sale.items.map((item, i) => (
             <View style={styles.tableRow} key={i}>
-              <Text style={styles.col1}>{item.product.name}</Text>
-              <Text style={styles.col2}>{formatPakistaniCurrencyPDF(item.price, false)}</Text>
-              <Text style={styles.col3}>{item.quantity}</Text>
-              <Text style={styles.col4}>{formatPakistaniCurrencyPDF(item.price * item.quantity, false)}</Text>
+              <Text style={styles.colAmount}>{formatPakistaniCurrencyPDF(item.price * item.quantity, false)}</Text>
+              <Text style={styles.colPrice}>{formatPakistaniCurrencyPDF(item.price, false)}</Text>
+              <Text style={styles.colQty}>{item.quantity}</Text>
+              <Text style={styles.colUom}>{item.product.unit || 'عدد'}</Text>
+              <Text style={styles.colDescription}>{item.product.name}</Text>
+              <Text style={styles.colSr}>{i + 1}</Text>
             </View>
           ))}
+          
+          {/* Empty rows to fill space */}
+          {Array.from({ length: Math.max(0, 20 - sale.items.length) }).map((_, i) => (
+            <View style={styles.tableRow} key={`empty-${i}`}>
+              <Text style={styles.colAmount}></Text>
+              <Text style={styles.colPrice}></Text>
+              <Text style={styles.colQty}></Text>
+              <Text style={styles.colUom}></Text>
+              <Text style={styles.colDescription}></Text>
+              <Text style={styles.colSr}>{sale.items.length + i + 1}</Text>
+            </View>
+          ))}
+          
+          {/* TOTAL Row in table */}
+          <View style={[styles.tableRow, { backgroundColor: "#fff", fontWeight: "bold", borderTop: "2px solid #000" }]}>
+            <Text style={[styles.colAmount, { fontWeight: "bold" }]}>{formatPakistaniCurrencyPDF(sale.totalAmount, false)}</Text>
+            <Text style={styles.colPrice}></Text>
+            <Text style={styles.colQty}></Text>
+            <Text style={styles.colUom}></Text>
+            <Text style={[styles.colDescription, { fontWeight: "bold" }]}>کل</Text>
+            <Text style={styles.colSr}></Text>
+          </View>
         </View>
 
-        {/* Summary */}
-        <View style={styles.summary}>
-          <View style={styles.summaryRow}>
-            <Text>Kul Raqam</Text>
-            <Text>{formatPakistaniCurrencyPDF(sale.totalAmount)}</Text>
+        {/* Summary Section */}
+        <View style={styles.summarySection}>
+          <View style={styles.summaryRight}>
+            <Text style={{ fontWeight: "bold", fontSize: 9 }}>آرڈر کے ساتھ:</Text>
+            <Text style={{ fontSize: 8, marginTop: 3 }}>{sale.description || ''}</Text>
+            <Text> </Text>
+            <Text> </Text>
+            <Text style={{ fontWeight: "bold", fontSize: 9 }}>وصول کنندہ:</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text>Ada Shuda Raqam</Text>
-            <Text>{formatPakistaniCurrencyPDF(sale.paidAmount)}</Text>
-          </View>
-          <View style={[styles.summaryRow, styles.summaryTotal]}>
-            <Text>Baqi Raqam</Text>
-            <Text>{formatPakistaniCurrencyPDF(Math.max(sale.totalAmount - sale.paidAmount, 0))}</Text>
+          <View style={styles.summaryLeft}>
+            {Number(sale.discount) > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.discount || 0, false)}</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>رعایت</Text>
+              </View>
+            )}
+            {sale.returns && sale.returns.length > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0), false)}</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>واپسی</Text>
+              </View>
+            )}
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance > 0 ? balance : 0, false)}</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>بقایا</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.paidAmount, false)}</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>نقد ادائیگی</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance < 0 ? Math.abs(balance) : 0, false)}</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>کریڈٹ</Text>
+            </View>
           </View>
         </View>
+
+        {/* Payment Status Section */}
+        <View style={styles.statusSection}>
+          <Text style={styles.statusTitle}>ادائیگی کی صورتحال: {status}</Text>
+          <View style={styles.statusRow}>
+            <Text>{formatPakistaniCurrencyPDF(netAmount > 0 ? netAmount : 0)}</Text>
+            <Text>خالص رقم (واپسی کے بعد):</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text>{formatPakistaniCurrencyPDF(sale.paidAmount)}</Text>
+            <Text>ادا شدہ رقم:</Text>
+          </View>
+          {totalRefunded > 0 && (
+            <View style={styles.statusRow}>
+              <Text>{formatPakistaniCurrencyPDF(totalRefunded)}</Text>
+              <Text>واپس شدہ رقم:</Text>
+            </View>
+          )}
+          <View style={styles.statusRow}>
+            <Text style={styles.summaryLabel}>
+              {balance > 0 ? formatPakistaniCurrencyPDF(balance) : balance < 0 ? formatPakistaniCurrencyPDF(Math.abs(balance)) : 'مکمل ادا شدہ'}
+            </Text>
+            <Text style={styles.summaryLabel}>
+              {balance > 0 ? 'باقی رقم:' : balance < 0 ? 'کریڈٹ بیلنس:' : 'صورتحال:'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Returns Section */}
+        {sale.returns && sale.returns.length > 0 && (
+          <View style={styles.returnsSection}>
+            <Text style={styles.returnsTitle}>واپس شدہ اشیاء:</Text>
+            {sale.returns.map((returnRecord, index) => (
+              <Text key={index} style={{ fontSize: 8, marginBottom: 2 }}>
+                واپسی #{returnRecord.returnNumber} ({new Date(returnRecord.returnDate).toLocaleDateString('ur-PK')}): 
+                {returnRecord.items.map(item => `${item.product?.name || "نامعلوم"} x${item.quantity}`).join(", ")} 
+                - {formatPakistaniCurrencyPDF(returnRecord.totalAmount)}
+              </Text>
+            ))}
+          </View>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={{ fontSize: 8, textAlign: "center" }}>
-            Istemal ke baad wapsi ya tabdeeli nahin
-          </Text>
+          <Text>چیک اور منظور شدہ: _________________________</Text>
         </View>
+        
+        {/* Shop Description Footer */}
+        {shopSettings?.shopDescription2 && (
+          <View style={styles.shopDescriptionFooter}>
+            <Text>{shopSettings.shopDescription2}</Text>
+          </View>
+        )}
       </Page>
     </Document>
   );
