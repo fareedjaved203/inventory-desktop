@@ -274,7 +274,7 @@ function Contacts() {
     const allTransactions = [
       ...filteredSales.map(sale => {
         return {
-          date: sale.createdAt || sale.saleDate,
+          date: sale.saleDate,
           type: 'sale',
           description: `Sale #${sale.billNumber}`,
           saleDescription: sale.description || '',
@@ -290,7 +290,7 @@ function Contacts() {
       }),
       ...filteredPurchases.map(purchase => {
         return {
-          date: purchase.createdAt || purchase.purchaseDate,
+          date: purchase.purchaseDate,
           type: 'purchase',
           description: `Purchase #${purchase.invoiceNumber || purchase.id}`,
           saleDescription: purchase.description || '',
@@ -327,27 +327,72 @@ function Contacts() {
       }),
       // Add initial payment entries for sales and purchases that have payments
       ...filteredSales
-        .filter(sale => Number(sale.paidAmount) > 0)
-        .map(sale => ({
-          date: sale.createdAt || sale.saleDate,
-          type: 'payment',
-          description: `Sale #${sale.billNumber} - Initial Payment`,
-          saleDescription: '',
-          debit: 0,
-          credit: Number(sale.paidAmount), // Jama: Initial payment received
-          balance: 0
-        })),
+        .filter(sale => {
+          // Get original paid amount from first audit entry or use current if no audit
+          const firstAudit = auditChanges
+            .filter(change => 
+              change.tableName === 'Sale' && 
+              change.recordId === sale.id && 
+              change.fieldName === 'paidAmount'
+            )
+            .sort((a, b) => new Date(a.changedAt) - new Date(b.changedAt))[0];
+          const originalPaidAmount = firstAudit ? Number(firstAudit.oldValue) : Number(sale.paidAmount);
+          return originalPaidAmount > 0;
+        })
+        .map(sale => {
+          const firstAudit = auditChanges
+            .filter(change => 
+              change.tableName === 'Sale' && 
+              change.recordId === sale.id && 
+              change.fieldName === 'paidAmount'
+            )
+            .sort((a, b) => new Date(a.changedAt) - new Date(b.changedAt))[0];
+          const originalPaidAmount = firstAudit ? Number(firstAudit.oldValue) : Number(sale.paidAmount);
+
+          return {
+            date: sale.saleDate,
+            type: 'payment',
+            description: `Sale #${sale.billNumber} - Initial Payment`,
+            saleDescription: '',
+            debit: 0,
+            credit: originalPaidAmount, // Jama: Original payment received
+            balance: 0
+          };
+        }),
       ...filteredPurchases
-        .filter(purchase => Number(purchase.paidAmount) > 0)
-        .map(purchase => ({
-          date: purchase.createdAt || purchase.purchaseDate,
-          type: 'payment',
-          description: `Purchase #${purchase.invoiceNumber || purchase.id} - Initial Payment`,
-          saleDescription: '',
-          debit: Number(purchase.paidAmount), // Banaam: Initial payment made
-          credit: 0,
-          balance: 0
-        })),
+        .filter(purchase => {
+          // Get original paid amount from first audit entry or use current if no audit
+          const firstAudit = auditChanges
+            .filter(change => 
+              change.tableName === 'BulkPurchase' && 
+              change.recordId === purchase.id && 
+              change.fieldName === 'paidAmount'
+            )
+            .sort((a, b) => new Date(a.changedAt) - new Date(b.changedAt))[0];
+          const originalPaidAmount = firstAudit ? Number(firstAudit.oldValue) : Number(purchase.paidAmount);
+          return originalPaidAmount > 0;
+        })
+        .map(purchase => {
+          const firstAudit = auditChanges
+            .filter(change => 
+              change.tableName === 'BulkPurchase' && 
+              change.recordId === purchase.id && 
+              change.fieldName === 'paidAmount'
+            )
+            .sort((a, b) => new Date(a.changedAt) - new Date(b.changedAt))[0];
+          const originalPaidAmount = firstAudit ? Number(firstAudit.oldValue) : Number(purchase.paidAmount);
+
+          
+          return {
+            date: purchase.purchaseDate,
+            type: 'payment',
+            description: `Purchase #${purchase.invoiceNumber || purchase.id} - Initial Payment`,
+            saleDescription: '',
+            debit: originalPaidAmount, // Banaam: Original payment made
+            credit: 0,
+            balance: 0
+          };
+        }),
       // Add audit trail entries for sales and purchase updates (only payment-related changes)
       ...auditChanges
         .filter(change => {
@@ -375,8 +420,8 @@ function Contacts() {
               type: 'update',
               description: `${isSale ? 'Sale' : 'Purchase'} #${billNumber} - Payment Updated${change.description ? ` - ${change.description}` : ''}`,
               saleDescription: change.description || '',
-              debit: isSale ? 0 : Math.max(0, paymentDifference), // For purchases: increase in payment
-              credit: isSale ? Math.max(0, paymentDifference) : 0, // For sales: increase in payment reduces debt
+              debit: isSale ? 0 : paymentDifference, // For purchases: payment difference (can be negative)
+              credit: isSale ? paymentDifference : 0, // For sales: payment difference (can be negative)
               balance: 0, // Will be calculated
               isEdit: true,
               editedAt: change.changedAt,

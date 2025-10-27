@@ -193,8 +193,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Create the bulk purchase using Prisma create instead of raw SQL
           const purchaseId = crypto.randomUUID();
-          const purchaseDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
-          console.log('Purchase date being saved:', purchaseDate);
+          const purchaseDate = new Date(Date.now() - (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
           
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
@@ -304,8 +303,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             throw new Error('Bulk purchase not found');
           }
 
-          // Log audit changes only for paidAmount
-          if (existingPurchase.paidAmount !== req.body.paidAmount) {
+          // Log audit changes only for paidAmount when it actually changes
+          if (Number(existingPurchase.paidAmount) !== Number(req.body.paidAmount)) {
             await logAuditChange(prisma, 'BulkPurchase', req.params.id, 'paidAmount', existingPurchase.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated');
           }
 
@@ -328,14 +327,12 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             where: { bulkPurchaseId: req.params.id }
           });
 
-          // Update the purchase using raw SQL
-          const updateDate = new Date(Date.now() + (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
+          // Update the purchase using raw SQL - preserve original purchaseDate
           await prisma.$executeRaw`
             UPDATE "BulkPurchase" 
             SET "totalAmount" = ${Number(req.body.totalAmount)},
                 discount = ${Number(req.body.discount || 0)},
                 "paidAmount" = ${Number(req.body.paidAmount)},
-                "purchaseDate" = ${updateDate},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
                 "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},

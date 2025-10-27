@@ -200,7 +200,10 @@ function DayBookReportModal({ isOpen, onClose }) {
                       <tr key={index} className={item.type === 'purchase' || item.type === 'purchase-edit' ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-green-100 border-l-4 border-green-500'}>
                         {visibleColumns.map(([key]) => (
                           <td key={key} className="px-3 py-2 text-sm text-gray-900 border-b">
-                            {key === 'date' && `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`}
+                            {key === 'date' && (() => {
+                              const date = new Date(item.date);
+                              return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+                            })()}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
                             {key === 'carNumber' && (item.carNumber || '-')}

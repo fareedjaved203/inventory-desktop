@@ -228,7 +228,10 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                       <tr key={index} className={`hover:bg-gray-50 transition-colors ${item.type === 'purchase' || item.type === 'purchase-edit' ? 'bg-blue-50 border-r-4 border-blue-400' : 'bg-green-50 border-r-4 border-green-400'}`}>
                         {visibleColumns.map(([key]) => (
                           <td key={key} className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200 text-right font-urdu">
-                            {key === 'date' && `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`}
+                            {key === 'date' && (() => {
+                              const date = new Date(item.date);
+                              return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+                            })()}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
                             {key === 'carNumber' && (item.carNumber || '-')}

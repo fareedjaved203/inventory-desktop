@@ -45,7 +45,8 @@ function generateUrduStatementHTML(statementData, shopSettings, startDate, endDa
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('ur-PK');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ur-PK');
   };
 
   const formatPeriod = () => {
@@ -293,8 +294,8 @@ function generateUrduStatementHTML(statementData, shopSettings, startDate, endDa
               ${preferences.showCarNumber !== false ? '<th>گاڑی نمبر</th>' : ''}
               ${preferences.showQuantity !== false ? '<th>تعداد</th>' : ''}
               ${preferences.showUnitPrice !== false ? '<th>ریٹ</th>' : ''}
-              ${preferences.showDebit !== false ? '<th>جمع</th>' : ''}
               ${preferences.showCredit !== false ? '<th>بنام</th>' : ''}
+              ${preferences.showDebit !== false ? '<th>جمع</th>' : ''}
               ${preferences.showBalance !== false ? '<th>بقایا</th>' : ''}
             </tr>
           </thead>

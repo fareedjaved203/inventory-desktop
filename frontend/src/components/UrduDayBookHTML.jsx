@@ -42,7 +42,10 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
 
   const getCellValue = (item, key) => {
     switch (key) {
-      case 'date': return `${new Date(item.date).toLocaleDateString()} ${new Date(item.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+      case 'date': {
+        const date = new Date(item.date);
+        return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+      }
       case 'barcode': return item.barcode || '-';
       case 'productName': return item.productName || '-';
       case 'category': return item.category || '-';

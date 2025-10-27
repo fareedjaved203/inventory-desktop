@@ -203,7 +203,8 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate,
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-GB');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB');
   };
 
   const formatPeriod = () => {
@@ -289,8 +290,8 @@ function CustomerStatementPDF({ statementData, shopSettings, startDate, endDate,
               {preferences.showCarNumber !== false && <Text style={styles.col3}>CAR NO</Text>}
               {preferences.showLoadingDate !== false && <Text style={styles.col3}>LOADING</Text>}
               {preferences.showArrivalDate !== false && <Text style={styles.col3}>ARRIVAL</Text>}
-              {preferences.showDebit !== false && <Text style={styles.col4}>DEBIT</Text>}
-              {preferences.showCredit !== false && <Text style={styles.col4}>CREDIT</Text>}
+              {preferences.showDebit !== false && <Text style={styles.col4}>CREDIT</Text>}
+              {preferences.showCredit !== false && <Text style={styles.col4}>DEBIT</Text>}
               {preferences.showBalance !== false && <Text style={styles.col5}>BALANCE</Text>}
             </View>
 

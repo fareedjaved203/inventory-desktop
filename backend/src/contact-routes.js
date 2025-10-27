@@ -327,6 +327,7 @@ export function setupContactRoutes(app, prisma) {
         allTransactions.push({
           type: 'SALE',
           date: sale.saleDate,
+          sortDate: sale.createdAt, // Use creation timestamp for sorting
           description: `Sale Invoice #${sale.billNumber}`,
           debit: Number(sale.totalAmount),
           credit: Number(sale.paidAmount),
@@ -340,6 +341,7 @@ export function setupContactRoutes(app, prisma) {
         allTransactions.push({
           type: 'PURCHASE',
           date: purchase.purchaseDate,
+          sortDate: purchase.createdAt, // Use creation timestamp for sorting
           description: `Purchase Invoice #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
           debit: 0,
           credit: Number(purchase.totalAmount) - Number(purchase.paidAmount),
@@ -352,6 +354,7 @@ export function setupContactRoutes(app, prisma) {
           allTransactions.push({
             type: 'PURCHASE_PAYMENT',
             date: purchase.purchaseDate,
+            sortDate: purchase.createdAt, // Use creation timestamp for sorting
             description: `Purchase Payment #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
             debit: Number(purchase.paidAmount),
             credit: 0,
@@ -384,6 +387,7 @@ export function setupContactRoutes(app, prisma) {
         allTransactions.push({
           type: 'LOAN',
           date: loan.date,
+          sortDate: loan.createdAt || loan.date, // Use creation timestamp for sorting
           description,
           debit,
           credit,
@@ -398,6 +402,7 @@ export function setupContactRoutes(app, prisma) {
           allTransactions.push({
             type: 'RETURN',
             date: returnItem.returnDate,
+            sortDate: returnItem.createdAt || returnItem.returnDate, // Use creation timestamp for sorting
             description: `Return Refund #${returnItem.returnNumber}`,
             debit: 0,
             credit: Number(returnItem.refundAmount),
@@ -407,8 +412,8 @@ export function setupContactRoutes(app, prisma) {
         }
       });
       
-      // Sort by date
-      allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+      // Sort by creation timestamp for proper chronological order
+      allTransactions.sort((a, b) => new Date(a.sortDate) - new Date(b.sortDate));
       
       // Calculate running balance
       let runningBalance = openingBalance;

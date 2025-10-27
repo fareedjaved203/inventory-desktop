@@ -1,6 +1,11 @@
 // Utility functions for audit trail
 export async function logAuditChange(prisma, tableName, recordId, fieldName, oldValue, newValue, description = null) {
-  if (oldValue === newValue) return; // No change
+  // Handle numeric comparisons for amounts
+  if (fieldName === 'paidAmount') {
+    if (Number(oldValue) === Number(newValue)) return; // No change
+  } else if (oldValue === newValue) {
+    return; // No change
+  }
   
   try {
     const data = {
