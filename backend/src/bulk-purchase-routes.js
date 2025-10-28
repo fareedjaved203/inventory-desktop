@@ -5,20 +5,29 @@ import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { logAuditChange } from './audit-utils.js';
 
-// Helper function to get current Pakistan time
-function getCurrentPakistanTime() {
-  return new Date();
+// Helper function to create date from YYYY-MM-DD string with current time in UTC-5
+function createDateWithCurrentTime(dateString) {
+  if (!dateString) return new Date(Date.now() - (5 * 60 * 60 * 1000));
+  
+  const now = new Date();
+  const [year, month, day] = dateString.split('-');
+  
+  const date = new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds()
+  );
+  
+  return new Date(date.getTime() - (5 * 60 * 60 * 1000));
 }
 
-// Helper function to create date from YYYY-MM-DD string in Pakistan timezone
-function createPakistanDate(dateString) {
-  if (!dateString) return new Date();
-  
-  const [year, month, day] = dateString.split('-').map(Number);
-  const now = new Date();
-  
-  // Create date with current time
-  return new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+// Helper function to adjust date for display (add 5 hours back)
+function adjustDateForDisplay(date) {
+  if (!date) return date;
+  return new Date(new Date(date).getTime() + (5 * 60 * 60 * 1000));
 }
 
 export function setupBulkPurchaseRoutes(app, prisma) {
@@ -135,8 +144,13 @@ export function setupBulkPurchaseRoutes(app, prisma) {
         }),
       ]);
 
+      const adjustedItems = items.map(item => ({
+        ...item,
+        purchaseDate: adjustDateForDisplay(item.purchaseDate)
+      }));
+
       res.json({
-        items,
+        items: adjustedItems,
         total,
         page,
         totalPages: Math.ceil(total / limit),
@@ -167,7 +181,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       if (!purchase) {
         return res.status(404).json({ error: 'Bulk purchase not found' });
       }
-      res.json(purchase);
+      res.json({
+        ...purchase,
+        purchaseDate: adjustDateForDisplay(purchase.purchaseDate)
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -193,7 +210,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Create the bulk purchase using Prisma create instead of raw SQL
           const purchaseId = crypto.randomUUID();
-          const purchaseDate = new Date(Date.now() - (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
+          // Use custom purchase date if provided, otherwise use current time in UTC-5
+          const purchaseDate = req.body.purchaseDate ? createDateWithCurrentTime(req.body.purchaseDate) : new Date(Date.now() - (5 * 60 * 60 * 1000));
           
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
@@ -258,6 +276,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
         // Convert Decimal fields to numbers for JSON response
         const responseData = {
           ...purchase,
+          purchaseDate: adjustDateForDisplay(purchase.purchaseDate),
           totalAmount: Number(purchase.totalAmount),
           discount: Number(purchase.discount || 0),
           paidAmount: Number(purchase.paidAmount),
@@ -305,8 +324,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Log audit changes only for paidAmount when it actually changes
           if (Number(existingPurchase.paidAmount) !== Number(req.body.paidAmount)) {
-            await logAuditChange(prisma, 'BulkPurchase', req.params.id, 'paidAmount', existingPurchase.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated');
+            await logAuditChange(prisma, 'BulkPurchase', req.params.id, 'paidAmount', existingPurchase.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated', req.body.changeDate);
           }
+
+
 
           // Revert quantities from old purchase items
           for (const item of existingPurchase.items) {
@@ -327,12 +348,13 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             where: { bulkPurchaseId: req.params.id }
           });
 
-          // Update the purchase using raw SQL - preserve original purchaseDate
+          // Update the purchase using raw SQL - update purchaseDate if provided
           await prisma.$executeRaw`
             UPDATE "BulkPurchase" 
             SET "totalAmount" = ${Number(req.body.totalAmount)},
                 discount = ${Number(req.body.discount || 0)},
                 "paidAmount" = ${Number(req.body.paidAmount)},
+                "purchaseDate" = ${existingPurchase.purchaseDate},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
                 "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},
@@ -392,7 +414,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           return updatedPurchase;
         });
 
-        res.json(purchase);
+        res.json({
+          ...purchase,
+          purchaseDate: purchase.purchaseDate
+        });
       } catch (error) {
         res.status(400).json({ error: error.message });
       }

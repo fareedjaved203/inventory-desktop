@@ -86,6 +86,7 @@ function Sales() {
   const [loadingDate, setLoadingDate] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('');
+  const [changeDate, setChangeDate] = useState('');
 
   const updateSale = useMutation(
     async (updatedSale) => {
@@ -113,6 +114,8 @@ function Sales() {
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
+        setPaymentDescription('');
+        setChangeDate('');
         setValidationErrors({});
         setTempStockUpdates({});
         setTotalAmount(0);
@@ -305,6 +308,8 @@ function Sales() {
         setTransportCost('');
         setLoadingDate('');
         setArrivalDate('');
+        setPaymentDescription('');
+        setChangeDate('');
         setValidationErrors({});
         setTempStockUpdates({});
         setTotalAmount(0);
@@ -619,8 +624,12 @@ function Sales() {
       arrivalDate: arrivalDate || null,
       ...(employeeId && { employeeId }),
       ...(paymentDescription && { paymentDescription }),
+      ...(changeDate && { changeDate }),
     };
     console.log('Sale data being sent:', saleData);
+    console.log('Change date value:', changeDate);
+    console.log('Is edit mode:', isEditMode);
+    console.log('Change date in saleData:', saleData.changeDate);
 
     // Validate that we have at least one item
     if (!saleItems || saleItems.length === 0) {
@@ -1687,19 +1696,35 @@ function Sales() {
                   </div>
                 </div>
 
-                {/* Payment Description */}
+                {/* Payment Description and Change Date */}
                 {isEditMode && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Payment Update Reason ({t('optional')})
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentDescription}
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      placeholder="e.g., Received cash payment, Bank transfer..."
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Update Reason ({t('optional')})
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentDescription}
+                        onChange={(e) => setPaymentDescription(e.target.value)}
+                        placeholder="e.g., Received cash payment, Bank transfer..."
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Change Date ({t('optional')})
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={changeDate}
+                        onChange={(e) => setChangeDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave empty to use current date/time
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1739,6 +1764,8 @@ function Sales() {
                   setTransportCost('');
                   setLoadingDate('');
                   setArrivalDate('');
+                  setPaymentDescription('');
+                  setChangeDate('');
                   setValidationErrors({});
                   setTempStockUpdates({});
                   setTotalAmount(0);

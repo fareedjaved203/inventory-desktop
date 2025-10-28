@@ -591,7 +591,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   // Day Book Report
   app.get('/api/dashboard/day-book', authenticateToken, async (req, res) => {
     try {
-      const { startDate, endDate, productId } = req.query;
+      const { startDate, endDate, productId, category } = req.query;
       
       if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start date and end date are required' });
@@ -626,6 +626,29 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         purchaseWhere.items = {
           some: {
             productId: productId
+          }
+        };
+      }
+      
+      // Add category filtering if category is provided
+      if (category) {
+        saleWhere.items = {
+          some: {
+            product: {
+              category: {
+                name: category
+              }
+            }
+          }
+        };
+        
+        purchaseWhere.items = {
+          some: {
+            product: {
+              category: {
+                name: category
+              }
+            }
           }
         };
       }
@@ -699,7 +722,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       // Process purchases
       purchases.forEach(purchase => {
         purchase.items
-          .filter(item => !productId || item.productId === productId)
+          .filter(item => {
+            if (productId && item.productId !== productId) return false;
+            if (category && item.product.category?.name !== category) return false;
+            return true;
+          })
           .forEach(item => {
           // For weighted items (isTotalCostItem: true), purchasePrice is already the total cost
           // For regular items, multiply quantity by unit price
@@ -757,7 +784,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       // Process sales
       sales.forEach(sale => {
         sale.items
-          .filter(item => !productId || item.productId === productId)
+          .filter(item => {
+            if (productId && item.productId !== productId) return false;
+            if (category && item.product.category?.name !== category) return false;
+            return true;
+          })
           .forEach(item => {
           const purchasePrice = Number(item.purchasePrice || 0);
           const salePrice = Number(item.price);

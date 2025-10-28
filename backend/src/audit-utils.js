@@ -1,5 +1,5 @@
 // Utility functions for audit trail
-export async function logAuditChange(prisma, tableName, recordId, fieldName, oldValue, newValue, description = null) {
+export async function logAuditChange(prisma, tableName, recordId, fieldName, oldValue, newValue, description = null, customDate = null) {
   // Handle numeric comparisons for amounts
   if (fieldName === 'paidAmount') {
     if (Number(oldValue) === Number(newValue)) return; // No change
@@ -16,6 +16,18 @@ export async function logAuditChange(prisma, tableName, recordId, fieldName, old
       newValue: newValue?.toString() || null,
       description
     };
+    
+    // Set custom date if provided (with Pakistan timezone adjustment)
+    if (customDate) {
+      console.log('Custom date received:', customDate);
+      // Parse the datetime-local input and adjust for Pakistan timezone
+      const customDateTime = new Date(customDate);
+      console.log('Parsed custom date:', customDateTime);
+      data.changedAt = new Date(customDateTime.getTime());
+      console.log('Final changedAt date:', data.changedAt);
+    } else {
+      console.log('No custom date provided, using default');
+    }
     
     // Set proper foreign key based on table
     if (tableName === 'Sale') {

@@ -37,8 +37,11 @@ function DayBookReportModal({ isOpen, onClose }) {
     return new Date().toISOString().split('T')[0];
   });
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
     const token = localStorage.getItem('authToken');
@@ -49,25 +52,43 @@ function DayBookReportModal({ isOpen, onClose }) {
     return result.items?.[0] || {};
   });
 
-  // Fetch products for dropdown
-  const { data: products } = useQuery(
+  // Fetch products for dropdown only when opened
+  const { data: products, isLoading: productsLoading } = useQuery(
     ['products-for-daybook'],
     async () => {
       const result = await API.getProducts({ limit: 1000 });
       return result.items || [];
     },
-    { enabled: isOpen }
+    { enabled: isProductDropdownOpen }
   );
 
+  // Fetch categories independently when category dropdown is opened
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery(
+    ['categories-for-daybook'],
+    async () => {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await response.json();
+      return result.items || result || [];
+    },
+    { enabled: isCategoryDropdownOpen }
+  );
+
+  const categories = categoriesData || [];
+
   const { data: dayBookData, isLoading, refetch } = useQuery(
-    ['day-book-report', startDate, endDate, selectedProductId],
+    ['day-book-report', startDate, endDate, selectedProductId, selectedCategory],
     async () => {
       const token = localStorage.getItem('authToken');
       const params = new URLSearchParams({
         startDate,
         endDate,
-        ...(selectedProductId && { productId: selectedProductId })
+        ...(selectedProductId && { productId: selectedProductId }),
+        ...(selectedCategory && { category: selectedCategory })
       });
+      console.log('Day book API params:', params.toString());
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/dashboard/day-book?${params}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -105,52 +126,107 @@ function DayBookReportModal({ isOpen, onClose }) {
 
         <div className="p-6 flex-1 overflow-hidden flex flex-col">
           {/* Controls */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="mb-6 bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2" />
+                  </svg>
+                  Start Date
+                </label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2" />
+                  </svg>
+                  End Date
+                </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Filter</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  Category Filter
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onFocus={() => setIsCategoryDropdownOpen(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white"
+                >
+                  <option value="">All Categories</option>
+                  {categoriesLoading ? (
+                    <option disabled>
+                      Loading categories...
+                    </option>
+                  ) : (
+                    categories.map((category, index) => (
+                      <option key={category.id || category.name || index} value={category.name || category}>
+                        {category.name || category}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Product Filter
+                </label>
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  onFocus={() => setIsProductDropdownOpen(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
                 >
                   <option value="">All Products</option>
-                  {products?.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
+                  {productsLoading ? (
+                    <option disabled>
+                      Loading products...
                     </option>
-                  ))}
+                  ) : (
+                    products?.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => refetch()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
                   Generate
                 </button>
                 <button
                   onClick={() => setShowColumnSettings(!showColumnSettings)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                  className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                  </svg>
                   Columns
                 </button>
               </div>
@@ -158,18 +234,23 @@ function DayBookReportModal({ isOpen, onClose }) {
 
             {/* Column Settings */}
             {showColumnSettings && (
-              <div className="mt-4 p-4 bg-white rounded border">
-                <h4 className="font-medium mb-3">Show/Hide Columns</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="mt-6 p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center mb-4">
+                  <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                  </svg>
+                  <h4 className="font-semibold text-gray-800">Show/Hide Columns</h4>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {Object.entries(columns).map(([key, col]) => (
-                    <label key={key} className="flex items-center space-x-2">
+                    <label key={key} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={col.visible}
                         onChange={() => toggleColumn(key)}
-                        className="rounded"
+                        className="rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
                       />
-                      <span className="text-sm">{col.label}</span>
+                      <span className="text-sm font-medium text-gray-700">{col.label}</span>
                     </label>
                   ))}
                 </div>
@@ -202,7 +283,7 @@ function DayBookReportModal({ isOpen, onClose }) {
                           <td key={key} className="px-3 py-2 text-sm text-gray-900 border-b">
                             {key === 'date' && (() => {
                               const date = new Date(item.date);
-                              return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+                              return `${date.toLocaleDateString()}`; // ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}
                             })()}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
@@ -291,16 +372,22 @@ function DayBookReportModal({ isOpen, onClose }) {
             {dayBookData && (
               <PDFDownloadLink
                 document={<DayBookReportPDF dayBookData={dayBookData} dateRange={{ startDate, endDate }} shopSettings={shopSettings} visibleColumns={visibleColumns} />}
-                fileName={`day-book-report-${startDate}-to-${endDate}.pdf`}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                fileName={`day-book-report-${startDate}-to-${endDate}${selectedCategory ? `-${selectedCategory}` : ''}${selectedProductId ? `-filtered` : ''}.pdf`}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
               >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Download PDF
               </PDFDownloadLink>
             )}
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100"
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Close
             </button>
           </div>

@@ -5,20 +5,31 @@ import { saleSchema, querySchema } from './schemas.js';
 import { withTransaction, safeQuery } from './db-utils.js';
 import { logAuditChange } from './audit-utils.js';
 
-// Helper function to get current Pakistan time
-function getCurrentPakistanTime() {
-  return new Date();
+// Helper function to create date from YYYY-MM-DD string with current time in UTC-5
+function createDateWithCurrentTime(dateString) {
+  if (!dateString) return new Date(Date.now() - (5 * 60 * 60 * 1000));
+
+  console.log("yes this is the issue")
+  
+  const now = new Date();
+  const [year, month, day] = dateString.split('-');
+  
+  const date = new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds()
+  );
+  
+  return new Date(date.getTime() - (5 * 60 * 60 * 1000));
 }
 
-// Helper function to create date from YYYY-MM-DD string in Pakistan timezone
-function createPakistanDate(dateString) {
-  if (!dateString) return new Date();
-  
-  const [year, month, day] = dateString.split('-').map(Number);
-  const now = new Date();
-  
-  // Create date with current time
-  return new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+// Helper function to adjust date for display (add 5 hours back)
+function adjustDateForDisplay(date) {
+  if (!date) return date;
+  return new Date(new Date(date).getTime() + (5 * 60 * 60 * 1000));
 }
 
 function parseDateDDMMYYYY(dateString) {
@@ -77,8 +88,8 @@ export function setupSalesRoutes(app, prisma) {
             }
           }
 
-          const saleDate = new Date(Date.now() - (5 * 60 * 60 * 1000)); // Add 5 hours for Pakistan time
-          console.log('Sale date being saved:', saleDate);
+          // Use custom sale date if provided, otherwise use current time in UTC-5
+          const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : new Date(Date.now() - (5 * 60 * 60 * 1000));
           // Get product details including purchase prices
           const productDetails = await Promise.all(
             req.body.items.map(item => 
@@ -211,6 +222,7 @@ export function setupSalesRoutes(app, prisma) {
           
           return {
             ...sale,
+            saleDate: adjustDateForDisplay(sale.saleDate),
             items: sale.items.map(item => ({
               ...item,
               returnedQuantity: returnedQuantities[item.productId] || 0,
@@ -281,6 +293,7 @@ export function setupSalesRoutes(app, prisma) {
           
           return {
             ...sale,
+            saleDate: adjustDateForDisplay(sale.saleDate),
             items: sale.items?.map(item => ({
               ...item,
               returnedQuantity: returnedQuantities[item.productId] || 0,
@@ -339,6 +352,7 @@ export function setupSalesRoutes(app, prisma) {
         
         return {
           ...sale,
+          saleDate: adjustDateForDisplay(sale.saleDate),
           items: sale.items?.map(item => ({
             ...item,
             returnedQuantity: returnedQuantities[item.productId] || 0,
@@ -395,10 +409,14 @@ export function setupSalesRoutes(app, prisma) {
             23, 59, 59, 999
           ));
 
+          // Adjust for UTC-5 storage (subtract 5 hours from search range)
+          const adjustedStart = new Date(startOfDay.getTime() - (5 * 60 * 60 * 1000));
+          const adjustedEnd = new Date(endOfDay.getTime() - (5 * 60 * 60 * 1000));
+
           conditions.push({
             saleDate: {
-              gte: startOfDay,
-              lt: new Date(endOfDay.getTime() + 1),
+              gte: adjustedStart,
+              lt: new Date(adjustedEnd.getTime() + 1),
             }
           });
         }
@@ -430,10 +448,14 @@ export function setupSalesRoutes(app, prisma) {
               23, 59, 59, 999
             ));
 
+            // Adjust for UTC-5 storage (subtract 5 hours from search range)
+            const adjustedStart = new Date(startOfDay.getTime() - (5 * 60 * 60 * 1000));
+            const adjustedEnd = new Date(endOfDay.getTime() - (5 * 60 * 60 * 1000));
+
             conditions.push({
               saleDate: {
-                gte: startOfDay,
-                lt: new Date(endOfDay.getTime() + 1),
+                gte: adjustedStart,
+                lt: new Date(adjustedEnd.getTime() + 1),
               }
             });
           } else {
@@ -517,7 +539,7 @@ export function setupSalesRoutes(app, prisma) {
         }),
       ]);
       
-      // Add returned quantities to each sale
+      // Add returned quantities to each sale and adjust dates for display
       const items = salesData.map(sale => {
         console.log('Sale items for sale', sale.id, ':', sale.items?.length || 0);
         
@@ -539,6 +561,7 @@ export function setupSalesRoutes(app, prisma) {
         
         return {
           ...sale,
+          saleDate: adjustDateForDisplay(sale.saleDate),
           items: sale.items?.map(item => ({
             ...item,
             id: item.id?.toString(),
@@ -609,9 +632,10 @@ export function setupSalesRoutes(app, prisma) {
         });
       }
       
-      // Add returned quantities to sale items
+      // Add returned quantities to sale items and adjust date for display
       const saleWithReturns = {
         ...sale,
+        saleDate: adjustDateForDisplay(sale.saleDate),
         items: sale.items.map(item => ({
           ...item,
           returnedQuantity: returnedQuantities[item.productId] || 0,
@@ -649,8 +673,10 @@ export function setupSalesRoutes(app, prisma) {
 
           // Log audit changes only for paidAmount when it actually changes
           if (Number(existingSale.paidAmount) !== Number(req.body.paidAmount)) {
-            await logAuditChange(prisma, 'Sale', req.params.id, 'paidAmount', existingSale.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated');
+            await logAuditChange(prisma, 'Sale', req.params.id, 'paidAmount', existingSale.paidAmount, req.body.paidAmount, req.body.paymentDescription || 'Payment amount updated', req.body.changeDate);
           }
+
+
 
           for (const item of existingSale.items) {
             await prisma.product.update({
@@ -666,8 +692,6 @@ export function setupSalesRoutes(app, prisma) {
           await prisma.saleItem.deleteMany({
             where: { saleId: req.params.id }
           });
-
-          console.log("to update sale: ",req.body)
           
           // Get product details including purchase prices for update
           const productDetails = await Promise.all(
@@ -679,15 +703,14 @@ export function setupSalesRoutes(app, prisma) {
             )
           );
 
-          console.log("req.body is", req.body);
-
-          // Update sale using raw SQL - preserve original saleDate
+          // Update sale using raw SQL - update saleDate if provided
           await prisma.$executeRaw`
             UPDATE "Sale" 
             SET "totalAmount" = ${req.body.totalAmount}::decimal,
                 "originalTotalAmount" = ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal,
                 discount = ${req.body.discount || 0}::decimal,
                 "paidAmount" = ${req.body.paidAmount || 0}::decimal,
+                "saleDate" = ${existingSale.saleDate},
                 "contactId" = ${req.body.contactId},
                 "employeeId" = ${req.body.employeeId},
                 "carNumber" = ${req.body.carNumber},
@@ -747,7 +770,10 @@ export function setupSalesRoutes(app, prisma) {
           return updatedSale;
         });
 
-        res.json(sale);
+        res.json({
+          ...sale,
+          saleDate: sale.saleDate
+        });
       } catch (error) {
         res.status(400).json({ error: error.message });
       }

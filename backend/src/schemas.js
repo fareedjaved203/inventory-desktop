@@ -44,7 +44,8 @@ export const saleSchema = z.object({
   arrivalDate: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   originalTotalAmount: z.number().min(0).optional(),
-  paymentDescription: z.string().optional()
+  paymentDescription: z.string().optional(),
+  changeDate: z.string().optional()
 });
 
 export const bulkPurchaseItemSchema = z.object({
@@ -67,6 +68,7 @@ export const bulkPurchaseSchema = z.object({
   loadingDate: z.string().nullable().optional(),
   arrivalDate: z.string().nullable().optional(),
   paymentDescription: z.string().optional(),
+  changeDate: z.string().optional(),
 });
 
 export const contactProductSchema = z.object({

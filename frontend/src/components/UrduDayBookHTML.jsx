@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 
-function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns = [] }) {
+function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns = [], selectedCategory, selectedProductId }) {
   const { data = [], summary = {} } = dayBookData || {};
   
   const columnsToShow = visibleColumns.length > 0 ? visibleColumns : [
@@ -24,12 +24,18 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
 
   const URDU_COLUMN_LABELS = {
     date: 'تاریخ',
+    loadingDate: 'لوڈنگ تاریخ',
+    arrivalDate: 'آمد تاریخ',
+    carNumber: 'گاڑی نمبر',
     barcode: 'بار کوڈ',
     productName: 'پروڈکٹ کا نام',
     category: 'قسم',
+    productDescription: 'تفصیل',
     purchaseQuantity: 'خریداری مقدار',
     purchasePrice: 'خریداری قیمت',
+    transportCost: 'ٹرانسپورٹ کاسٹ',
     supplierName: 'سپلائر',
+    totalPurchaseCost: 'کل لاگت',
     paidAmount: 'اداشدہ رقم',
     paymentDifference: 'ادائیگی فرق',
     remainingAmount: 'باقی رقم',
@@ -46,20 +52,39 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
         const date = new Date(item.date);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
       }
+      case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
+      case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
+      case 'carNumber': return item.carNumber || '-';
       case 'barcode': return item.barcode || '-';
       case 'productName': return item.productName || '-';
       case 'category': return item.category || '-';
+      case 'productDescription': return item.productDescription || '-';
       case 'purchaseQuantity': return item.purchaseQuantity || '-';
       case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
+      case 'transportCost': return item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-';
       case 'supplierName': return item.supplierName || '-';
+      case 'totalPurchaseCost': return item.totalPurchaseCost ? formatPakistaniCurrency(item.totalPurchaseCost) : '-';
       case 'paidAmount': return item.paidAmount ? formatPakistaniCurrency(item.paidAmount) : '-';
-      case 'paymentDifference': return item.paymentDifference ? formatPakistaniCurrency(item.paymentDifference) : '-';
-      case 'remainingAmount': return item.remainingAmount ? formatPakistaniCurrency(item.remainingAmount) : '-';
+      case 'paymentDifference': {
+        const value = item.paymentDifference;
+        if (!value) return '-';
+        const color = value > 0 ? '#16a34a' : value < 0 ? '#dc2626' : '#000';
+        return `<span style="color: ${color}; font-weight: bold;">${formatPakistaniCurrency(value)}</span>`;
+      }
+      case 'remainingAmount': {
+        const value = item.remainingAmount;
+        const color = value > 0 ? '#dc2626' : '#16a34a';
+        return `<span style="color: ${color}; font-weight: bold;">${formatPakistaniCurrency(value || 0)}</span>`;
+      }
       case 'customerName': return item.customerName || '-';
       case 'saleQuantity': return item.saleQuantity || '-';
       case 'saleUnitPrice': return item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-';
       case 'totalSalePrice': return item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-';
-      case 'profitLoss': return formatPakistaniCurrency(item.profitLoss || 0);
+      case 'profitLoss': {
+        const value = item.profitLoss || 0;
+        const color = value > 0 ? '#16a34a' : value < 0 ? '#dc2626' : '#000';
+        return `<span style="color: ${color};">${formatPakistaniCurrency(value)}</span>`;
+      }
       default: return '-';
     }
   };
@@ -86,9 +111,16 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
           {shopSettings?.shopName || 'روزنامچہ رپورٹ'}
         </h1>
-        <h2 style={{ fontSize: '18px', margin: '0' }}>
+        <h2 style={{ fontSize: '18px', margin: '0 0 10px 0' }}>
           روزنامچہ رپورٹ: {dateRange?.startDate} سے {dateRange?.endDate} تک
         </h2>
+        {(selectedCategory || selectedProductId) && (
+          <div style={{ fontSize: '14px', color: '#666', margin: '10px 0' }}>
+            {selectedCategory && <span>قسم: {selectedCategory}</span>}
+            {selectedCategory && selectedProductId && <span> | </span>}
+            {selectedProductId && <span>پروڈکٹ فلٹر لاگو</span>}
+          </div>
+        )}
       </div>
 
       <table style={{
@@ -121,8 +153,7 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
                   border: '1px solid #000',
                   padding: '6px',
                   textAlign: 'right'
-                }}>
-                  {getCellValue(item, key)}
+                }} dangerouslySetInnerHTML={{ __html: getCellValue(item, key) }}>
                 </td>
               ))}
             </tr>

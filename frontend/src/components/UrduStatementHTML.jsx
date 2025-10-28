@@ -289,7 +289,7 @@ function generateUrduStatementHTML(statementData, shopSettings, startDate, endDa
               ${preferences.showDate !== false ? '<th>تاریخ</th>' : ''}
               ${preferences.showDescription !== false ? '<th>میمو</th>' : ''}
               ${preferences.showLoadingDate !== false ? '<th>لوڈنگ تاریخ</th>' : ''}
-              ${preferences.showArrivalDate !== false ? '<th>تاریخ</th>' : ''}
+              ${preferences.showArrivalDate !== false ? '<th>آمد تاریخ</th>' : ''}
               ${preferences.showSaleDescription !== false ? '<th>تفصیل</th>' : ''}
               ${preferences.showCarNumber !== false ? '<th>گاڑی نمبر</th>' : ''}
               ${preferences.showQuantity !== false ? '<th>تعداد</th>' : ''}

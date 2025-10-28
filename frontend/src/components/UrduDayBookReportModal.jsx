@@ -36,8 +36,11 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
     return new Date().toISOString().split('T')[0];
   });
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [columns, setColumns] = useState(URDU_COLUMNS);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const printRef = useRef();
 
   const toggleColumn = (columnKey) => {
@@ -51,32 +54,48 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
   };
 
   const handlePrintPDF = () => {
-    const printWindow = window.open('', '_blank');
-    const printContent = printRef.current.innerHTML;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>روزنامچہ رپورٹ</title>
-          <meta charset="utf-8">
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-            body { margin: 0; font-family: 'Noto Nastaliq Urdu', serif; }
-            @media print { .no-print { display: none !important; } }
-          </style>
-        </head>
-        <body>${printContent}</body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.focus();
-    
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    // Check if we're in Electron
+    if (window.electronAPI) {
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>روزنامچہ رپورٹ</title>
+            <meta charset="utf-8">
+            <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+            <style>
+              body { margin: 0; font-family: 'Noto Nastaliq Urdu', serif; }
+              @media print { .no-print { display: none !important; } }
+            </style>
+          </head>
+          <body>${printRef.current.innerHTML}</body>
+        </html>
+      `;
+      window.electronAPI.saveAndOpenUrduInvoice(htmlContent, `urdu-daybook-${startDate}-to-${endDate}.html`);
+    } else {
+      // Fallback for web browsers
+      const printWindow = window.open('', '_blank');
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>روزنامچہ رپورٹ</title>
+            <meta charset="utf-8">
+            <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+            <style>
+              body { margin: 0; font-family: 'Noto Nastaliq Urdu', serif; }
+              @media print { .no-print { display: none !important; } }
+            </style>
+          </head>
+          <body>${printRef.current.innerHTML}</body>
+        </html>
+      `;
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
   };
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
@@ -88,24 +107,41 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
     return result.items?.[0] || {};
   });
 
-  // Fetch products for dropdown
-  const { data: products } = useQuery(
+  // Fetch products for dropdown only when opened
+  const { data: products, isLoading: productsLoading } = useQuery(
     ['products-for-urdu-daybook'],
     async () => {
       const result = await API.getProducts({ limit: 1000 });
       return result.items || [];
     },
-    { enabled: isOpen }
+    { enabled: isProductDropdownOpen }
   );
 
+  // Fetch categories independently when category dropdown is opened
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery(
+    ['categories-for-urdu-daybook'],
+    async () => {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await response.json();
+      return result.items || result || [];
+    },
+    { enabled: isCategoryDropdownOpen }
+  );
+
+  const categories = categoriesData || [];
+
   const { data: dayBookData, isLoading, refetch } = useQuery(
-    ['urdu-day-book-report', startDate, endDate, selectedProductId],
+    ['urdu-day-book-report', startDate, endDate, selectedProductId, selectedCategory],
     async () => {
       const token = localStorage.getItem('authToken');
       const params = new URLSearchParams({
         startDate,
         endDate,
-        ...(selectedProductId && { productId: selectedProductId })
+        ...(selectedProductId && { productId: selectedProductId }),
+        ...(selectedCategory && { category: selectedCategory })
       });
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/dashboard/day-book?${params}`,
@@ -134,7 +170,7 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
 
         <div className="p-6 flex-1 overflow-hidden flex flex-col">
           <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-urdu">شروع کی تاریخ</label>
                 <input
@@ -154,19 +190,49 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 font-urdu">قسم فلٹر</label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onFocus={() => setIsCategoryDropdownOpen(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md font-urdu"
+                  dir="rtl"
+                >
+                  <option value="">تمام اقسام</option>
+                  {categoriesLoading ? (
+                    <option disabled>
+                      لوڈ ہو رہا ہے...
+                    </option>
+                  ) : (
+                    categories.map((category, index) => (
+                      <option key={category.id || category.name || index} value={category.name || category}>
+                        {category.name || category}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-urdu">پروڈکٹ فلٹر</label>
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
+                  onFocus={() => setIsProductDropdownOpen(true)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md font-urdu"
                   dir="rtl"
                 >
                   <option value="">تمام پروڈکٹس</option>
-                  {products?.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
+                  {productsLoading ? (
+                    <option disabled>
+                      لوڈ ہو رہا ہے...
                     </option>
-                  ))}
+                  ) : (
+                    products?.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
               <div className="flex gap-2">
@@ -345,7 +411,9 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                 dayBookData={dayBookData} 
                 dateRange={{ startDate, endDate }} 
                 shopSettings={shopSettings} 
-                visibleColumns={visibleColumns} 
+                visibleColumns={visibleColumns}
+                selectedCategory={selectedCategory}
+                selectedProductId={selectedProductId}
               />
             )}
           </div>

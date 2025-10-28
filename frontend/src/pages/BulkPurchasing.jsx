@@ -73,6 +73,7 @@ function BulkPurchasing() {
   const [loadingDate, setLoadingDate] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('');
+  const [changeDate, setChangeDate] = useState('');
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -358,6 +359,7 @@ function BulkPurchasing() {
     setLoadingDate('');
     setArrivalDate('');
     setPaymentDescription('');
+    setChangeDate('');
   };
 
   const handleAddItem = async () => {
@@ -538,7 +540,8 @@ function BulkPurchasing() {
       transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
       loadingDate: loadingDate || null,
       arrivalDate: arrivalDate || null,
-      ...(paymentDescription && { paymentDescription })
+      ...(paymentDescription && { paymentDescription }),
+      ...(changeDate && { changeDate })
     };
 
     // Debug logging
@@ -1388,19 +1391,35 @@ function BulkPurchasing() {
                 </div>
               </div>
 
-              {/* Payment Description */}
+              {/* Payment Description and Change Date */}
               {isEditMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Update Reason ({t('optional')})
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentDescription}
-                    onChange={(e) => setPaymentDescription(e.target.value)}
-                    placeholder="e.g., Bank transfer to supplier, Cash payment..."
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Update Reason ({t('optional')})
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentDescription}
+                      onChange={(e) => setPaymentDescription(e.target.value)}
+                      placeholder="e.g., Bank transfer to supplier, Cash payment..."
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Change Date ({t('optional')})
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={changeDate}
+                      onChange={(e) => setChangeDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty to use current date/time
+                    </p>
+                  </div>
                 </div>
               )}
 

@@ -107,6 +107,10 @@ function Products() {
         return await DataStorageManager.getLowStockProducts(params);
       }
       
+      if (showRawMaterials) {
+        params.isRawMaterial = true;
+      }
+      
       return await DataStorageManager.read(STORES.products, params);
     }
   );
@@ -592,7 +596,15 @@ function Products() {
                 </td>
               </tr>
             ) : (
-              products?.items?.map((product) => (
+              products?.items?.filter(product => {
+                if (showRawMaterials) {
+                  return product.isRawMaterial === true;
+                }
+                if (showDamaged) {
+                  return product.quantity === 0;
+                }
+                return true;
+              })?.map((product) => (
                 <tr key={product.id} className="hover:bg-primary-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
