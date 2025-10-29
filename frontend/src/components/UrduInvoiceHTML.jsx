@@ -29,6 +29,24 @@ function formatPakistaniCurrency(amount, showCurrency = true) {
 }
 
 function generateUrduInvoiceHTML(sale, shopSettings, preferences = {}) {
+  // Create brand array with registered trademark symbols
+  const brands = [];
+  
+  if (shopSettings?.brand1) {
+    brands.push(shopSettings.brand1 + (shopSettings.brand1Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand2) {
+    brands.push(shopSettings.brand2 + (shopSettings.brand2Registered ? '®' : ''));
+  }
+  if (shopSettings?.brand3) {
+    brands.push(shopSettings.brand3 + (shopSettings.brand3Registered ? '®' : ''));
+  }
+
+  // Calculate payment status
+  const netAmount = (sale.totalAmount) - (sale.returns?.reduce((sum, ret) => sum + ret.totalAmount, 0) || 0);
+  const totalRefunded = (sale.returns?.reduce((sum, ret) => sum + (ret.refundPaid ? (ret.refundAmount || 0) : 0), 0) || 0);
+  const balance = netAmount - sale.paidAmount + totalRefunded;
+  
   return `
     <!DOCTYPE html>
     <html dir="rtl" lang="ur">
@@ -51,111 +69,194 @@ function generateUrduInvoiceHTML(sale, shopSettings, preferences = {}) {
         
         body {
           font-family: 'Noto Sans Urdu', Arial, sans-serif;
-          font-size: 14px;
-          color: #333;
+          font-size: 11px;
+          color: #000;
           margin: 0;
           padding: 20px;
-          line-height: 1.6;
+          line-height: 1.4;
           direction: rtl;
         }
         
-        .header {
+        .company-header {
           text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #2563eb;
-          padding-bottom: 15px;
-        }
-        
-        .shop-name {
-          font-size: 24px;
-          font-weight: bold;
           margin-bottom: 10px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 8px;
         }
         
-        .title {
-          font-size: 20px;
+        .company-name {
+          font-size: 16px;
           font-weight: bold;
-          margin: 20px 0;
+          margin-bottom: 2px;
+        }
+        
+        .company-subtitle {
+          font-size: 10px;
+          margin-bottom: 5px;
+        }
+        
+        .invoice-title {
+          font-size: 14px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 10px;
         }
         
         .invoice-info {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 8px;
-          margin: 20px 0;
-        }
-        
-        .customer-info {
-          margin: 20px 0;
-          padding: 15px;
-          background: #f1f5f9;
-          border-radius: 8px;
-        }
-        
-        .transport-section {
-          margin: 20px 0;
-          padding: 15px;
-          background: #f9f9f9;
-          border-radius: 8px;
-        }
-        
-        .transport-title {
-          font-weight: bold;
-          margin-bottom: 10px;
-          font-size: 16px;
-        }
-        
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 20px 0;
-        }
-        
-        th, td {
-          padding: 6px;
-          text-align: right;
-          border-bottom: 1px solid #ddd;
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 15px;
           font-size: 10px;
         }
         
-        th {
-          background-color: #f3f4f6;
+        .bill-to-section {
+          margin-bottom: 15px;
+          border: 1px solid #000;
+          padding: 8px;
+        }
+        
+        .bill-to-title {
+          font-size: 10px;
           font-weight: bold;
-          border-bottom: 2px solid #ccc;
+          margin-bottom: 5px;
+        }
+        
+        .customer-info {
+          font-size: 10px;
+          margin-bottom: 2px;
+        }
+        
+        .table {
+          border: 1px solid #000;
+          margin-bottom: 10px;
+          width: 100%;
+          border-collapse: collapse;
+        }
+        
+        .table-header {
+          background-color: #000;
+          color: #fff;
+          font-weight: bold;
           font-size: 9px;
         }
         
-        .summary {
-          margin-top: 30px;
-          padding: 20px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          max-width: 300px;
-          margin-right: auto;
+        .table-row {
+          border-bottom: 1px solid #000;
+          font-size: 9px;
+          min-height: 20px;
+        }
+        
+        .table th, .table td {
+          padding: 5px 3px;
+          text-align: center;
+          border-right: 1px solid #ccc;
+        }
+        
+        .table th:last-child, .table td:last-child {
+          border-right: none;
+        }
+        
+        .col-sr { width: 8%; }
+        .col-description { width: 35%; text-align: right; }
+        .col-uom { width: 12%; }
+        .col-qty { width: 10%; }
+        .col-price { width: 15%; text-align: left; }
+        .col-amount { width: 20%; text-align: left; }
+        
+        .summary-section {
+          display: flex;
+          margin-top: 10px;
+        }
+        
+        .summary-left {
+          width: 50%;
+          border: 1px solid #000;
+          padding: 5px;
+        }
+        
+        .summary-right {
+          width: 50%;
+          border: 1px solid #000;
+          border-right: none;
+          padding: 5px;
         }
         
         .summary-row {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 8px;
-          padding: 5px 0;
+          margin-bottom: 3px;
+          font-size: 9px;
         }
         
-        .summary-total {
+        .summary-label {
           font-weight: bold;
-          font-size: 16px;
-          border-top: 2px solid #000;
+          font-size: 9px;
+        }
+        
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 3px;
+          font-size: 10px;
+          font-weight: bold;
+          border-top: 1px solid #000;
+          padding-top: 3px;
+          margin-top: 3px;
+        }
+        
+        .status-section {
           margin-top: 10px;
-          padding-top: 10px;
+          border: 1px solid #000;
+          padding: 8px;
+        }
+        
+        .status-title {
+          font-size: 10px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        
+        .status-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 3px;
+          font-size: 9px;
         }
         
         .footer {
+          position: absolute;
+          bottom: 20px;
+          left: 20px;
+          right: 20px;
+          text-align: right;
+          font-size: 8px;
+          padding-top: 5px;
+        }
+        
+        .shop-description-footer {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background-color: #000;
+          color: #fff;
           text-align: center;
-          margin-top: 40px;
-          font-size: 12px;
-          color: #666;
-          border-top: 1px solid #ddd;
-          padding-top: 20px;
+          font-size: 8px;
+          padding: 5px;
+          margin: 0;
+        }
+        
+        .returns-section {
+          margin-top: 10px;
+          margin-bottom: 10px;
+        }
+        
+        .returns-title {
+          font-size: 10px;
+          font-weight: bold;
+          margin-bottom: 5px;
+          background-color: #f0f0f0;
+          padding: 3px;
         }
         
         .print-btn {
@@ -181,77 +282,169 @@ function generateUrduInvoiceHTML(sale, shopSettings, preferences = {}) {
     <body>
       <button class="print-btn" onclick="window.print()">پرنٹ کریں</button>
       
-      <!-- Header -->
-      <div class="header">
-        <div class="shop-name">${shopSettings?.shopName || "رانا قدیر صاحب"}</div>
-        <div class="title">رسید</div>
+      <!-- Company Header -->
+      <div class="company-header">
+        <div class="company-name">${shopSettings?.shopName || "کمپنی کا نام"}</div>
+        ${brands.length > 0 ? `<div class="company-subtitle">${brands.join(" • ")}</div>` : ''}
+        ${shopSettings?.shopDescription ? `<div class="company-subtitle">${shopSettings.shopDescription}</div>` : ''}
       </div>
 
-      <!-- Invoice Info -->
+      <!-- Invoice Title -->
+      <div class="invoice-title">رسید</div>
+
+      <!-- Date and Invoice Number -->
       <div class="invoice-info">
-        <div><strong>بل نمبر:</strong> #${sale.billNumber}</div>
-        <div><strong>تاریخ:</strong> ${new Date(sale.saleDate).toLocaleDateString('ur-PK')}</div>
+        <div>تاریخ: ${new Date(sale.saleDate).toLocaleDateString()}</div>
+        <div>رسید نمبر: ${sale.billNumber}</div>
       </div>
 
-      <!-- Customer Info -->
-      <div class="customer-info">
-        <div><strong>گاہک:</strong> ${sale.contact?.name || "واک ان کسٹمر"}</div>
+      <!-- Bill To Section -->
+      <div class="bill-to-section">
+        <div class="bill-to-title">گاہک کی تفصیلات:</div>
+        <div class="customer-info">گاہک کا نام: ${sale.contact?.name || "واک ان کسٹمر"}</div>
         ${sale.contact?.phoneNumber && preferences.showContactPhone !== false ? 
-          `<div><strong>فون:</strong> ${sale.contact.phoneNumber}</div>` : ''}
+          `<div class="customer-info">رابطہ نمبر: ${sale.contact.phoneNumber}</div>` : ''}
         ${sale.contact?.address && preferences.showContactAddress !== false ? 
-          `<div><strong>پتہ:</strong> ${sale.contact.address}</div>` : ''}
+          `<div class="customer-info">پتہ: ${sale.contact.address}</div>` : ''}
       </div>
 
-      <!-- Single Table with All Data -->
-      <table>
+      <!-- Items Table -->
+      <table class="table">
         <thead>
-          <tr>
-            ${preferences.showProductName !== false ? '<th>پروڈکٹ</th>' : ''}
-            ${preferences.showUnitPrice !== false ? '<th>ریٹ</th>' : ''}
-            ${preferences.showQuantity !== false ? '<th>تعداد</th>' : ''}
-            ${preferences.showTotal !== false ? '<th>کل</th>' : ''}
-            ${preferences.showCarNumber !== false ? '<th>گاڑی نمبر</th>' : ''}
-            ${preferences.showLoadingDate !== false ? '<th>لوڈنگ تاریخ</th>' : ''}
-            ${preferences.showArrivalDate !== false ? '<th>تاریخ</th>' : ''}
-            ${preferences.showDescription !== false ? '<th>تفصیل</th>' : ''}
+          <tr class="table-header">
+            <th class="col-sr">سیریل</th>
+            <th class="col-description">اشیاء کی تفصیل</th>
+            <th class="col-uom">یونٹ</th>
+            <th class="col-qty">تعداد</th>
+            <th class="col-price">فی یونٹ ریٹ</th>
+            <th class="col-amount">کل رقم</th>
           </tr>
         </thead>
         <tbody>
-          ${sale.items.map(item => `
-            <tr>
-              ${preferences.showProductName !== false ? `<td>${item.product.name}</td>` : ''}
-              ${preferences.showUnitPrice !== false ? `<td>${formatPakistaniCurrency(item.price, false)}</td>` : ''}
-              ${preferences.showQuantity !== false ? `<td>${item.quantity}</td>` : ''}
-              ${preferences.showTotal !== false ? `<td>${formatPakistaniCurrency(item.price * item.quantity, false)}</td>` : ''}
-              ${preferences.showCarNumber !== false ? `<td>${sale.transport?.carNumber || '-'}</td>` : ''}
-              ${preferences.showLoadingDate !== false ? `<td>${sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : '-'}</td>` : ''}
-              ${preferences.showArrivalDate !== false ? `<td>${sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : '-'}</td>` : ''}
-              ${preferences.showDescription !== false ? `<td>${sale.description || '-'}</td>` : ''}
+          ${sale.items.map((item, i) => `
+            <tr class="table-row">
+              <td class="col-sr">${i + 1}</td>
+              <td class="col-description">${item.product.name}</td>
+              <td class="col-uom">${item.product.unit || 'عدد'}</td>
+              <td class="col-qty">${item.quantity}</td>
+              <td class="col-price">${formatPakistaniCurrency(item.price, false)}</td>
+              <td class="col-amount">${formatPakistaniCurrency(item.price * item.quantity, false)}</td>
             </tr>
           `).join('')}
+          
+          ${Array.from({ length: Math.max(0, 20 - sale.items.length) }).map((_, i) => `
+            <tr class="table-row">
+              <td class="col-sr">${sale.items.length + i + 1}</td>
+              <td class="col-description"></td>
+              <td class="col-uom"></td>
+              <td class="col-qty"></td>
+              <td class="col-price"></td>
+              <td class="col-amount"></td>
+            </tr>
+          `).join('')}
+          
+          <!-- TOTAL Row in table -->
+          <tr class="table-row" style="background-color: #fff; font-weight: bold; border-top: 2px solid #000;">
+            <td class="col-sr"></td>
+            <td class="col-description" style="font-weight: bold;">کل</td>
+            <td class="col-uom"></td>
+            <td class="col-qty"></td>
+            <td class="col-price"></td>
+            <td class="col-amount" style="font-weight: bold;">${formatPakistaniCurrency(sale.totalAmount, false)}</td>
+          </tr>
         </tbody>
       </table>
 
-      <!-- Summary -->
-      <div class="summary">
-        <div class="summary-row">
-          <span>کل رقم:</span>
-          <span>${formatPakistaniCurrency(sale.totalAmount)}</span>
+      <!-- Summary Section -->
+      <div class="summary-section">
+        <div class="summary-left">
+          ${Number(sale.discount) > 0 ? `
+            <div class="summary-row">
+              <span style="font-weight: bold; font-size: 9px;">رعایت</span>
+              <span style="font-weight: bold; font-size: 9px;">${formatPakistaniCurrency(sale.discount || 0, false)}</span>
+            </div>
+          ` : ''}
+          ${sale.returns && sale.returns.length > 0 ? `
+            <div class="summary-row">
+              <span style="font-weight: bold; font-size: 9px;">واپسی</span>
+              <span style="font-weight: bold; font-size: 9px;">${formatPakistaniCurrency(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0), false)}</span>
+            </div>
+          ` : ''}
+          <div class="summary-row">
+            <span style="font-weight: bold; font-size: 9px;">بقایا</span>
+            <span style="font-weight: bold; font-size: 9px;">${formatPakistaniCurrency(balance > 0 ? balance : 0, false)}</span>
+          </div>
+          <div class="summary-row">
+            <span style="font-weight: bold; font-size: 9px;">نقد ادائیگی</span>
+            <span style="font-weight: bold; font-size: 9px;">${formatPakistaniCurrency(sale.paidAmount, false)}</span>
+          </div>
+          <div class="summary-row">
+            <span style="font-weight: bold; font-size: 9px;">کریڈٹ</span>
+            <span style="font-weight: bold; font-size: 9px;">${formatPakistaniCurrency(balance < 0 ? Math.abs(balance) : 0, false)}</span>
+          </div>
         </div>
-        <div class="summary-row">
-          <span>ادا شدہ رقم:</span>
-          <span>${formatPakistaniCurrency(sale.paidAmount)}</span>
-        </div>
-        <div class="summary-row summary-total">
-          <span>باقی رقم:</span>
-          <span>${formatPakistaniCurrency(Math.max(sale.totalAmount - sale.paidAmount, 0))}</span>
+        <div class="summary-right">
+          <div style="font-weight: bold; font-size: 9px;">آرڈر کے ساتھ:</div>
+          <div style="font-size: 8px; margin-top: 3px;">${sale.description || ''}</div>
+          <div> </div>
+          <div> </div>
+          <div style="font-weight: bold; font-size: 9px;">وصول کنندہ:</div>
         </div>
       </div>
 
+      <!-- Payment Status Section -->
+      <div class="status-section">
+        ${sale.returns && sale.returns.length > 0 ? `
+          <div class="status-row">
+            <span>خالص رقم (واپسی کے بعد):</span>
+            <span>${formatPakistaniCurrency(netAmount > 0 ? netAmount : 0)}</span>
+          </div>
+        ` : ''}
+        <div class="status-row">
+          <span>ادا شدہ رقم:</span>
+          <span>${formatPakistaniCurrency(sale.paidAmount)}</span>
+        </div>
+        ${totalRefunded > 0 ? `
+          <div class="status-row">
+            <span>واپس شدہ رقم:</span>
+            <span>${formatPakistaniCurrency(totalRefunded)}</span>
+          </div>
+        ` : ''}
+        <div class="status-row">
+          <span class="summary-label">
+            ${balance > 0 ? 'واجب الادا رقم:' : balance < 0 ? 'کریڈٹ بیلنس:' : 'حالت:'}
+          </span>
+          <span class="summary-label">
+            ${balance > 0 ? formatPakistaniCurrency(balance) : balance < 0 ? formatPakistaniCurrency(Math.abs(balance)) : 'مکمل ادائیگی'}
+          </span>
+        </div>
+      </div>
+
+      <!-- Returns Section -->
+      ${sale.returns && sale.returns.length > 0 ? `
+        <div class="returns-section">
+          <div class="returns-title">واپس شدہ اشیاء:</div>
+          ${sale.returns.map((returnRecord, index) => `
+            <div style="font-size: 8px; margin-bottom: 2px;">
+              واپسی #${returnRecord.returnNumber} (${new Date(returnRecord.returnDate).toLocaleDateString()}): 
+              ${returnRecord.items.map(item => `${item.product?.name || "نامعلوم"} x${item.quantity}`).join(", ")} 
+              - ${formatPakistaniCurrency(returnRecord.totalAmount)}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
       <!-- Footer -->
       <div class="footer">
-        استعمال کے بعد واپسی یا تبدیلی نہیں
+        <div style="margin-top: 4px; margin-bottom: 4px;">چیک اور منظوری: _________________________</div>
       </div>
+      
+      <!-- Shop Description Footer -->
+      ${shopSettings?.shopDescription2 ? `
+        <div class="shop-description-footer">
+          ${shopSettings.shopDescription2}
+        </div>
+      ` : ''}
     </body>
     </html>
   `;

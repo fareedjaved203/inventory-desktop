@@ -136,9 +136,11 @@ function POS() {
 
   // Fetch shop settings
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await api.get('/api/shop-settings');
+    const response = await API.get('/api/shop-settings');
     return response.data;
   });
+
+  console.log(JSON.stringify(shopSettings));
 
   // Handle barcode scan/input
   const handleBarcodeSubmit = async (e) => {
@@ -332,7 +334,8 @@ function POS() {
           }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: bold;
             line-height: 1.2;
             margin: 0;
             padding: 5mm;
@@ -410,8 +413,6 @@ function POS() {
             </div>
           ` : ''}
           <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
-          <div class="shop-info">Point of Sale System</div>
-          <div class="shop-info">Thank you for your business!</div>
         </div>
         
         <div class="receipt-info">
@@ -461,7 +462,11 @@ function POS() {
         </div>
         
         <div class="footer">
-          <div>Thank you for shopping with us!</div>
+          <div>
+            <div>${shopSettings?.shopDescription2 || ''}</div>
+            <div>${shopSettings?.userPhone1 || ''}</div>
+          </div>
+          <div style="margin-top: 10px; padding-top: 5px; border-top: 1px dashed #000; font-size: 10px;">Thank you for shopping with us!</div>
           <div>Visit again soon</div>
         </div>
       </body>

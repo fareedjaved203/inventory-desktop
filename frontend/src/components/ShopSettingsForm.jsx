@@ -173,7 +173,7 @@ function ShopSettingsForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'دکان کی تفصیل 2' : 'Shop Description 2'}</label>
+          <label className="block text-sm font-medium mb-1">{language === 'ur' ? 'دکان کا پتہ' : 'Shop Address'}</label>
           <textarea
             name="shopDescription2"
             value={formData.shopDescription2}
