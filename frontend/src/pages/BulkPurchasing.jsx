@@ -74,6 +74,7 @@ function BulkPurchasing() {
   const [arrivalDate, setArrivalDate] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('');
   const [changeDate, setChangeDate] = useState('');
+  const [updatedAmount, setUpdatedAmount] = useState('');
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -360,6 +361,7 @@ function BulkPurchasing() {
     setArrivalDate('');
     setPaymentDescription('');
     setChangeDate('');
+    setUpdatedAmount('');
   };
 
   const handleAddItem = async () => {
@@ -1370,6 +1372,7 @@ function BulkPurchasing() {
                     onChange={(e) => {
                       const value = parseFloat(e.target.value) || 0;
                       setPaidAmount(e.target.value);
+                      setUpdatedAmount(''); // Clear updated amount when paid amount is directly changed
 
                       // Clear validation error if paid amount is now valid
                       if (
@@ -1388,6 +1391,34 @@ function BulkPurchasing() {
                   {validationErrors.paidAmount && (
                     <p className="text-red-500 text-sm mt-1">{validationErrors.paidAmount}</p>
                   )}
+                  
+                  {/* Updated Amount Input */}
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Updated Amount ({t('optional')})
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={updatedAmount}
+                      onChange={(e) => {
+                        const newUpdatedAmount = parseFloat(e.target.value) || 0;
+                        const oldUpdatedAmount = parseFloat(updatedAmount) || 0;
+                        const currentPaid = parseFloat(paidAmount) || 0;
+                        
+                        const newPaidAmount = currentPaid - oldUpdatedAmount + newUpdatedAmount;
+                        setPaidAmount(newPaidAmount.toString());
+                        setUpdatedAmount(e.target.value);
+                      }}
+                      onWheel={(e) => e.target.blur()}
+                      placeholder="Enter additional payment amount"
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter additional payment to add to current paid amount
+                    </p>
+                  </div>
                 </div>
               </div>
 

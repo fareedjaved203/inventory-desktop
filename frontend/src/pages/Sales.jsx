@@ -87,6 +87,7 @@ function Sales() {
   const [arrivalDate, setArrivalDate] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('');
   const [changeDate, setChangeDate] = useState('');
+  const [updatedAmount, setUpdatedAmount] = useState('');
 
   const updateSale = useMutation(
     async (updatedSale) => {
@@ -116,6 +117,7 @@ function Sales() {
         setArrivalDate('');
         setPaymentDescription('');
         setChangeDate('');
+        setUpdatedAmount('');
         setValidationErrors({});
         setTempStockUpdates({});
         setTotalAmount(0);
@@ -310,6 +312,7 @@ function Sales() {
         setArrivalDate('');
         setPaymentDescription('');
         setChangeDate('');
+        setUpdatedAmount('');
         setValidationErrors({});
         setTempStockUpdates({});
         setTotalAmount(0);
@@ -806,6 +809,7 @@ function Sales() {
                 setValidationErrors({});
                 setTempStockUpdates({});
                 setTotalAmount(0);
+                setUpdatedAmount('');
                 setIsModalOpen(true);
               }}
               className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap w-full sm:w-auto"
@@ -1673,6 +1677,7 @@ function Sales() {
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         setPaidAmount(e.target.value);
+                        setUpdatedAmount(''); // Clear updated amount when paid amount is directly changed
 
                         // Clear validation error if paid amount is now valid
                         if (
@@ -1693,6 +1698,34 @@ function Sales() {
                         {validationErrors.paidAmount}
                       </p>
                     )}
+                    
+                    {/* Updated Amount Input */}
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Updated Amount ({t('optional')})
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={updatedAmount}
+                        onChange={(e) => {
+                          const newUpdatedAmount = parseFloat(e.target.value) || 0;
+                          const oldUpdatedAmount = parseFloat(updatedAmount) || 0;
+                          const currentPaid = parseFloat(paidAmount) || 0;
+                          
+                          const newPaidAmount = currentPaid - oldUpdatedAmount + newUpdatedAmount;
+                          setPaidAmount(newPaidAmount.toString());
+                          setUpdatedAmount(e.target.value);
+                        }}
+                        onWheel={(e) => e.target.blur()}
+                        placeholder="Enter additional payment amount"
+                        className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter additional payment to add to current paid amount
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -1769,6 +1802,7 @@ function Sales() {
                   setValidationErrors({});
                   setTempStockUpdates({});
                   setTotalAmount(0);
+                  setUpdatedAmount('');
                 }}
                 className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >

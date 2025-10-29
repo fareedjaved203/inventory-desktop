@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from './middleware.js';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 let prisma;
 
@@ -87,15 +88,14 @@ router.post('/', authenticateToken, async (req, res) => {
     const userId = req.userId;
     const validatedData = expenseSchema.parse(req.body);
 
-    const expense = await prisma.expense.create({
-      data: {
-        ...validatedData,
-        amount: validatedData.amount,
-        date: new Date(validatedData.date),
-        contactId: validatedData.contactId || null,
-        productId: validatedData.productId || null,
-        userId,
-      },
+    const expenseId = crypto.randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO "Expense" (id, amount, date, category, description, "paymentMethod", "receiptNumber", "contactId", "productId", "userId", "createdAt", "updatedAt")
+      VALUES (${expenseId}, ${validatedData.amount}::decimal, ${new Date(validatedData.date)}, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, NOW(), NOW())
+    `;
+    
+    const expense = await prisma.expense.findUnique({
+      where: { id: expenseId },
       include: {
         contact: {
           select: { id: true, name: true }
@@ -129,15 +129,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const userId = req.userId;
     const validatedData = expenseSchema.parse(req.body);
 
-    const expense = await prisma.expense.update({
-      where: { id, userId },
-      data: {
-        ...validatedData,
-        amount: validatedData.amount,
-        date: new Date(validatedData.date),
-        contactId: validatedData.contactId || null,
-        productId: validatedData.productId || null,
-      },
+    await prisma.$executeRaw`
+      UPDATE "Expense" 
+      SET amount = ${validatedData.amount}::decimal,
+          date = ${new Date(validatedData.date)},
+          category = ${validatedData.category},
+          description = ${validatedData.description},
+          "paymentMethod" = ${validatedData.paymentMethod},
+          "receiptNumber" = ${validatedData.receiptNumber},
+          "contactId" = ${validatedData.contactId},
+          "productId" = ${validatedData.productId},
+          "updatedAt" = NOW()
+      WHERE id = ${id} AND "userId" = ${userId}
+    `;
+    
+    const expense = await prisma.expense.findUnique({
+      where: { id },
       include: {
         contact: {
           select: { id: true, name: true }
