@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import API from '../utils/api';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye } from 'react-icons/fa';
+import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye, FaTh, FaList } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProductImage from '../components/ProductImage';
 import { debounce } from 'lodash';
@@ -22,6 +22,7 @@ function POS() {
   const [debouncedCustomerSearchTerm, setDebouncedCustomerSearchTerm] = useState('');
   const [showCart, setShowCart] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [viewMode, setViewMode] = useState('default'); // 'default' or 'compact'
   const [barcodeLoading, setBarcodeLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const barcodeInputRef = useRef(null);
@@ -482,9 +483,43 @@ function POS() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row bg-gradient-to-br from-gray-50 to-gray-100 relative">
-      {/* Mobile Cart Toggle Button */}
-      {isMobile && (
+    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 relative">
+      {/* View Mode Toggle */}
+      <div className="bg-white shadow-sm p-3 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('default')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'default'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <FaTh className="inline mr-1" />
+                Default
+              </button>
+              <button
+                onClick={() => setViewMode('compact')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'compact'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <FaList className="inline mr-1" />
+                Compact
+              </button>
+            </div>
+            <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
+          </div>
+        </div>
+      </div>
+
+      <div className={`flex-1 flex ${viewMode === 'default' ? 'flex-col lg:flex-row' : 'flex-col'} relative`}>
+      {/* Mobile Cart Toggle Button - Only show in default view */}
+      {isMobile && viewMode === 'default' && (
         <div className="fixed bottom-4 right-4 z-30">
           <button
             onClick={() => setShowCart(!showCart)}
@@ -500,16 +535,16 @@ function POS() {
         </div>
       )}
 
-      {/* Mobile Cart Overlay */}
-      {isMobile && showCart && (
+      {/* Mobile Cart Overlay - Only show in default view */}
+      {isMobile && showCart && viewMode === 'default' && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setShowCart(false)}
         />
       )}
 
-      {/* Left Panel - Product Search & Cart */}
-      <div className="flex-1 flex flex-col p-2 lg:p-4 lg:pr-96">
+      {/* Main Content */}
+      <div className={`flex-1 flex flex-col p-2 lg:p-4 ${viewMode === 'default' ? 'lg:pr-96' : ''}`}>
         {/* Search & Barcode Input */}
         <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 mb-3 lg:mb-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
@@ -556,7 +591,133 @@ function POS() {
           </div>
         </div>
 
-        {/* Product Display Area - 70% */}
+        {/* Compact View Cart Items */}
+        {viewMode === 'compact' && cart.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-3 mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                <FaShoppingCart className="mr-2" />
+                Cart ({cart.length})
+              </h3>
+              <button
+                onClick={clearCart}
+                className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
+                title="Clear Cart"
+              >
+                <FaTrash />
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              <div className="space-y-2">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm text-gray-800">{item.name}</h4>
+                      <p className="text-xs text-gray-600">{formatPakistaniCurrency(item.price)} each</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                        >
+                          <FaMinus size={10} />
+                        </button>
+                        <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                        <button
+                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                        >
+                          <FaPlus size={10} />
+                        </button>
+                      </div>
+                      <div className="text-right min-w-[80px]">
+                        <div className="font-semibold text-sm">{formatPakistaniCurrency(item.price * item.quantity)}</div>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                      >
+                        <FaTimes size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Compact View Totals */}
+            <div className="border-t border-gray-200 pt-3 mt-3">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Discount (%):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discount}
+                      onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Paid:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={paidAmount}
+                      onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-600">Subtotal: {formatPakistaniCurrency(subtotal)}</div>
+                  {discount > 0 && (
+                    <div className="text-sm text-red-600">Discount: -{formatPakistaniCurrency(discountAmount)}</div>
+                  )}
+                  <div className="text-lg font-bold text-gray-800">Total: {formatPakistaniCurrency(total)}</div>
+                  {change > 0 && (
+                    <div className="text-sm text-green-600">Change: {formatPakistaniCurrency(change)}</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPaidAmount(total)}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                >
+                  Exact
+                </button>
+                <button
+                  onClick={previewReceipt}
+                  className="px-3 py-2 bg-blue-200 text-blue-700 rounded-md text-sm hover:bg-blue-300 flex items-center gap-1"
+                >
+                  <FaEye /> Preview
+                </button>
+                <button
+                  onClick={processSale}
+                  disabled={createSale.isLoading}
+                  className="flex-1 bg-primary-600 text-white py-2 rounded-md font-semibold hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {createSale.isLoading ? (
+                    <LoadingSpinner size="w-4 h-4" />
+                  ) : (
+                    <>
+                      <FaPrint />
+                      Complete Sale
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Product Display Area - Only show in default view */}
+        {viewMode === 'default' && (
         <div className="bg-white rounded-xl shadow-lg p-4 mb-4 flex-1 overflow-auto">
           {(productsLoading || categoriesLoading || categoryProductsLoading) ? (
             <div className="flex justify-center items-center h-32">
@@ -598,12 +759,12 @@ function POS() {
                           </div>
                         )}
                         {Number(product.quantity) <= 5 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
                             Low Stock
                           </span>
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                         <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
@@ -669,12 +830,12 @@ function POS() {
                           </div>
                         )}
                         {Number(product.quantity) <= 5 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
                             Low Stock
                           </span>
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
                         <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
@@ -697,8 +858,10 @@ function POS() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Categories Section */}
+        {/* Categories Section - Only show in default view */}
+        {viewMode === 'default' && (
         <div className="bg-white rounded-xl shadow-lg p-4 min-h-[200px] max-h-[300px]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-800">Categories</h3>
@@ -749,18 +912,20 @@ function POS() {
             </div>
           )}
         </div>
+        )}
       </div>
 
-      {/* Right Panel - Cart & Checkout */}
-      <div className={`
-        ${isMobile 
-          ? `fixed right-0 top-0 h-[90vh] w-full max-w-sm transform transition-transform duration-300 z-50 ${
-              showCart ? 'translate-x-0' : 'translate-x-full'
-            }` 
-          : 'fixed right-4 top-16 w-80 xl:w-96 h-[90vh]'
-        } 
-        bg-white shadow-lg flex flex-col
-      `}>
+      {/* Right Panel - Cart & Checkout - Only show in default view */}
+      {viewMode === 'default' && (
+        <div className={`
+          ${isMobile 
+            ? `fixed right-0 top-0 h-[90vh] w-full max-w-sm transform transition-transform duration-300 z-50 ${
+                showCart ? 'translate-x-0' : 'translate-x-full'
+              }` 
+            : 'fixed right-4 top-16 w-80 xl:w-96 h-[90vh]'
+          } 
+          bg-white shadow-lg flex flex-col
+        `}>
         {/* Cart Header */}
         <div className="p-3 lg:p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -789,7 +954,7 @@ function POS() {
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-auto p-3 lg:p-4">
+        <div className="overflow-auto p-2" style={{ height: '60vh' }}>
           {cart.length === 0 ? (
             <div className="text-center text-gray-500 mt-8">
               <FaShoppingCart className="mx-auto text-4xl mb-4 opacity-50" />
@@ -797,38 +962,38 @@ function POS() {
               <p className="text-sm">Scan or search products to add</p>
             </div>
           ) : (
-            <div className="space-y-2 lg:space-y-3">
+            <div className="space-y-1">
               {cart.map((item) => (
-                <div key={item.id} className="border border-gray-200 rounded-lg p-2 lg:p-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-xs lg:text-sm flex-1 mr-2 leading-tight">{item.name}</h4>
+                <div key={item.id} className="border border-gray-200 rounded-lg p-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-medium text-xs flex-1 mr-2 leading-tight truncate">{item.name}</h4>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded w-6 h-6 flex items-center justify-center flex-shrink-0"
                     >
-                      <FaTimes size={12} />
+                      <FaTimes size={10} />
                     </button>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1 lg:space-x-2">
+                    <div className="flex items-center space-x-1">
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                        className="w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
+                        className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
                       >
-                        <FaMinus size={10} />
+                        <FaMinus size={8} />
                       </button>
-                      <span className="w-8 lg:w-8 text-center font-medium text-sm">{item.quantity}</span>
+                      <span className="w-6 text-center font-medium text-xs">{item.quantity}</span>
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                        className="w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
+                        className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
                       >
-                        <FaPlus size={10} />
+                        <FaPlus size={8} />
                       </button>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs lg:text-sm text-gray-600">{formatPakistaniCurrency(item.price)} each</div>
-                      <div className="font-semibold text-sm lg:text-base">{formatPakistaniCurrency(item.price * item.quantity)}</div>
+                      <div className="text-xs text-gray-600">{formatPakistaniCurrency(item.price)} each</div>
+                      <div className="font-semibold text-xs">{formatPakistaniCurrency(item.price * item.quantity)}</div>
                     </div>
                   </div>
                 </div>
@@ -840,73 +1005,6 @@ function POS() {
         {/* Checkout Section */}
         {cart.length > 0 && (
           <div className="border-t border-gray-200 p-3 lg:p-4">
-            {/* Customer Info */}
-            <div className="mb-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={customerSearchTerm}
-                  onChange={(e) => {
-                    handleCustomerSearchChange(e.target.value);
-                    if (!e.target.value) {
-                      setCustomerId('');
-                      setCustomerName('');
-                    }
-                  }}
-                  placeholder="Search Customer (Optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px]"
-                />
-                {customerSearchTerm && !customerId && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {customersLoading ? (
-                      <div className="px-4 py-3 flex items-center justify-center">
-                        <LoadingSpinner size="w-4 h-4" />
-                        <span className="ml-2 text-gray-500 text-sm">Searching...</span>
-                      </div>
-                    ) : customers?.length > 0 ? (
-                      customers.map((customer) => (
-                        <div
-                          key={customer.id}
-                          onClick={() => {
-                            setCustomerId(customer.id);
-                            setCustomerName(customer.name);
-                            setCustomerSearchTerm(customer.name);
-                          }}
-                          className="px-4 py-2 cursor-pointer hover:bg-primary-50"
-                        >
-                          <div className="font-medium">{customer.name}</div>
-                          {customer.phoneNumber && (
-                            <div className="text-sm text-gray-600">
-                              {customer.phoneNumber}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-3 text-gray-500 text-sm">
-                        No customers found
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Discount */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Discount (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={discount}
-                onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px]"
-              />
-            </div>
-
             {/* Totals */}
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm">
@@ -922,6 +1020,23 @@ function POS() {
               <div className="flex justify-between text-lg font-bold border-t pt-2">
                 <span>Total:</span>
                 <span>{formatPakistaniCurrency(total)}</span>
+              </div>
+            </div>
+
+            {/* Discount */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                  Discount (%):
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={discount}
+                  onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 h-8"
+                />
               </div>
             </div>
 
@@ -946,7 +1061,7 @@ function POS() {
             </div>
 
             {/* Quick Payment Buttons */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <button
                 onClick={() => setPaidAmount(total)}
                 className="px-2 lg:px-3 py-3 bg-gray-200 text-gray-700 rounded-md text-xs lg:text-sm hover:bg-gray-300 active:bg-gray-400 min-h-[48px]"
@@ -980,6 +1095,8 @@ function POS() {
             </button>
           </div>
         )}
+        </div>
+      )}
       </div>
     </div>
   );
