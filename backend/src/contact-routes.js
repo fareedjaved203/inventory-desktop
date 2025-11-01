@@ -344,26 +344,11 @@ export function setupContactRoutes(app, prisma) {
           date: purchase.purchaseDate,
           sortDate: purchase.createdAt, // Use creation timestamp for sorting
           description: `Purchase Invoice #${purchase.invoiceNumber || purchase.id.slice(-6)}${purchaseDesc}`,
-          debit: 0,
-          credit: Number(purchase.totalAmount) - Number(purchase.paidAmount),
+          debit: Number(purchase.paidAmount),
+          credit: Number(purchase.totalAmount),
           reference: purchase.invoiceNumber || purchase.id,
           data: purchase
         });
-        
-        // Add payment if any
-        if (Number(purchase.paidAmount) > 0) {
-          const purchaseDesc = purchase.description ? ` - ${purchase.description}` : '';
-          allTransactions.push({
-            type: 'PURCHASE_PAYMENT',
-            date: purchase.purchaseDate,
-            sortDate: purchase.createdAt, // Use creation timestamp for sorting
-            description: `Purchase Payment #${purchase.invoiceNumber || purchase.id.slice(-6)}${purchaseDesc}`,
-            debit: Number(purchase.paidAmount),
-            credit: 0,
-            reference: purchase.invoiceNumber || purchase.id,
-            data: purchase
-          });
-        }
       });
       
       // Add loan transactions
