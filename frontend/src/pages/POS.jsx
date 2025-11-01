@@ -137,7 +137,7 @@ function POS() {
 
   // Fetch shop settings
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
-    const response = await API.get('/api/shop-settings');
+    const response = await API.get('/shop-settings');
     return response.data;
   });
 
@@ -336,7 +336,7 @@ function POS() {
           body {
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            font-weight: bold;
+            font-weight: 900;
             line-height: 1.2;
             margin: 0;
             padding: 5mm;
@@ -368,20 +368,27 @@ function POS() {
             margin-bottom: 10px;
           }
           .item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
+            margin-bottom: 5px;
             font-size: 11px;
           }
+          .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 5px;
+          }
           .item-name {
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.3;
+            white-space: normal;
             flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-right: 5px;
+            min-width: 0;
+            max-width: 40mm;
           }
           .item-qty-price {
             white-space: nowrap;
+            flex-shrink: 0;
           }
           .totals {
             margin-bottom: 10px;
@@ -426,11 +433,13 @@ function POS() {
         <div class="items">
           ${cart.map(item => `
             <div class="item">
-              <div class="item-name">${item.name}</div>
-              <div class="item-qty-price">${item.quantity} x ${formatPakistaniCurrency(item.price)}</div>
-            </div>
-            <div style="text-align: right; font-size: 10px; margin-bottom: 3px;">
-              ${formatPakistaniCurrency(item.price * item.quantity)}
+              <div class="item-row">
+                <div class="item-name">${item.name}</div>
+                <div class="item-qty-price">${item.quantity} x ${formatPakistaniCurrency(item.price)}</div>
+              </div>
+              <div style="text-align: right; font-size: 10px; margin-top: 2px;">
+                ${formatPakistaniCurrency(item.price * item.quantity)}
+              </div>
             </div>
           `).join('')}
         </div>
@@ -862,7 +871,7 @@ function POS() {
 
         {/* Categories Section - Only show in default view */}
         {viewMode === 'default' && (
-        <div className="bg-white rounded-xl shadow-lg p-4 min-h-[200px] max-h-[300px]">
+        <div className="bg-white rounded-xl shadow-lg p-4 max-h-[300px]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-800">Categories</h3>
             <span className="text-sm text-gray-500">
@@ -874,13 +883,13 @@ function POS() {
               <p>No categories available</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="flex gap-3 pb-2">
+            <div className="overflow-y-auto max-h-[220px]">
+              <div className="flex flex-wrap gap-3">
                 {categories.map((category) => (
                   <div
                     key={category.id}
                     onClick={() => setSelectedCategory(category)}
-                    className={`group cursor-pointer rounded-lg p-4 transition-all duration-200 border flex-shrink-0 w-40 ${
+                    className={`group cursor-pointer rounded-lg p-4 transition-all duration-200 border w-40 ${
                       selectedCategory?.id === category.id
                         ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg border-primary-600'
                         : 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-primary-50 hover:to-primary-100 border-gray-200 hover:border-primary-300'

@@ -458,72 +458,86 @@ function Products() {
               </>
             )}
             <button
-              onClick={() => {
-                const printWindow = window.open('', '_blank', 'width=800,height=600');
-                const reportHtml = `
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                    <meta charset="utf-8">
-                    <title>Products Stock Report</title>
-                    <style>
-                      body { font-family: Arial, sans-serif; margin: 20px; }
-                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-                      .company { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-                      .report-title { font-size: 18px; color: #666; }
-                      .date { font-size: 12px; color: #888; margin-top: 10px; }
-                      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                      th { background-color: #f5f5f5; font-weight: bold; }
-                      .number { text-align: right; }
-                      .low-stock { background-color: #fff3cd; }
-                      .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-                      @media print { body { margin: 0; } }
-                    </style>
-                  </head>
-                  <body>
-                    <div class="header">
-                      <div class="company">HISAB GHAR</div>
-                      <div class="report-title">Products Stock Report</div>
-                      <div class="date">Generated on: ${new Date().toLocaleDateString('en-PK', { 
-                        year: 'numeric', month: 'long', day: 'numeric', 
-                        hour: '2-digit', minute: '2-digit' 
-                      })}</div>
-                    </div>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Product Name</th>
-                          <th>Description</th>
-                          <th>SKU/Barcode</th>
-                          <th class="number">Current Stock</th>
-                          <th>Unit</th>
-                          <th class="number">Retail Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${products?.items?.map(product => `
-                          <tr class="${product.quantity <= (product.lowStockThreshold || 10) ? 'low-stock' : ''}">
-                            <td><strong>${product.name}</strong></td>
-                            <td>${product.description || '-'}</td>
-                            <td>${product.sku || '-'}</td>
-                            <td class="number"><strong>${product.quantity}</strong></td>
-                            <td>${product.unit || 'pcs'}</td>
-                            <td class="number">${product.retailPrice ? formatPakistaniCurrency(product.retailPrice) : (product.price ? formatPakistaniCurrency(product.price) : '-')}</td>
+              onClick={async () => {
+                try {
+                  // Fetch 1000 products via API for the report
+                  const response = await API.get('/products', {
+                    params: {
+                      limit: 1000,
+                      page: 1
+                    }
+                  });
+                  const allProducts = response.data;
+                  
+                  const printWindow = window.open('', '_blank', 'width=800,height=600');
+                  const reportHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="utf-8">
+                      <title>Products Stock Report</title>
+                      <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                        .company { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+                        .report-title { font-size: 18px; color: #666; }
+                        .date { font-size: 12px; color: #888; margin-top: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f5f5f5; font-weight: bold; }
+                        .number { text-align: right; }
+                        .low-stock { background-color: #fff3cd; }
+                        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+                        @media print { body { margin: 0; } }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="header">
+                        <div class="company">HISAB GHAR</div>
+                        <div class="report-title">Products Stock Report</div>
+                        <div class="date">Generated on: ${new Date().toLocaleDateString('en-PK', { 
+                          year: 'numeric', month: 'long', day: 'numeric', 
+                          hour: '2-digit', minute: '2-digit' 
+                        })}</div>
+                      </div>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Product Name</th>
+                            <th>Description</th>
+                            <th>SKU/Barcode</th>
+                            <th class="number">Current Stock</th>
+                            <th>Unit</th>
+                            <th class="number">Retail Price</th>
                           </tr>
-                        `).join('') || '<tr><td colspan="6" style="text-align: center;">No products found</td></tr>'}
-                      </tbody>
-                    </table>
-                    <div class="footer">
-                      <p>Total Products: ${products?.total || 0} | Low Stock Items highlighted in yellow</p>
-                      <p>Report generated by Hisab Ghar Inventory Management System</p>
-                    </div>
-                  </body>
-                  </html>
-                `;
-                printWindow.document.write(reportHtml);
-                printWindow.document.close();
-                setTimeout(() => { printWindow.print(); }, 500);
+                        </thead>
+                        <tbody>
+                          ${allProducts?.items?.map(product => `
+                            <tr class="${product.quantity <= (product.lowStockThreshold || 10) ? 'low-stock' : ''}">
+                              <td><strong>${product.name}</strong></td>
+                              <td>${product.description || '-'}</td>
+                              <td>${product.sku || '-'}</td>
+                              <td class="number"><strong>${product.quantity}</strong></td>
+                              <td>${product.unit || 'pcs'}</td>
+                              <td class="number">${product.retailPrice ? formatPakistaniCurrency(product.retailPrice) : (product.price ? formatPakistaniCurrency(product.price) : '-')}</td>
+                            </tr>
+                          `).join('') || '<tr><td colspan="6" style="text-align: center;">No products found</td></tr>'}
+                        </tbody>
+                      </table>
+                      <div class="footer">
+                        <p>Total Products: ${allProducts?.total || 0} | Low Stock Items highlighted in yellow</p>
+                        <p>Report generated by Hisab Ghar Inventory Management System</p>
+                      </div>
+                    </body>
+                    </html>
+                  `;
+                  printWindow.document.write(reportHtml);
+                  printWindow.document.close();
+                  setTimeout(() => { printWindow.print(); }, 500);
+                } catch (error) {
+                  console.error('Error generating report:', error);
+                  toast.error('Failed to generate report');
+                }
               }}
               className="bg-gradient-to-r from-red-600 to-red-700 text-white px-3 py-2 text-sm rounded-lg hover:from-red-700 hover:to-red-800 shadow-sm whitespace-nowrap w-full sm:w-auto flex items-center gap-2"
             >

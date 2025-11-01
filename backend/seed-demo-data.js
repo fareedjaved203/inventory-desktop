@@ -106,7 +106,11 @@ async function seedDemoData() {
     await prisma.expense.deleteMany({ where: { userId: demoUser.id } });
     await prisma.branch.deleteMany({ where: { userId: demoUser.id } });
     await prisma.contact.deleteMany({ where: { userId: demoUser.id } });
+    await prisma.manufacturing.deleteMany({ where: { userId: demoUser.id } });
+    await prisma.recipeItem.deleteMany({ where: { recipe: { userId: demoUser.id } } });
+    await prisma.recipe.deleteMany({ where: { userId: demoUser.id } });
     await prisma.product.deleteMany({ where: { userId: demoUser.id } });
+    await prisma.category.deleteMany({ where: { userId: demoUser.id } });
     await prisma.shopSettings.deleteMany({ where: { userId: demoUser.id } });
     
     console.log('All demo user data cleared successfully.');
@@ -179,43 +183,73 @@ async function seedDemoData() {
       contacts.push(contact);
     }
 
-    // 4. Create Products (30 products with varied stock levels)
+    // 4. Create Categories (5 categories)
+    console.log('Creating categories...');
+    const categories = [];
+    const categoryData = [
+      { name: 'Engine Parts', icon: '🔧', color: '#EF4444' },
+      { name: 'Brake System', icon: '🛑', color: '#F97316' },
+      { name: 'Electrical', icon: '⚡', color: '#EAB308' },
+      { name: 'Filters', icon: '🔍', color: '#22C55E' },
+      { name: 'Accessories', icon: '✨', color: '#3B82F6' }
+    ];
+
+    for (const cat of categoryData) {
+      const category = await prisma.category.create({
+        data: {
+          name: cat.name,
+          description: `${cat.name} for automotive`,
+          icon: cat.icon,
+          color: cat.color,
+          userId: demoUser.id
+        }
+      });
+      categories.push(category);
+    }
+
+    // 5. Create Products (30 products with varied stock levels)
     console.log('Creating products...');
     const products = [];
     const productData = [
-      { name: 'Engine Oil 5W-30', price: 3500, purchasePrice: 2800, quantity: 50, lowStock: 20 },
-      { name: 'Brake Pads Set', price: 8000, purchasePrice: 6500, quantity: 15, lowStock: 10 },
-      { name: 'Air Filter', price: 2500, purchasePrice: 2000, quantity: 30, lowStock: 15 },
-      { name: 'Spark Plugs Set', price: 4500, purchasePrice: 3500, quantity: 25, lowStock: 12 },
-      { name: 'Car Battery 12V', price: 18000, purchasePrice: 15000, quantity: 8, lowStock: 5 },
-      { name: 'Tire 185/65R15', price: 12000, purchasePrice: 9500, quantity: 20, lowStock: 8 },
-      { name: 'Headlight Bulb H4', price: 1500, purchasePrice: 1200, quantity: 40, lowStock: 20 },
-      { name: 'Windshield Wipers', price: 2000, purchasePrice: 1600, quantity: 35, lowStock: 15 },
-      { name: 'Radiator Coolant', price: 1800, purchasePrice: 1400, quantity: 45, lowStock: 25 },
-      { name: 'Clutch Plate', price: 15000, purchasePrice: 12000, quantity: 6, lowStock: 4 },
-      { name: 'Shock Absorber', price: 8500, purchasePrice: 7000, quantity: 12, lowStock: 6 },
-      { name: 'Fuel Filter', price: 1200, purchasePrice: 900, quantity: 60, lowStock: 30 },
-      { name: 'Alternator Belt', price: 2200, purchasePrice: 1800, quantity: 25, lowStock: 12 },
-      { name: 'Car Jack 2 Ton', price: 5500, purchasePrice: 4500, quantity: 10, lowStock: 5 },
-      { name: 'Side Mirror Left', price: 4500, purchasePrice: 3600, quantity: 8, lowStock: 4 },
-      { name: 'Exhaust Pipe', price: 12000, purchasePrice: 9500, quantity: 5, lowStock: 3 },
-      { name: 'Gear Oil', price: 2800, purchasePrice: 2200, quantity: 30, lowStock: 15 },
-      { name: 'Carburetor Kit', price: 6500, purchasePrice: 5200, quantity: 12, lowStock: 6 },
-      { name: 'Timing Belt', price: 4200, purchasePrice: 3400, quantity: 18, lowStock: 10 },
-      { name: 'Water Pump', price: 9500, purchasePrice: 7600, quantity: 7, lowStock: 4 },
-      { name: 'Brake Fluid DOT 4', price: 800, purchasePrice: 600, quantity: 80, lowStock: 40 },
-      { name: 'Car Polish Wax', price: 1500, purchasePrice: 1200, quantity: 50, lowStock: 25 },
-      { name: 'Seat Covers Set', price: 3500, purchasePrice: 2800, quantity: 15, lowStock: 8 },
-      { name: 'Floor Mats Rubber', price: 2500, purchasePrice: 2000, quantity: 20, lowStock: 10 },
-      { name: 'Car Perfume', price: 500, purchasePrice: 350, quantity: 100, lowStock: 50 },
-      { name: 'Steering Wheel Cover', price: 1200, purchasePrice: 900, quantity: 35, lowStock: 18 },
-      { name: 'Car Charger USB', price: 800, purchasePrice: 600, quantity: 60, lowStock: 30 },
-      { name: 'Jumper Cables', price: 2200, purchasePrice: 1800, quantity: 15, lowStock: 8 },
-      { name: 'Tool Kit 21 Pcs', price: 4500, purchasePrice: 3600, quantity: 12, lowStock: 6 },
-      { name: 'Car Vacuum Cleaner', price: 8500, purchasePrice: 7000, quantity: 8, lowStock: 4 }
+      { name: 'Engine Oil 5W-30', price: 3500, purchasePrice: 2800, quantity: 50, lowStock: 20, category: 0, isRaw: false },
+      { name: 'Brake Pads Set', price: 8000, purchasePrice: 6500, quantity: 15, lowStock: 10, category: 1, isRaw: false },
+      { name: 'Air Filter', price: 2500, purchasePrice: 2000, quantity: 30, lowStock: 15, category: 3, isRaw: false },
+      { name: 'Spark Plugs Set', price: 4500, purchasePrice: 3500, quantity: 25, lowStock: 12, category: 0, isRaw: false },
+      { name: 'Car Battery 12V', price: 18000, purchasePrice: 15000, quantity: 8, lowStock: 5, category: 2, isRaw: false },
+      { name: 'Tire 185/65R15', price: 12000, purchasePrice: 9500, quantity: 20, lowStock: 8, category: 4, isRaw: false },
+      { name: 'Headlight Bulb H4', price: 1500, purchasePrice: 1200, quantity: 40, lowStock: 20, category: 2, isRaw: false },
+      { name: 'Windshield Wipers', price: 2000, purchasePrice: 1600, quantity: 35, lowStock: 15, category: 4, isRaw: false },
+      { name: 'Radiator Coolant', price: 1800, purchasePrice: 1400, quantity: 45, lowStock: 25, category: 0, isRaw: false },
+      { name: 'Clutch Plate', price: 15000, purchasePrice: 12000, quantity: 6, lowStock: 4, category: 0, isRaw: false },
+      { name: 'Shock Absorber', price: 8500, purchasePrice: 7000, quantity: 12, lowStock: 6, category: 0, isRaw: false },
+      { name: 'Fuel Filter', price: 1200, purchasePrice: 900, quantity: 60, lowStock: 30, category: 3, isRaw: false },
+      { name: 'Alternator Belt', price: 2200, purchasePrice: 1800, quantity: 25, lowStock: 12, category: 0, isRaw: false },
+      { name: 'Car Jack 2 Ton', price: 5500, purchasePrice: 4500, quantity: 10, lowStock: 5, category: 4, isRaw: false },
+      { name: 'Side Mirror Left', price: 4500, purchasePrice: 3600, quantity: 8, lowStock: 4, category: 4, isRaw: false },
+      { name: 'Exhaust Pipe', price: 12000, purchasePrice: 9500, quantity: 5, lowStock: 3, category: 0, isRaw: false },
+      { name: 'Gear Oil', price: 2800, purchasePrice: 2200, quantity: 30, lowStock: 15, category: 0, isRaw: false },
+      { name: 'Carburetor Kit', price: 6500, purchasePrice: 5200, quantity: 12, lowStock: 6, category: 0, isRaw: false },
+      { name: 'Timing Belt', price: 4200, purchasePrice: 3400, quantity: 18, lowStock: 10, category: 0, isRaw: false },
+      { name: 'Water Pump', price: 9500, purchasePrice: 7600, quantity: 7, lowStock: 4, category: 0, isRaw: false },
+      { name: 'Brake Fluid DOT 4', price: 800, purchasePrice: 600, quantity: 80, lowStock: 40, category: 1, isRaw: false },
+      { name: 'Car Polish Wax', price: 1500, purchasePrice: 1200, quantity: 50, lowStock: 25, category: 4, isRaw: false },
+      { name: 'Seat Covers Set', price: 3500, purchasePrice: 2800, quantity: 15, lowStock: 8, category: 4, isRaw: false },
+      { name: 'Floor Mats Rubber', price: 2500, purchasePrice: 2000, quantity: 20, lowStock: 10, category: 4, isRaw: false },
+      { name: 'Car Perfume', price: 500, purchasePrice: 350, quantity: 100, lowStock: 50, category: 4, isRaw: false },
+      { name: 'Steering Wheel Cover', price: 1200, purchasePrice: 900, quantity: 35, lowStock: 18, category: 4, isRaw: false },
+      { name: 'Car Charger USB', price: 800, purchasePrice: 600, quantity: 60, lowStock: 30, category: 2, isRaw: false },
+      { name: 'Jumper Cables', price: 2200, purchasePrice: 1800, quantity: 15, lowStock: 8, category: 2, isRaw: false },
+      { name: 'Tool Kit 21 Pcs', price: 4500, purchasePrice: 3600, quantity: 12, lowStock: 6, category: 4, isRaw: false },
+      { name: 'Car Vacuum Cleaner', price: 8500, purchasePrice: 7000, quantity: 8, lowStock: 4, category: 4, isRaw: false },
+      // Raw materials for manufacturing
+      { name: 'Steel Sheet Raw', price: 5000, purchasePrice: 4000, quantity: 100, lowStock: 20, category: 0, isRaw: true },
+      { name: 'Rubber Compound', price: 2000, purchasePrice: 1500, quantity: 200, lowStock: 50, category: 1, isRaw: true },
+      { name: 'Plastic Pellets', price: 1500, purchasePrice: 1200, quantity: 300, lowStock: 75, category: 4, isRaw: true },
+      { name: 'Copper Wire Raw', price: 8000, purchasePrice: 6500, quantity: 50, lowStock: 10, category: 2, isRaw: true },
+      { name: 'Filter Paper Roll', price: 3000, purchasePrice: 2400, quantity: 80, lowStock: 20, category: 3, isRaw: true }
     ];
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < productData.length; i++) {
       const data = productData[i];
       const product = await prisma.product.create({
         data: {
@@ -225,10 +259,13 @@ async function seedDemoData() {
           purchasePrice: BigInt(data.purchasePrice),
           retailPrice: BigInt(data.price),
           wholesalePrice: BigInt(Math.floor(data.price * 0.9)),
+          perUnitPurchasePrice: BigInt(Math.floor(data.purchasePrice / data.quantity)),
           sku: `SKU${String(i + 1).padStart(4, '0')}`,
           quantity: BigInt(data.quantity),
           lowStockThreshold: BigInt(data.lowStock),
           unit: 'pcs',
+          isRawMaterial: data.isRaw,
+          categoryId: categories[data.category].id,
           userId: demoUser.id,
           createdAt: randomDate(new Date(2023, 0, 1), new Date())
         }
@@ -236,7 +273,54 @@ async function seedDemoData() {
       products.push(product);
     }
 
-    // 5. Create Bulk Purchases (15 purchases)
+    // 6. Create Recipes and Manufacturing (5 recipes)
+    console.log('Creating recipes and manufacturing...');
+    const rawMaterials = products.filter(p => p.isRawMaterial);
+    const finishedProducts = products.filter(p => !p.isRawMaterial).slice(0, 5);
+    
+    for (let i = 0; i < 5; i++) {
+      const finishedProduct = finishedProducts[i];
+      
+      // Create recipe
+      const recipe = await prisma.recipe.create({
+        data: {
+          name: `Recipe for ${finishedProduct.name}`,
+          description: `Manufacturing recipe for ${finishedProduct.name}`,
+          productId: finishedProduct.id,
+          userId: demoUser.id
+        }
+      });
+      
+      // Add 2-3 raw materials to each recipe
+      const ingredientCount = Math.floor(Math.random() * 2) + 2;
+      for (let j = 0; j < ingredientCount; j++) {
+        const rawMaterial = rawMaterials[j % rawMaterials.length];
+        await prisma.recipeItem.create({
+          data: {
+            recipeId: recipe.id,
+            rawMaterialId: rawMaterial.id,
+            quantity: randomAmount(1, 5),
+            unit: 'pcs'
+          }
+        });
+      }
+      
+      // Create manufacturing records
+      for (let k = 0; k < 2; k++) {
+        await prisma.manufacturing.create({
+          data: {
+            recipeId: recipe.id,
+            quantityProduced: randomAmount(5, 20),
+            manufacturingCost: randomAmount(1000, 5000),
+            productionDate: randomDate(new Date(2023, 6, 1), new Date()),
+            notes: `Production batch ${k + 1} for ${finishedProduct.name}`,
+            userId: demoUser.id
+          }
+        });
+      }
+    }
+
+    // 7. Create Bulk Purchases (15 purchases)
     console.log('Creating bulk purchases...');
     const suppliers = contacts.filter(c => c.contactType === 'supplier');
     for (let i = 0; i < 15; i++) {
@@ -271,7 +355,7 @@ async function seedDemoData() {
       }
     }
 
-    // 6. Create Sales (30 sales)
+    // 8. Create Sales (30 sales)
     console.log('Creating sales...');
     const customers = contacts.filter(c => c.contactType === 'customer');
     for (let i = 0; i < 30; i++) {
@@ -311,7 +395,7 @@ async function seedDemoData() {
       }
     }
 
-    // 7. Create Returns (10 returns)
+    // 9. Create Returns (10 returns)
     console.log('Creating returns...');
     const sales = await prisma.sale.findMany({ where: { userId: demoUser.id } });
     for (let i = 0; i < 10; i++) {
@@ -348,7 +432,7 @@ async function seedDemoData() {
       }
     }
 
-    // 8. Create Expenses (30 expenses)
+    // 10. Create Expenses (30 expenses)
     console.log('Creating expenses...');
     const expenseCategories = ['Showroom Rent', 'Utilities', 'Marketing', 'Office Supplies', 'Transportation', 'Equipment Maintenance', 'Insurance', 'Staff Salary'];
     for (let i = 0; i < 30; i++) {
@@ -366,7 +450,7 @@ async function seedDemoData() {
       });
     }
 
-    // 9. Create Loan Transactions (20 transactions)
+    // 11. Create Loan Transactions (20 transactions)
     console.log('Creating loan transactions...');
     for (let i = 0; i < 20; i++) {
       await prisma.loanTransaction.create({
@@ -381,7 +465,7 @@ async function seedDemoData() {
       });
     }
 
-    // 10. Create Shop Settings
+    // 12. Create Shop Settings
     console.log('Creating shop settings...');
     await prisma.shopSettings.create({
       data: {
@@ -408,13 +492,16 @@ async function seedDemoData() {
     console.log('Demo data seeding completed successfully!');
     console.log('Summary:');
     console.log('- License activated with key: 7FB2-8CE9-01E1-3380-41FC');
+    console.log('- 5 Product Categories');
     console.log('- 5 Branches');
     console.log('- 30 Employees');
     console.log('- 30 Contacts (15 customers, 15 suppliers)');
-    console.log('- 30 Products (with varied stock levels)');
-    console.log('- 15 Bulk Purchases');
-    console.log('- 30 Sales');
-    console.log('- 10 Returns');
+    console.log('- 35 Products (30 finished + 5 raw materials)');
+    console.log('- 5 Manufacturing Recipes with ingredients');
+    console.log('- 10 Manufacturing Records');
+    console.log('- 15 Bulk Purchases with items');
+    console.log('- 30 Sales with items');
+    console.log('- 10 Returns with items');
     console.log('- 30 Expenses');
     console.log('- 20 Loan Transactions');
     console.log('- 1 Shop Settings');
