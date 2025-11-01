@@ -115,6 +115,7 @@ model BulkPurchase {
   totalAmount   Decimal
   paidAmount    Decimal
   purchaseDate  DateTime           @default(now())
+  description   String?
   contactId     String
   carNumber     String?
   transportCost Decimal?

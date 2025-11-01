@@ -338,11 +338,12 @@ export function setupContactRoutes(app, prisma) {
       
       // Add bulk purchases
       bulkPurchases.forEach(purchase => {
+        const purchaseDesc = purchase.description ? ` - ${purchase.description}` : '';
         allTransactions.push({
           type: 'PURCHASE',
           date: purchase.purchaseDate,
           sortDate: purchase.createdAt, // Use creation timestamp for sorting
-          description: `Purchase Invoice #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
+          description: `Purchase Invoice #${purchase.invoiceNumber || purchase.id.slice(-6)}${purchaseDesc}`,
           debit: 0,
           credit: Number(purchase.totalAmount) - Number(purchase.paidAmount),
           reference: purchase.invoiceNumber || purchase.id,
@@ -351,11 +352,12 @@ export function setupContactRoutes(app, prisma) {
         
         // Add payment if any
         if (Number(purchase.paidAmount) > 0) {
+          const purchaseDesc = purchase.description ? ` - ${purchase.description}` : '';
           allTransactions.push({
             type: 'PURCHASE_PAYMENT',
             date: purchase.purchaseDate,
             sortDate: purchase.createdAt, // Use creation timestamp for sorting
-            description: `Purchase Payment #${purchase.invoiceNumber || purchase.id.slice(-6)}`,
+            description: `Purchase Payment #${purchase.invoiceNumber || purchase.id.slice(-6)}${purchaseDesc}`,
             debit: Number(purchase.paidAmount),
             credit: 0,
             reference: purchase.invoiceNumber || purchase.id,

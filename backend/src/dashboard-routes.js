@@ -759,7 +759,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             saleQuantity: 0,
             saleUnitPrice: 0,
             totalSalePrice: 0,
-            profitLoss: 0
+            profitLoss: 0,
+            purchaseDescription: purchase.description || ''
           });
         });
       });
@@ -820,7 +821,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             saleQuantity: quantity,
             saleUnitPrice: salePrice,
             totalSalePrice: salePrice * quantity,
-            profitLoss: profit
+            profitLoss: profit,
+            saleDescription: sale.description || ''
           });
         });
       });
@@ -836,8 +838,26 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           let originalRecord = null;
           if (change.tableName === 'Sale') {
             originalRecord = sales.find(s => s.id === change.recordId);
+            if (!originalRecord) {
+              originalRecord = await prisma.sale.findUnique({
+                where: { id: change.recordId },
+                include: {
+                  items: { include: { product: { include: { category: true } } } },
+                  contact: true
+                }
+              });
+            }
           } else if (change.tableName === 'BulkPurchase') {
             originalRecord = purchases.find(p => p.id === change.recordId);
+            if (!originalRecord) {
+              originalRecord = await prisma.bulkPurchase.findUnique({
+                where: { id: change.recordId },
+                include: {
+                  items: { include: { product: { include: { category: true } } } },
+                  contact: true
+                }
+              });
+            }
           }
           
           // Only show if the record was actually updated (not just created)

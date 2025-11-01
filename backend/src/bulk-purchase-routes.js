@@ -214,8 +214,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           const purchaseDate = req.body.purchaseDate ? createDateWithCurrentTime(req.body.purchaseDate) : new Date(Date.now() - (5 * 60 * 60 * 1000));
           
           await prisma.$executeRaw`
-            INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
+            INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", description, "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
+            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate}, ${req.body.description || null}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.contactId}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create purchase items
@@ -355,6 +355,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 discount = ${Number(req.body.discount || 0)},
                 "paidAmount" = ${Number(req.body.paidAmount)},
                 "purchaseDate" = ${existingPurchase.purchaseDate},
+                description = ${req.body.description || null},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
                 "loadingDate" = ${req.body.loadingDate ? new Date(req.body.loadingDate) : null},

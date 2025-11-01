@@ -13,6 +13,7 @@ function POS() {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
@@ -25,6 +26,8 @@ function POS() {
   const [viewMode, setViewMode] = useState('default'); // 'default' or 'compact'
   const [barcodeLoading, setBarcodeLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showPaymentDetails, setShowPaymentDetails] = useState(true);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(-1);
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -52,6 +55,45 @@ function POS() {
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     debouncedSearch(e.target.value);
+    setShowProductDropdown(true);
+    setSelectedProductIndex(-1);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (!showProductDropdown || products.length === 0) return;
+
+    switch(e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedProductIndex(prev => 
+          prev < products.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedProductIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedProductIndex >= 0 && selectedProductIndex < products.length) {
+          handleProductSelect(products[selectedProductIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowProductDropdown(false);
+        setSelectedProductIndex(-1);
+        break;
+    }
+  };
+
+  const handleProductSelect = (product) => {
+    addToCart(product);
+    setSearchTerm('');
+    setShowProductDropdown(false);
+    setSelectedProductIndex(-1);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   // Debounced customer search
@@ -583,7 +625,7 @@ function POS() {
             </form>
 
             {/* Product Search */}
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <FaSearch className="inline mr-2" />
                 Search Products
@@ -593,134 +635,222 @@ function POS() {
                 type="text"
                 value={searchTerm}
                 onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
+                onFocus={() => setShowProductDropdown(true)}
+                onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
                 placeholder="Search by name..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm lg:text-base min-h-[44px]"
               />
+              {/* Product Dropdown for Compact View */}
+              {viewMode === 'compact' && showProductDropdown && debouncedSearchTerm && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                  {productsLoading ? (
+                    <div className="p-4 text-center">
+                      <LoadingSpinner size="w-6 h-6" />
+                    </div>
+                  ) : products.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">No products found</div>
+                  ) : (
+                    products.map((product, index) => (
+                      <div
+                        key={product.id}
+                        onClick={() => handleProductSelect(product)}
+                        className={`p-3 cursor-pointer border-b last:border-b-0 flex justify-between items-center ${
+                          index === selectedProductIndex ? 'bg-primary-100' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{product.name}</div>
+                          <div className="text-sm text-gray-500">Stock: {Number(product.quantity)} {product.unit}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-primary-600">{formatPakistaniCurrency(product.retailPrice || product.price)}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Compact View Cart Items */}
-        {viewMode === 'compact' && cart.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-3 mb-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <FaShoppingCart className="mr-2" />
-                Cart ({cart.length})
-              </h3>
-              <button
-                onClick={clearCart}
-                className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
-                title="Clear Cart"
-              >
-                <FaTrash />
-              </button>
+        {/* Compact View - Retail POS Layout */}
+        {viewMode === 'compact' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Top Bar with Total */}
+            <div className="bg-white shadow-sm p-4 flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={clearCart}
+                  className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
+                  title="Clear Cart"
+                  disabled={cart.length === 0}
+                >
+                  <FaTrash size={20} />
+                </button>
+                <span className="text-gray-600">Items: {cart.length}</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500">Total Amount</div>
+                <div className="text-3xl font-bold text-primary-600">{formatPakistaniCurrency(total)}</div>
+              </div>
             </div>
-            <div className="max-h-64 overflow-y-auto">
-              <div className="space-y-2">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm text-gray-800">{item.name}</h4>
-                      <p className="text-xs text-gray-600">{formatPakistaniCurrency(item.price)} each</p>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* Toggle Sidebar Button */}
+              <button
+                onClick={() => setShowPaymentDetails(!showPaymentDetails)}
+                className="absolute top-4 right-4 z-10 bg-primary-600 text-white p-2 rounded-lg shadow-lg hover:bg-primary-700"
+                title={showPaymentDetails ? 'Hide Payment Panel' : 'Show Payment Panel'}
+              >
+                {showPaymentDetails ? '→' : '←'}
+              </button>
+
+              {/* Sale Items List */}
+              <div className="flex-1 bg-white overflow-y-auto">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                    <FaShoppingCart className="text-6xl mb-4" />
+                    <p className="text-xl">No items in cart</p>
+                    <p className="text-sm">Search or scan products to add</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr className="border-b">
+                        <th className="text-center p-3 font-semibold text-gray-700 w-12">#</th>
+                        <th className="text-left p-3 font-semibold text-gray-700">Product</th>
+                        <th className="text-center p-3 font-semibold text-gray-700 w-32">Qty</th>
+                        <th className="text-right p-3 font-semibold text-gray-700 w-32">Price</th>
+                        <th className="text-right p-3 font-semibold text-gray-700 w-32">Total</th>
+                        <th className="w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cart.map((item, index) => (
+                        <tr key={item.id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 text-center text-gray-600 font-medium">{index + 1}</td>
+                          <td className="p-3">
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{formatPakistaniCurrency(item.price)} each</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                              >
+                                <FaMinus size={12} />
+                              </button>
+                              <span className="w-12 text-center font-semibold">{item.quantity}</span>
+                              <button
+                                onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                              >
+                                <FaPlus size={12} />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-medium">{formatPakistaniCurrency(item.price)}</td>
+                          <td className="p-3 text-right font-bold text-lg">{formatPakistaniCurrency(item.price * item.quantity)}</td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded"
+                            >
+                              <FaTimes size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Right Sidebar - Payment Section */}
+              {showPaymentDetails && (
+                <div className="w-80 bg-gray-50 border-l flex flex-col h-full">
+                  <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(100% - 180px)' }}>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
+                      <div className="text-xl font-bold text-gray-800">{formatPakistaniCurrency(subtotal)}</div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                          className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
-                        >
-                          <FaMinus size={10} />
-                        </button>
-                        <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
-                        <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                          className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
-                        >
-                          <FaPlus size={10} />
-                        </button>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={discount}
+                        onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {discount > 0 && (
+                        <div className="text-sm text-red-600 mt-1">-{formatPakistaniCurrency(discountAmount)}</div>
+                      )}
+                    </div>
+
+                    <div className="border-t pt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                      <div className="text-2xl font-bold text-primary-600">{formatPakistaniCurrency(total)}</div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+
+                    {change > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                        <div className="text-xs text-green-700">Change</div>
+                        <div className="text-xl font-bold text-green-600">{formatPakistaniCurrency(change)}</div>
                       </div>
-                      <div className="text-right min-w-[80px]">
-                        <div className="font-semibold text-sm">{formatPakistaniCurrency(item.price * item.quantity)}</div>
-                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 space-y-2 border-t bg-white">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                        onClick={() => setPaidAmount(total)}
+                        className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300"
                       >
-                        <FaTimes size={12} />
+                        Exact
+                      </button>
+                      <button
+                        onClick={previewReceipt}
+                        disabled={cart.length === 0}
+                        className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        <FaEye /> Preview
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Compact View Totals */}
-            <div className="border-t border-gray-200 pt-3 mt-3">
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">Discount (%):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={discount}
-                      onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                      className="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">Paid:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={paidAmount}
-                      onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
-                    />
+                    <button
+                      onClick={processSale}
+                      disabled={createSale.isLoading || cart.length === 0}
+                      className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {createSale.isLoading ? (
+                        <LoadingSpinner size="w-5 h-5" />
+                      ) : (
+                        <>
+                          <FaPrint /> Complete Sale
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-600">Subtotal: {formatPakistaniCurrency(subtotal)}</div>
-                  {discount > 0 && (
-                    <div className="text-sm text-red-600">Discount: -{formatPakistaniCurrency(discountAmount)}</div>
-                  )}
-                  <div className="text-lg font-bold text-gray-800">Total: {formatPakistaniCurrency(total)}</div>
-                  {change > 0 && (
-                    <div className="text-sm text-green-600">Change: {formatPakistaniCurrency(change)}</div>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPaidAmount(total)}
-                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
-                >
-                  Exact
-                </button>
-                <button
-                  onClick={previewReceipt}
-                  className="px-3 py-2 bg-blue-200 text-blue-700 rounded-md text-sm hover:bg-blue-300 flex items-center gap-1"
-                >
-                  <FaEye /> Preview
-                </button>
-                <button
-                  onClick={processSale}
-                  disabled={createSale.isLoading}
-                  className="flex-1 bg-primary-600 text-white py-2 rounded-md font-semibold hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {createSale.isLoading ? (
-                    <LoadingSpinner size="w-4 h-4" />
-                  ) : (
-                    <>
-                      <FaPrint />
-                      Complete Sale
-                    </>
-                  )}
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}

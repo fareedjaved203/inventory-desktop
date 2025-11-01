@@ -231,18 +231,18 @@ function AppContent() {
         />
         <div className="flex-1 flex flex-col overflow-auto">
           {/* Mobile Header with Hamburger Menu */}
-          <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+          {/* <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
             <HamburgerMenu onClick={() => setIsMobileMenuOpen(true)} />
             <h1 className="text-lg font-semibold text-gray-800 flex-1 text-center">Hisab Ghar</h1>
             <ModeIndicator />
-          </div>
+          </div> */}
           
           {/* Desktop Header */}
-          <div className="hidden md:block bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
+          {/* <div className="hidden md:block bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
             <div className="flex justify-end">
               <ModeIndicator />
             </div>
-          </div>
+          </div> */}
           
           <div className="flex-1 p-4 md:p-8">
             <Routes>

@@ -104,6 +104,9 @@ const URDU_COLUMN_LABELS = {
   date: 'تاریخ',
   productName: 'پروڈکٹ کا نام',
   category: 'قسم',
+  productDescription: 'پروڈکٹ تفصیل',
+  saleDescription: 'فروخت تفصیل',
+  purchaseDescription: 'خریداری تفصیل',
   purchaseQuantity: 'خریداری مقدار',
   purchasePrice: 'خریداری قیمت',
   supplierName: 'سپلائر',
@@ -158,6 +161,9 @@ function UrduDayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleCol
                 case 'date': return new Date(item.date).toLocaleDateString();
                 case 'productName': return item.productName || '-';
                 case 'category': return item.category || '-';
+                case 'productDescription': return item.productDescription || '-';
+                case 'saleDescription': return item.saleDescription || '-';
+                case 'purchaseDescription': return item.purchaseDescription || '-';
                 case 'purchaseQuantity': return item.purchaseQuantity || '-';
                 case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
                 case 'supplierName': return item.supplierName || '-';

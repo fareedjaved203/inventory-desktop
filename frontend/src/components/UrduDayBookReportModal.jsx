@@ -12,7 +12,9 @@ const URDU_COLUMNS = {
   barcode: { label: 'بار کوڈ', visible: false },
   productName: { label: 'پروڈکٹ کا نام', visible: true },
   category: { label: 'قسم', visible: true },
-  productDescription: { label: 'تفصیل', visible: false },
+  productDescription: { label: 'پروڈکٹ تفصیل', visible: false },
+  saleDescription: { label: 'فروخت تفصیل', visible: true },
+  purchaseDescription: { label: 'خریداری تفصیل', visible: true },
   purchaseQuantity: { label: 'خریداری مقدار', visible: true },
   purchasePrice: { label: 'خریداری قیمت', visible: true },
   transportCost: { label: 'ٹرانسپورٹ لاگت', visible: false },
@@ -304,21 +306,9 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                             {key === 'barcode' && (item.barcode || '-')}
                             {key === 'productName' && item.productName}
                             {key === 'category' && (item.category || '-')}
-                            {key === 'productDescription' && (
-                              <div>
-                                <div>{item.productDescription || '-'}</div>
-                                {item.auditChange?.description && !item.isEdit && (
-                                  <div className="text-xs text-blue-600 mt-1 italic">
-                                    {item.auditChange.description}
-                                  </div>
-                                )}
-                                {item.isEdit && item.auditChange?.description && (
-                                  <div className="text-xs text-blue-600 mt-1 italic font-medium">
-                                    ادائیگی اپڈیٹ: {item.auditChange.description}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            {key === 'productDescription' && (item.productDescription || '-')}
+                            {key === 'saleDescription' && (item.saleDescription || '-')}
+                            {key === 'purchaseDescription' && (item.purchaseDescription || '-')}
                             {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}

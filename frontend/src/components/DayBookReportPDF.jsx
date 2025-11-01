@@ -142,6 +142,8 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
                 case 'productName': return item.productName;
                 case 'category': return item.category || '-';
                 case 'productDescription': return item.productDescription || '-';
+                case 'saleDescription': return item.saleDescription || '-';
+                case 'purchaseDescription': return item.purchaseDescription || '-';
                 case 'purchaseQuantity': return item.purchaseQuantity || '-';
                 case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
                 case 'transportCost': return item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-';
