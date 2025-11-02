@@ -173,10 +173,10 @@ function Manufacturing() {
         setSelectedItem(null);
         reset();
         setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }]);
-        toast.success('Recipe created successfully!');
+        toast.success('Manufacturing created successfully!');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to create recipe');
+        toast.error(error.response?.data?.error || 'Failed to create manufacturing');
       }
     }
   );
@@ -193,10 +193,10 @@ function Manufacturing() {
         setSelectedItem(null);
         reset();
         setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }]);
-        toast.success('Recipe updated successfully!');
+        toast.success('Manufacturing updated successfully!');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to update recipe');
+        toast.error(error.response?.data?.error || 'Failed to update manufacturing');
       }
     }
   );
@@ -212,10 +212,10 @@ function Manufacturing() {
         setShowDeleteModal(false);
         setSelectedItem(null);
         setDeleteError(null);
-        toast.success('Recipe deleted successfully!');
+        toast.success('Manufacturing deleted successfully!');
       },
       onError: (error) => {
-        setDeleteError(error.response?.data?.error || 'Failed to delete recipe');
+        setDeleteError(error.response?.data?.error || 'Failed to delete manufacturing');
       }
     }
   );
@@ -231,10 +231,10 @@ function Manufacturing() {
         queryClient.invalidateQueries(['products']);
         setShowProductionModal(false);
         reset();
-        toast.success('Recipe completed successfully!');
+        toast.success('Manufacturing completed successfully!');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to complete recipe');
+        toast.error(error.response?.data?.error || 'Failed to complete manufacturing');
       }
     }
   );
@@ -251,10 +251,10 @@ function Manufacturing() {
         setShowDeleteModal(false);
         setSelectedItem(null);
         setDeleteError(null);
-        toast.success('Recipe record deleted successfully!');
+        toast.success('Manufacturing record deleted successfully!');
       },
       onError: (error) => {
-        setDeleteError(error.response?.data?.error || 'Failed to delete recipe record');
+        setDeleteError(error.response?.data?.error || 'Failed to delete manufacturing record');
       }
     }
   );
@@ -352,7 +352,7 @@ function Manufacturing() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800 flex items-center gap-2">
           <FaUtensils />
-          Recipe
+          Manufacturing
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative">
@@ -385,7 +385,7 @@ function Manufacturing() {
             className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2 w-full sm:w-auto"
           >
             <FaPlus />
-            {activeTab === 'recipes' ? 'Add Recipe' : 'Start Recipe'}
+            {activeTab === 'recipes' ? 'Add Manufacturing' : 'Start Manufacturing'}
           </button>
         </div>
       </div>
@@ -402,7 +402,7 @@ function Manufacturing() {
             }`}
           >
             <FaCog className="inline mr-2" />
-            Recipes
+            Manufacturing
           </button>
           <button
             onClick={() => setActiveTab('production')}
@@ -413,7 +413,7 @@ function Manufacturing() {
             }`}
           >
             <FaUtensils className="inline mr-2" />
-            Recipe History
+            Manufacturing History
           </button>
         </div>
         
@@ -547,8 +547,8 @@ function Manufacturing() {
             {(!data?.data?.items || data.data.items.length === 0) && (
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
                 <FaUtensils className="w-16 h-16 mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium mb-2">No Recipes Found</h3>
-                <p className="text-sm text-center">Create your first recipe to get started.</p>
+                <h3 className="text-lg font-medium mb-2">No Manufacturing Found</h3>
+                <p className="text-sm text-center">Create your first manufacturing to get started.</p>
               </div>
             )}
           </div>
@@ -559,7 +559,7 @@ function Manufacturing() {
               <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                    Recipe Name
+                    Manufacturing Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                     Product
@@ -627,7 +627,7 @@ function Manufacturing() {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Recipe
+                  Manufacturing
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                   Product
@@ -636,7 +636,7 @@ function Manufacturing() {
                   Quantity Made
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Recipe Cost
+                  Manufacturing Cost
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                   Notes
@@ -692,17 +692,17 @@ function Manufacturing() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                {selectedItem ? 'Edit Recipe' : 'Add New Recipe'}
+                {selectedItem ? 'Edit Manufacturing' : 'Add New Manufacturing'}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="recipe-form" onSubmit={handleSubmit(onSubmitRecipe)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Recipe Name
+                  Manufacturing Name
                 </label>
                 <input
-                  {...register('name', { required: 'Recipe name is required' })}
+                  {...register('name', { required: 'Manufacturing name is required' })}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {errors.name && (
@@ -897,17 +897,17 @@ function Manufacturing() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                Start Recipe
+                Start Manufacturing
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="production-form" onSubmit={handleSubmit(onSubmitProduction)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Recipe
+                  Manufacturing
                 </label>
                 <select
-                  {...register('recipeId', { required: 'Recipe is required' })}
+                  {...register('recipeId', { required: 'Manufacturing is required' })}
                   onChange={(e) => {
                     const recipeId = e.target.value;
                     setSelectedRecipe(recipeId);
@@ -921,7 +921,7 @@ function Manufacturing() {
                   }}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select Recipe</option>
+                  <option value="">Select Manufacturing</option>
                   {recipesData?.data?.items?.map((recipe) => (
                     <option key={recipe.id} value={recipe.id}>
                       {recipe.name} ({recipe.product?.name})

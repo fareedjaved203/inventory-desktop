@@ -734,7 +734,7 @@ function POS() {
                           <td className="p-3 text-center text-gray-600 font-medium">{index + 1}</td>
                           <td className="p-3">
                             <div className="font-medium text-gray-800">{item.name}</div>
-                            <div className="text-xs text-gray-500">{formatPakistaniCurrency(item.price)} each</div>
+                            <div className="text-xs text-gray-500">{formatPakistaniCurrency(item.price)} per {item.unit || 'unit'}</div>
                           </td>
                           <td className="p-3">
                             <div className="flex flex-col gap-1">
