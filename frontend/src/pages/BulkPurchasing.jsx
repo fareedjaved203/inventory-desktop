@@ -1095,7 +1095,9 @@ function BulkPurchasing() {
                                 >
                                   <div>
                                     <div className="font-medium">{product.name}</div>
-                                    <div className="text-sm text-gray-600">{product.sku}</div>
+                                    <div className="text-sm text-gray-600">
+                                      Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit || ''}
+                                    </div>
                                   </div>
                                   <div className="text-blue-600 font-medium">Rs.{product.price}</div>
                                 </div>

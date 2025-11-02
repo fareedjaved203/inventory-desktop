@@ -59,7 +59,7 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
       case 'productName': return item.productName || '-';
       case 'category': return item.category || '-';
       case 'productDescription': return item.productDescription || '-';
-      case 'purchaseQuantity': return item.purchaseQuantity || '-';
+      case 'purchaseQuantity': return item.purchaseQuantity ? (Number(item.purchaseQuantity) % 1 === 0 ? item.purchaseQuantity : Number(item.purchaseQuantity).toFixed(2)) : '-';
       case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
       case 'transportCost': return item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-';
       case 'supplierName': return item.supplierName || '-';
@@ -77,7 +77,7 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
         return `<span style="color: ${color}; font-weight: bold;">${formatPakistaniCurrency(value || 0)}</span>`;
       }
       case 'customerName': return item.customerName || '-';
-      case 'saleQuantity': return item.saleQuantity || '-';
+      case 'saleQuantity': return item.saleQuantity ? (Number(item.saleQuantity) % 1 === 0 ? item.saleQuantity : Number(item.saleQuantity).toFixed(2)) : '-';
       case 'saleUnitPrice': return item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-';
       case 'totalSalePrice': return item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-';
       case 'profitLoss': {

@@ -416,7 +416,7 @@ function DashboardReportPDF({ reportData, dateRange, shopSettings }) {
             <Text style={styles.col1}>INVENTORY</Text>
             <Text style={styles.col2}>📦 Stock Overview</Text>
             <Text style={styles.col3}>{dashboardData?.totalProducts || 0} Products</Text>
-            <Text style={styles.col4}>{dashboardData?.totalInventory || 0} Units</Text>
+            <Text style={styles.col4}>{dashboardData?.totalInventory ? Number(dashboardData.totalInventory).toFixed(2) : '0.00'} Units</Text>
             <Text style={styles.col5}>{dashboardData?.lowStock || 0} Low Stock</Text>
           </View>
 

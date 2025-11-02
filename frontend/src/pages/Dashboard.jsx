@@ -104,7 +104,7 @@ function Dashboard() {
           />
           <DashboardCard
             title={t('totalInventory')}
-            value={data?.totalInventory || 0}
+            value={data?.totalInventory ? Number(data.totalInventory).toFixed(2) : '0.00'}
             icon={<FaWarehouse className="text-xl" />}
             color="indigo"
             isLoading={isLoading}

@@ -164,11 +164,11 @@ function UrduDayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleCol
                 case 'productDescription': return item.productDescription || '-';
                 case 'saleDescription': return item.saleDescription || '-';
                 case 'purchaseDescription': return item.purchaseDescription || '-';
-                case 'purchaseQuantity': return item.purchaseQuantity || '-';
+                case 'purchaseQuantity': return item.purchaseQuantity ? (Number(item.purchaseQuantity) % 1 === 0 ? item.purchaseQuantity : Number(item.purchaseQuantity).toFixed(2)) : '-';
                 case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
                 case 'supplierName': return item.supplierName || '-';
                 case 'customerName': return item.customerName || '-';
-                case 'saleQuantity': return item.saleQuantity || '-';
+                case 'saleQuantity': return item.saleQuantity ? (Number(item.saleQuantity) % 1 === 0 ? item.saleQuantity : Number(item.saleQuantity).toFixed(2)) : '-';
                 case 'saleUnitPrice': return item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-';
                 case 'totalSalePrice': return item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-';
                 case 'profitLoss': return item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-';

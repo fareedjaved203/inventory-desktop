@@ -661,7 +661,7 @@ function POS() {
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-800">{product.name}</div>
-                          <div className="text-sm text-gray-500">Stock: {Number(product.quantity)} {product.unit}</div>
+                          <div className="text-sm text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-primary-600">{formatPakistaniCurrency(product.retailPrice || product.price)}</div>
@@ -758,10 +758,20 @@ function POS() {
                                   type="number"
                                   step="0.01"
                                   min="0.01"
-                                  value={item.quantity}
-                                  onChange={(e) => {
+                                  key={`qty-${item.id}-${item.quantity}`}
+                                  defaultValue={item.quantity}
+                                  onBlur={(e) => {
                                     const val = parseFloat(e.target.value);
                                     if (val > 0) updateCartQuantity(item.id, val);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = parseFloat(e.target.value);
+                                      if (val > 0) {
+                                        updateCartQuantity(item.id, val);
+                                        e.target.blur();
+                                      }
+                                    }
                                   }}
                                   onWheel={(e) => e.target.blur()}
                                   className="w-16 px-1 py-0.5 border border-gray-300 rounded text-xs text-center"
@@ -771,12 +781,8 @@ function POS() {
                                   type="number"
                                   step="0.01"
                                   min="0.01"
-                                  placeholder={(item.price * item.quantity).toFixed(2)}
-                                  onFocus={(e) => {
-                                    if (!e.target.value) {
-                                      e.target.value = (item.price * item.quantity).toFixed(2);
-                                    }
-                                  }}
+                                  key={`amt-${item.id}-${item.quantity}`}
+                                  defaultValue={(item.price * item.quantity).toFixed(2)}
                                   onBlur={(e) => {
                                     const amount = parseFloat(e.target.value);
                                     if (amount > 0) {
@@ -841,11 +847,6 @@ function POS() {
                       )}
                     </div>
 
-                    <div className="border-t pt-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
-                      <div className="text-2xl font-bold text-primary-600">{formatPakistaniCurrency(total)}</div>
-                    </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
                       <input
@@ -856,6 +857,11 @@ function POS() {
                         onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
+                    </div>
+
+                    <div className="border-t pt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                      <div className="text-2xl font-bold text-primary-600">{formatPakistaniCurrency(total)}</div>
                     </div>
 
                     {change > 0 && (
@@ -1190,10 +1196,19 @@ function POS() {
                         type="number"
                         step="0.01"
                         min="0.01"
-                        value={item.quantity}
-                        onChange={(e) => {
+                        defaultValue={item.quantity}
+                        onBlur={(e) => {
                           const val = parseFloat(e.target.value);
                           if (val > 0) updateCartQuantity(item.id, val);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseFloat(e.target.value);
+                            if (val > 0) {
+                              updateCartQuantity(item.id, val);
+                              e.target.blur();
+                            }
+                          }
                         }}
                         onWheel={(e) => e.target.blur()}
                         className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
@@ -1205,12 +1220,7 @@ function POS() {
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder={(item.price * item.quantity).toFixed(2)}
-                        onFocus={(e) => {
-                          if (!e.target.value) {
-                            e.target.value = (item.price * item.quantity).toFixed(2);
-                          }
-                        }}
+                        defaultValue={(item.price * item.quantity).toFixed(2)}
                         onBlur={(e) => {
                           const amount = parseFloat(e.target.value);
                           if (amount > 0) {

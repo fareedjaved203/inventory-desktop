@@ -1271,7 +1271,7 @@ function Sales() {
                                         {product.name}
                                       </div>
                                       <div className="text-sm text-gray-600">
-                                        {product.quantity} in stock
+                                        {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} in stock
                                       </div>
                                     </div>
                                     <div className="text-primary-600 font-medium">

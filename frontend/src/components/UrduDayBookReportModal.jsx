@@ -309,7 +309,7 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                             {key === 'productDescription' && (item.productDescription || '-')}
                             {key === 'saleDescription' && (item.saleDescription || '-')}
                             {key === 'purchaseDescription' && (item.purchaseDescription || '-')}
-                            {key === 'purchaseQuantity' && (item.purchaseQuantity || '-')}
+                            {key === 'purchaseQuantity' && (item.purchaseQuantity ? (Number(item.purchaseQuantity) % 1 === 0 ? item.purchaseQuantity : Number(item.purchaseQuantity).toFixed(2)) : '-')}
                             {key === 'purchasePrice' && (item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-')}
                             {key === 'transportCost' && (item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-')}
                             {key === 'supplierName' && (item.supplierName || '-')}
@@ -326,7 +326,7 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                               </span>
                             )}
                             {key === 'customerName' && (item.customerName || '-')}
-                            {key === 'saleQuantity' && (item.saleQuantity || '-')}
+                            {key === 'saleQuantity' && (item.saleQuantity ? (Number(item.saleQuantity) % 1 === 0 ? item.saleQuantity : Number(item.saleQuantity).toFixed(2)) : '-')}
                             {key === 'saleUnitPrice' && (item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-')}
                             {key === 'totalSalePrice' && (item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-')}
                             {key === 'profitLoss' && (
