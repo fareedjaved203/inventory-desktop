@@ -737,20 +737,67 @@ function POS() {
                             <div className="text-xs text-gray-500">{formatPakistaniCurrency(item.price)} each</div>
                           </td>
                           <td className="p-3">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                              >
-                                <FaMinus size={12} />
-                              </button>
-                              <span className="w-12 text-center font-semibold">{item.quantity}</span>
-                              <button
-                                onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                              >
-                                <FaPlus size={12} />
-                              </button>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                >
+                                  <FaMinus size={12} />
+                                </button>
+                                <span className="w-12 text-center font-semibold">{Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(2)}</span>
+                                <button
+                                  onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                >
+                                  <FaPlus size={12} />
+                                </button>
+                              </div>
+                              <div className="flex gap-1">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0.01"
+                                  value={item.quantity}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (val > 0) updateCartQuantity(item.id, val);
+                                  }}
+                                  onWheel={(e) => e.target.blur()}
+                                  className="w-16 px-1 py-0.5 border border-gray-300 rounded text-xs text-center"
+                                  placeholder="Qty"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0.01"
+                                  placeholder={(item.price * item.quantity).toFixed(2)}
+                                  onFocus={(e) => {
+                                    if (!e.target.value) {
+                                      e.target.value = (item.price * item.quantity).toFixed(2);
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const amount = parseFloat(e.target.value);
+                                    if (amount > 0) {
+                                      const newQty = amount / item.price;
+                                      updateCartQuantity(item.id, newQty);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const amount = parseFloat(e.target.value);
+                                      if (amount > 0) {
+                                        const newQty = amount / item.price;
+                                        updateCartQuantity(item.id, newQty);
+                                        e.target.blur();
+                                      }
+                                    }
+                                  }}
+                                  onWheel={(e) => e.target.blur()}
+                                  className="w-20 px-1 py-0.5 border border-gray-300 rounded text-xs text-center"
+                                />
+                              </div>
                             </div>
                           </td>
                           <td className="p-3 text-right font-medium">{formatPakistaniCurrency(item.price)}</td>
@@ -1114,7 +1161,7 @@ function POS() {
                     </button>
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
@@ -1122,7 +1169,7 @@ function POS() {
                       >
                         <FaMinus size={8} />
                       </button>
-                      <span className="w-6 text-center font-medium text-xs">{item.quantity}</span>
+                      <span className="w-6 text-center font-medium text-xs">{Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(3)}</span>
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                         className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
@@ -1133,6 +1180,57 @@ function POS() {
                     <div className="text-right">
                       <div className="text-xs text-gray-600">{formatPakistaniCurrency(item.price)} each</div>
                       <div className="font-semibold text-xs">{formatPakistaniCurrency(item.price * item.quantity)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <label className="text-[10px] text-gray-500">Qty/{item.unit || 'unit'}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (val > 0) updateCartQuantity(item.id, val);
+                        }}
+                        onWheel={(e) => e.target.blur()}
+                        className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500">Amount (Rs.)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder={(item.price * item.quantity).toFixed(2)}
+                        onFocus={(e) => {
+                          if (!e.target.value) {
+                            e.target.value = (item.price * item.quantity).toFixed(2);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const amount = parseFloat(e.target.value);
+                          if (amount > 0) {
+                            const newQty = amount / item.price;
+                            updateCartQuantity(item.id, newQty);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const amount = parseFloat(e.target.value);
+                            if (amount > 0) {
+                              const newQty = amount / item.price;
+                              updateCartQuantity(item.id, newQty);
+                              e.target.blur();
+                            }
+                          }
+                        }}
+                        onWheel={(e) => e.target.blur()}
+                        className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                      />
                     </div>
                   </div>
                 </div>

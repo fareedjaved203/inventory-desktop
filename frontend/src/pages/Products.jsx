@@ -666,7 +666,7 @@ function Products() {
                         ? 'text-orange-700 bg-orange-50 border border-orange-200' 
                         : 'text-green-700 bg-green-50 border border-green-200'
                     } px-2 py-1 rounded-full text-xs font-medium`}>
-                      {product.quantity} {product.unit}
+                      {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

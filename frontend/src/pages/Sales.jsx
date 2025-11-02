@@ -18,7 +18,7 @@ import { useTranslation } from "../utils/translations";
 
 const saleItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
-  quantity: z.number().int().positive("Quantity must be positive"),
+  quantity: z.number().positive("Quantity must be positive"),
   price: z.number().positive("Price must be positive"),
 });
 
@@ -397,7 +397,7 @@ function Sales() {
       return;
     }
 
-    const quantityNum = parseInt(quantity);
+    const quantityNum = parseFloat(quantity);
 
     // Check if the selected quantity is available
     if (quantityNum > selectedProduct.quantity) {
@@ -984,7 +984,7 @@ function Sales() {
                           >
                             <span className="whitespace-nowrap">
                               {item.product?.name || "Unknown Product"} x{" "}
-                              {item.quantity}
+                              {Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(2)} {item.product?.unit || ''}
                             </span>
                             {item.returnedQuantity > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
@@ -1301,11 +1301,11 @@ function Sales() {
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        min="1"
-                        step="1"
+                        min="0.01"
+                        step="0.01"
                         value={quantity}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value);
+                          const value = parseFloat(e.target.value);
                           if (value <= 0) {
                             setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
                           } else {

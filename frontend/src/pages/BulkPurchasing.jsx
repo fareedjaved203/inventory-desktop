@@ -15,7 +15,7 @@ import { useTranslation } from '../utils/translations';
 
 const bulkPurchaseItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
-  quantity: z.number().int().positive("Quantity must be positive"),
+  quantity: z.number().positive("Quantity must be positive"),
   purchasePrice: z.number().positive("Purchase price must be positive"),
   perUnitCost: z.number().positive().optional(),
 });
@@ -430,7 +430,7 @@ function BulkPurchasing() {
       return;
     }
 
-    const quantityNum = parseInt(quantity);
+    const quantityNum = parseFloat(quantity);
     let priceNum, subtotal, itemPurchasePrice;
     
     if (priceInputMode === 'perUnit') {
@@ -741,7 +741,7 @@ function BulkPurchasing() {
                       purchase.items.map((item, index) => (
                         <div key={index} className="text-sm flex items-center gap-2 flex-wrap">
                           <span className="whitespace-nowrap">
-                            {item.product?.name || "Unknown Product"} x {item.quantity}
+                            {item.product?.name || "Unknown Product"} x {Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(2)} {item.product?.unit || ''}
                           </span>
                         </div>
                       ))
@@ -1143,11 +1143,11 @@ function BulkPurchasing() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">{priceInputMode === 'totalCost' ? 'Weight' : t('quantity')}</label>
                       <input
                         type="number"
-                        min="1"
-                        step="1"
+                        min="0.01"
+                        step="0.01"
                         value={quantity}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value);
+                          const value = parseFloat(e.target.value);
                           if (value <= 0) {
                             setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
                           } else {

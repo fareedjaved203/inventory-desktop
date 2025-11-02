@@ -591,3 +591,6 @@ ALTER TABLE "AuditTrail" ADD CONSTRAINT "AuditTrail_saleId_fkey" FOREIGN KEY ("s
 
 -- AddForeignKey
 ALTER TABLE "AuditTrail" ADD CONSTRAINT "AuditTrail_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "BulkPurchase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Add description to bulk purchase
+ALTER TABLE "BulkPurchase" ADD COLUMN "description" TEXT;

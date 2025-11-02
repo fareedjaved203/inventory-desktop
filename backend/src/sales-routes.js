@@ -5,15 +5,16 @@ import { saleSchema, querySchema } from './schemas.js';
 import { withTransaction, safeQuery } from './db-utils.js';
 import { logAuditChange } from './audit-utils.js';
 
-// Helper function to create date from YYYY-MM-DD string with current time in UTC-5
+// Helper function to create date - subtract 5 hours for Pakistan time
 function createDateWithCurrentTime(dateString) {
-  if (!dateString) return new Date(Date.now() - (5 * 60 * 60 * 1000));
-
-  console.log("yes this is the issue")
-  
   const now = new Date();
-  const [year, month, day] = dateString.split('-');
+  now.setHours(now.getHours() - 5);
   
+  if (!dateString) {
+    return now;
+  }
+  
+  const [year, month, day] = dateString.split('-');
   const date = new Date(
     parseInt(year),
     parseInt(month) - 1,
@@ -23,13 +24,13 @@ function createDateWithCurrentTime(dateString) {
     now.getSeconds()
   );
   
-  return new Date(date.getTime() - (5 * 60 * 60 * 1000));
+  return date;
 }
 
-// Helper function to adjust date for display (add 5 hours back)
+// Helper function to adjust date for display (no adjustment needed now)
 function adjustDateForDisplay(date) {
   if (!date) return date;
-  return new Date(new Date(date).getTime() + (5 * 60 * 60 * 1000));
+  return date;
 }
 
 function parseDateDDMMYYYY(dateString) {
@@ -88,8 +89,8 @@ export function setupSalesRoutes(app, prisma) {
             }
           }
 
-          // Use custom sale date if provided, otherwise use current time in UTC-5
-          const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : new Date(Date.now() - (5 * 60 * 60 * 1000));
+          // Use custom sale date if provided, otherwise use current Pakistan time
+          const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : createDateWithCurrentTime();
           // Get product details including purchase prices
           const productDetails = await Promise.all(
             req.body.items.map(item => 
@@ -409,14 +410,10 @@ export function setupSalesRoutes(app, prisma) {
             23, 59, 59, 999
           ));
 
-          // Adjust for UTC-5 storage (subtract 5 hours from search range)
-          const adjustedStart = new Date(startOfDay.getTime() - (5 * 60 * 60 * 1000));
-          const adjustedEnd = new Date(endOfDay.getTime() - (5 * 60 * 60 * 1000));
-
           conditions.push({
             saleDate: {
-              gte: adjustedStart,
-              lt: new Date(adjustedEnd.getTime() + 1),
+              gte: startOfDay,
+              lt: new Date(endOfDay.getTime() + 1),
             }
           });
         }
@@ -448,14 +445,10 @@ export function setupSalesRoutes(app, prisma) {
               23, 59, 59, 999
             ));
 
-            // Adjust for UTC-5 storage (subtract 5 hours from search range)
-            const adjustedStart = new Date(startOfDay.getTime() - (5 * 60 * 60 * 1000));
-            const adjustedEnd = new Date(endOfDay.getTime() - (5 * 60 * 60 * 1000));
-
             conditions.push({
               saleDate: {
-                gte: adjustedStart,
-                lt: new Date(adjustedEnd.getTime() + 1),
+                gte: startOfDay,
+                lt: new Date(endOfDay.getTime() + 1),
               }
             });
           } else {
@@ -703,14 +696,13 @@ export function setupSalesRoutes(app, prisma) {
             )
           );
 
-          // Update sale using raw SQL - update saleDate if provided
+          // Update sale using raw SQL - keep saleDate unchanged
           await prisma.$executeRaw`
             UPDATE "Sale" 
             SET "totalAmount" = ${req.body.totalAmount}::decimal,
                 "originalTotalAmount" = ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal,
                 discount = ${req.body.discount || 0}::decimal,
                 "paidAmount" = ${req.body.paidAmount || 0}::decimal,
-                "saleDate" = ${existingSale.saleDate},
                 "contactId" = ${req.body.contactId},
                 "employeeId" = ${req.body.employeeId},
                 "carNumber" = ${req.body.carNumber},

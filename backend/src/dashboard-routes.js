@@ -81,17 +81,14 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    // Get current Pakistan time (UTC+5) more reliably
+    // Get current local time
     const now = new Date();
-    const pakistanOffset = 5 * 60; // Pakistan is UTC+5 (in minutes)
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const pakistanTime = new Date(utc + (pakistanOffset * 60000));
     
-    // Create start of day in Pakistan timezone
-    const todayPakistan = new Date(
-      pakistanTime.getFullYear(), 
-      pakistanTime.getMonth(), 
-      pakistanTime.getDate(), 
+    // Create start of day in local timezone
+    const todayLocal = new Date(
+      now.getFullYear(), 
+      now.getMonth(), 
+      now.getDate(), 
       0, 0, 0, 0
     );
     
@@ -113,14 +110,14 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       reportEndDate.setDate(reportEndDate.getDate() + 1);
       reportEndDate.setHours(0, 0, 0, 0);
     } else {
-      reportStartDate = todayPakistan;
-      reportEndDate = new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000 - 1);
+      reportStartDate = todayLocal;
+      reportEndDate = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000 - 1);
     }
     
-    const sevenDaysAgo = new Date(todayPakistan.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(todayPakistan.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const yearAgo = new Date(todayPakistan.getTime() - 365 * 24 * 60 * 60 * 1000);
-    const tomorrowStart = new Date(todayPakistan.getTime() + 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(todayLocal.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(todayLocal.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const yearAgo = new Date(todayLocal.getTime() - 365 * 24 * 60 * 60 * 1000);
+    const tomorrowStart = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000);
 
     // Execute queries in smaller batches to avoid connection pool exhaustion
     const [salesToday, salesLast7Days, salesLast30Days, salesLast365Days] = await Promise.all([
@@ -130,7 +127,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           saleDate: {
-            gte: todayPakistan,
+            gte: todayLocal,
             lt: tomorrowStart
           }
         }
@@ -209,7 +206,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           date: {
-            gte: todayPakistan,
+            gte: todayLocal,
             lt: tomorrowStart
           }
         }
@@ -258,7 +255,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           purchaseDate: {
-            gte: todayPakistan,
+            gte: todayLocal,
             lt: tomorrowStart
           }
         },
@@ -573,7 +570,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           return balance < 0 ? Math.abs(balance) : 0;
         })
         .reduce((sum, credit) => sum + credit, 0),
-      profitToday: await calculateProfit(todayPakistan, tomorrowStart),
+      profitToday: await calculateProfit(todayLocal, tomorrowStart),
       profitLast7Days: await calculateProfit(sevenDaysAgo, tomorrowStart),
       profitLast30Days: await calculateProfit(thirtyDaysAgo, tomorrowStart),
       profitLast365Days: await calculateProfit(yearAgo, tomorrowStart),

@@ -5,13 +5,16 @@ import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { logAuditChange } from './audit-utils.js';
 
-// Helper function to create date from YYYY-MM-DD string with current time in UTC-5
+// Helper function to create date - subtract 5 hours for Pakistan time
 function createDateWithCurrentTime(dateString) {
-  if (!dateString) return new Date(Date.now() - (5 * 60 * 60 * 1000));
-  
   const now = new Date();
-  const [year, month, day] = dateString.split('-');
+  now.setHours(now.getHours() - 5);
   
+  if (!dateString) {
+    return now;
+  }
+  
+  const [year, month, day] = dateString.split('-');
   const date = new Date(
     parseInt(year),
     parseInt(month) - 1,
@@ -21,13 +24,13 @@ function createDateWithCurrentTime(dateString) {
     now.getSeconds()
   );
   
-  return new Date(date.getTime() - (5 * 60 * 60 * 1000));
+  return date;
 }
 
-// Helper function to adjust date for display (add 5 hours back)
+// Helper function to adjust date for display (no adjustment needed now)
 function adjustDateForDisplay(date) {
   if (!date) return date;
-  return new Date(new Date(date).getTime() + (5 * 60 * 60 * 1000));
+  return date;
 }
 
 export function setupBulkPurchaseRoutes(app, prisma) {
@@ -210,8 +213,8 @@ export function setupBulkPurchaseRoutes(app, prisma) {
 
           // Create the bulk purchase using Prisma create instead of raw SQL
           const purchaseId = crypto.randomUUID();
-          // Use custom purchase date if provided, otherwise use current time in UTC-5
-          const purchaseDate = req.body.purchaseDate ? createDateWithCurrentTime(req.body.purchaseDate) : new Date(Date.now() - (5 * 60 * 60 * 1000));
+          // Use custom purchase date if provided, otherwise use current Pakistan time
+          const purchaseDate = req.body.purchaseDate ? createDateWithCurrentTime(req.body.purchaseDate) : createDateWithCurrentTime();
           
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", description, "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
@@ -348,13 +351,12 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             where: { bulkPurchaseId: req.params.id }
           });
 
-          // Update the purchase using raw SQL - update purchaseDate if provided
+          // Update the purchase using raw SQL - keep purchaseDate unchanged
           await prisma.$executeRaw`
             UPDATE "BulkPurchase" 
             SET "totalAmount" = ${Number(req.body.totalAmount)},
                 discount = ${Number(req.body.discount || 0)},
                 "paidAmount" = ${Number(req.body.paidAmount)},
-                "purchaseDate" = ${existingPurchase.purchaseDate},
                 description = ${req.body.description || null},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
