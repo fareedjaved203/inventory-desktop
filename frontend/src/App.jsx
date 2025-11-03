@@ -23,6 +23,7 @@ import Branches from './pages/Branches';
 import Employees from './pages/Employees';
 import EmployeeStats from './pages/EmployeeStats';
 import Expenses from './pages/Expenses';
+import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NotFound from './pages/NotFound';
@@ -258,6 +259,7 @@ function AppContent() {
               <Route path="/bulk" element={<BulkPurchasing />} />
               <Route path="/returns" element={<Returns />} />
               <Route path="/expenses" element={<Expenses />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/branches" element={<Branches />} />
               <Route path="/employees" element={<Employees />} />
               <Route path="/settings" element={<Settings />} />

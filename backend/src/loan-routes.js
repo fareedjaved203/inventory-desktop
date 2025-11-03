@@ -1,6 +1,7 @@
 import express from 'express';
 import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 const loanTransactionSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
@@ -82,12 +83,16 @@ function createLoanRoutes(prismaInstance) {
   // Create a new loan transaction
   router.post('/', authenticateToken, validateRequest({ body: loanTransactionSchema.extend({ contactId: z.string() }) }), async (req, res) => {
     try {
-      const transaction = await prisma.loanTransaction.create({
-        data: {
-          ...req.body,
-          date: new Date(),
-          userId: req.userId
-        },
+      const { amount, type, description, contactId } = req.body;
+      const transactionId = crypto.randomUUID();
+      
+      await prisma.$executeRaw`
+        INSERT INTO "LoanTransaction" (id, amount, type, description, "contactId", date, "userId", "createdAt", "updatedAt")
+        VALUES (${transactionId}, ${amount}::decimal, ${type}, ${description}, ${contactId}, NOW(), ${req.userId}, NOW(), NOW())
+      `;
+      
+      const transaction = await prisma.loanTransaction.findUnique({
+        where: { id: transactionId },
         include: {
           contact: {
             select: { id: true, name: true }

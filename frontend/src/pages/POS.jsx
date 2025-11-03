@@ -16,11 +16,19 @@ function POS() {
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState('fixed'); // 'percentage' or 'fixed'
   const [paidAmount, setPaidAmount] = useState(0);
+  const [cashReceived, setCashReceived] = useState(0);
+  const [balance, setBalance] = useState(0);
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [debouncedCustomerSearchTerm, setDebouncedCustomerSearchTerm] = useState('');
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [createNewContact, setCreateNewContact] = useState(false);
+  const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
+  const [creatingContact, setCreatingContact] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState('default'); // 'default' or 'compact'
@@ -270,17 +278,44 @@ function POS() {
   const clearCart = () => {
     setCart([]);
     setDiscount(0);
+    setDiscountType('fixed');
     setPaidAmount(0);
+    setCashReceived(0);
+    setBalance(0);
     setCustomerName('');
     setCustomerId('');
     setCustomerSearchTerm('');
+    setSelectedContact(null);
+    setCreateNewContact(false);
+    setNewContactData({ name: '', phoneNumber: '', address: '' });
   };
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountAmount = (subtotal * discount) / 100;
+  const discountAmount = discountType === 'percentage' ? (subtotal * discount) / 100 : discount;
   const total = subtotal - discountAmount;
   const change = paidAmount - total;
+  
+  // Auto-calculate balance when cash received changes and auto-fill paid amount
+  useEffect(() => {
+    if (cashReceived > 0) {
+      setBalance(cashReceived - total);
+      setPaidAmount(total); // Auto-fill paid amount with total when cash is received
+    } else if (cashReceived === 0) {
+      setBalance(0);
+    }
+  }, [cashReceived, total]);
+
+  // Reset payment fields when cart becomes empty
+  useEffect(() => {
+    if (cart.length === 0) {
+      setDiscount(0);
+      setDiscountType('fixed');
+      setPaidAmount(0);
+      setCashReceived(0);
+      setBalance(0);
+    }
+  }, [cart.length]);
 
   // Create sale mutation
   const createSale = useMutation(
@@ -309,6 +344,27 @@ function POS() {
 
     if (createSale.isLoading) return;
 
+    let contactId = selectedContact?.id;
+    
+    // Create new contact if checkbox is checked
+    if (createNewContact && newContactData.name && newContactData.phoneNumber) {
+      setCreatingContact(true);
+      const contactResponse = await API.createContact({
+        ...newContactData,
+        contactType: 'customer'
+      });
+      console.log(contactResponse);
+      setCreatingContact(false);
+      
+      if (contactResponse.id) {
+        contactId = contactResponse.id
+        toast.success('Customer created successfully!');
+      } else {
+        toast.error('Failed to create customer');
+        return;
+      }
+    }
+
     const saleData = {
       items: cart.map(item => ({
         productId: item.id,
@@ -318,12 +374,23 @@ function POS() {
       totalAmount: total,
       paidAmount: paidAmount,
       discount: discountAmount,
-      customerName: customerName || undefined,
-      contactId: customerId || undefined
+      ...(contactId && { contactId })
     };
 
     createSale.mutate(saleData);
   };
+
+  // Keyboard shortcut for completing sale (Ctrl+Enter)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'Enter' && cart.length > 0 && !createSale.isLoading && !creatingContact) {
+        e.preventDefault();
+        processSale();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart.length, createSale.isLoading, creatingContact, processSale]);
 
   // Print receipt function
   const printReceipt = (saleData) => {
@@ -477,7 +544,7 @@ function POS() {
             <div class="item">
               <div class="item-row">
                 <div class="item-name">${item.name}</div>
-                <div class="item-qty-price">${item.quantity} x ${formatPakistaniCurrency(item.price)}</div>
+                <div class="item-qty-price">${Number(item.quantity).toFixed(1)} ${item.unit || 'unit'} x ${formatPakistaniCurrency(item.price)}</div>
               </div>
               <div style="text-align: right; font-size: 10px; margin-top: 2px;">
                 ${formatPakistaniCurrency(item.price * item.quantity)}
@@ -487,28 +554,26 @@ function POS() {
         </div>
         
         <div class="totals">
-          <div class="total-line">
-            <span>Subtotal:</span>
-            <span>${formatPakistaniCurrency(subtotal)}</span>
-          </div>
-          ${discount > 0 ? `
-            <div class="total-line">
-              <span>Discount (${discount}%):</span>
-              <span>-${formatPakistaniCurrency(discountAmount)}</span>
-            </div>
-          ` : ''}
           <div class="total-line grand-total">
             <span>TOTAL:</span>
             <span>${formatPakistaniCurrency(total)}</span>
           </div>
-          <div class="total-line">
-            <span>Paid:</span>
-            <span>${formatPakistaniCurrency(paidAmount)}</span>
-          </div>
-          ${change > 0 ? `
+          ${cashReceived > 0 ? `
             <div class="total-line">
-              <span>Change:</span>
-              <span>${formatPakistaniCurrency(change)}</span>
+              <span>Cash Received:</span>
+              <span>${formatPakistaniCurrency(cashReceived)}</span>
+            </div>
+            ${balance > 0 ? `
+              <div class="total-line">
+                <span>Balance:</span>
+                <span>${formatPakistaniCurrency(balance)}</span>
+              </div>
+            ` : ''}
+          ` : ''}
+          ${paidAmount > 0 && paidAmount < total ? `
+            <div class="total-line">
+              <span>Credit:</span>
+              <span>${formatPakistaniCurrency(total - paidAmount)}</span>
             </div>
           ` : ''}
         </div>
@@ -595,7 +660,7 @@ function POS() {
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col p-2 lg:p-4 ${viewMode === 'default' ? 'lg:pr-96' : ''}`}>
+      <div className={`flex-1 flex flex-col p-2 lg:p-4 ${viewMode === 'default' ? 'lg:pr-96' : ''}`} style={{ marginRight: viewMode === 'compact' && showPaymentDetails ? '384px' : '0' }}>
         {/* Search & Barcode Input */}
         <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 mb-3 lg:mb-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
@@ -699,14 +764,16 @@ function POS() {
 
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden relative">
-              {/* Toggle Sidebar Button */}
-              <button
-                onClick={() => setShowPaymentDetails(!showPaymentDetails)}
-                className="absolute top-4 right-4 z-10 bg-primary-600 text-white p-2 rounded-lg shadow-lg hover:bg-primary-700"
-                title={showPaymentDetails ? 'Hide Payment Panel' : 'Show Payment Panel'}
-              >
-                {showPaymentDetails ? '→' : '←'}
-              </button>
+              {/* Toggle Sidebar Button - Only show when sidebar is hidden */}
+              {!showPaymentDetails && (
+                <button
+                  onClick={() => setShowPaymentDetails(true)}
+                  className="absolute top-4 right-4 z-10 bg-primary-600 text-white p-2 rounded-lg shadow-lg hover:bg-primary-700"
+                  title="Show Payment Panel"
+                >
+                  ←
+                </button>
+              )}
 
               {/* Sale Items List */}
               <div className="flex-1 bg-white overflow-y-auto">
@@ -825,30 +892,139 @@ function POS() {
 
               {/* Right Sidebar - Payment Section */}
               {showPaymentDetails && (
-                <div className="w-80 bg-gray-50 border-l flex flex-col h-full">
-                  <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(100% - 180px)' }}>
+                <div className="fixed top-1 right-0 w-96 bg-gray-50 border-l flex flex-col shadow-xl z-50" style={{ height: '100vh' }}>
+                  {/* Toggle Button at Top Left of Sidebar */}
+                  <button
+                    onClick={() => setShowPaymentDetails(false)}
+                    className="absolute top-2 -left-4 z-10 bg-primary-600 text-white p-2 rounded-lg shadow-lg hover:bg-primary-700"
+                    title="Hide Payment Panel"
+                  >
+                    →
+                  </button>
+                  <div className="p-4 space-y-3 overflow-y-auto flex-1">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                      <input
+                        type="text"
+                        value={customerSearchTerm}
+                        onChange={(e) => {
+                          handleCustomerSearchChange(e.target.value);
+                          setShowCustomerDropdown(true);
+                        }}
+                        onFocus={() => setShowCustomerDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+                        placeholder="Search customer..."
+                        disabled={createNewContact}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:bg-gray-100"
+                      />
+                      {showCustomerDropdown && debouncedCustomerSearchTerm && !createNewContact && customers.length > 0 && (
+                        <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {customers.map((customer) => (
+                            <div
+                              key={customer.id}
+                              onClick={() => {
+                                setSelectedContact(customer);
+                                setCustomerSearchTerm(customer.name);
+                                setShowCustomerDropdown(false);
+                              }}
+                              className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            >
+                              <div className="font-medium">{customer.name}</div>
+                              <div className="text-xs text-gray-500">{customer.phoneNumber}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedContact && (
+                        <div className="mt-1 text-xs text-green-600">✓ {selectedContact.name} selected</div>
+                      )}
+                      
+                      <div className="mt-2">
+                        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={createNewContact}
+                            onChange={(e) => {
+                              setCreateNewContact(e.target.checked);
+                              if (e.target.checked) {
+                                setSelectedContact(null);
+                                setCustomerSearchTerm('');
+                              } else {
+                                setNewContactData({ name: '', phoneNumber: '', address: '' });
+                              }
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          Create new customer
+                        </label>
+                      </div>
+                      
+                      {createNewContact && (
+                        <div className="mt-2 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
+                          <input
+                            type="text"
+                            placeholder="Name *"
+                            value={newContactData.name}
+                            onChange={(e) => setNewContactData({ ...newContactData, name: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Phone *"
+                            value={newContactData.phoneNumber}
+                            onChange={(e) => setNewContactData({ ...newContactData, phoneNumber: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Address"
+                            value={newContactData.address}
+                            onChange={(e) => setNewContactData({ ...newContactData, address: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
                       <div className="text-xl font-bold text-gray-800">{formatPakistaniCurrency(subtotal)}</div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={discount}
-                        onChange={(e) => setDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={discountType}
+                          onChange={(e) => setDiscountType(e.target.value)}
+                          className="px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        >
+                          <option value="percentage">%</option>
+                          <option value="fixed">Rs</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          max={discountType === 'percentage' ? 100 : subtotal}
+                          value={discount}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            if (discountType === 'percentage') {
+                              setDiscount(Math.max(0, Math.min(100, val)));
+                            } else {
+                              setDiscount(Math.max(0, Math.min(subtotal, val)));
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
                       {discount > 0 && (
                         <div className="text-sm text-red-600 mt-1">-{formatPakistaniCurrency(discountAmount)}</div>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount to deduct</label>
                       <input
                         type="number"
                         min="0"
@@ -864,6 +1040,30 @@ function POS() {
                       <div className="text-2xl font-bold text-primary-600">{formatPakistaniCurrency(total)}</div>
                     </div>
 
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                      <div className="text-xs text-blue-700 font-medium mb-2">For Thermal Print Only</div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Cash Received</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={cashReceived}
+                          onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Balance to Return</label>
+                        <input
+                          type="number"
+                          value={balance}
+                          readOnly
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm bg-gray-100 font-bold"
+                        />
+                      </div>
+                    </div>
+
                     {change > 0 && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-2">
                         <div className="text-xs text-green-700">Change</div>
@@ -872,7 +1072,7 @@ function POS() {
                     )}
                   </div>
 
-                  <div className="p-3 space-y-2 border-t bg-white">
+                  <div className="p-3 space-y-2 border-t bg-white flex-shrink-0">
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setPaidAmount(total)}
@@ -890,10 +1090,10 @@ function POS() {
                     </div>
                     <button
                       onClick={processSale}
-                      disabled={createSale.isLoading || cart.length === 0}
+                      disabled={createSale.isLoading || creatingContact || cart.length === 0}
                       className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {createSale.isLoading ? (
+                      {(createSale.isLoading || creatingContact) ? (
                         <LoadingSpinner size="w-5 h-5" />
                       ) : (
                         <>
@@ -959,7 +1159,7 @@ function POS() {
                       <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
                         {product.sku && (
                           <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
                         )}
@@ -1030,7 +1230,7 @@ function POS() {
                       <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity)} {product.unit}</p>
+                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
                         {product.sku && (
                           <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
                         )}
@@ -1175,7 +1375,7 @@ function POS() {
                       >
                         <FaMinus size={8} />
                       </button>
-                      <span className="w-6 text-center font-medium text-xs">{Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(3)}</span>
+                      <span className="w-6 text-center font-medium text-xs">{Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(1)}</span>
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                         className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
@@ -1290,7 +1490,7 @@ function POS() {
             {/* Payment */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount Paid
+                Amount to deduct
               </label>
               <input
                 type="number"

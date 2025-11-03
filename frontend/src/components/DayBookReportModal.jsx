@@ -333,7 +333,7 @@ function DayBookReportModal({ isOpen, onClose }) {
               {dayBookData.summary && (
                 <div className="mt-4 p-4 bg-gray-50 rounded border">
                   <h4 className="font-medium mb-3">Summary</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Total Purchase:</span>
                       <div className="font-medium">{formatPakistaniCurrency(dayBookData.summary.totalPurchaseAmount || 0)}</div>
@@ -345,6 +345,22 @@ function DayBookReportModal({ isOpen, onClose }) {
                     <div>
                       <span className="text-gray-600">Total Profit:</span>
                       <div className="font-medium text-green-600">{formatPakistaniCurrency(dayBookData.summary.totalProfit || 0)}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Total Due (Sales):</span>
+                      <div className="font-medium text-red-600">{formatPakistaniCurrency(
+                        (() => {
+                          const uniqueSales = new Map();
+                          dayBookData.data?.filter(item => item.type === 'sale').forEach(item => {
+                            const saleKey = `${item.date}-${item.customerName}-${item.paidAmount}`;
+                            const existing = uniqueSales.get(saleKey);
+                            if (!existing || existing.remainingAmount < item.remainingAmount) {
+                              uniqueSales.set(saleKey, item);
+                            }
+                          });
+                          return Array.from(uniqueSales.values()).reduce((sum, sale) => sum + (sale.remainingAmount || 0), 0);
+                        })()
+                      )}</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Total Entries:</span>

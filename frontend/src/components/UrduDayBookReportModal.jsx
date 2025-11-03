@@ -346,7 +346,7 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
               {dayBookData.summary && (
                 <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-gray-200" dir="rtl">
                   <h4 className="font-bold mb-4 font-urdu text-lg text-center text-gray-800">خلاصہ</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="bg-white p-3 rounded-lg shadow-sm border">
                       <span className="text-gray-600 font-urdu text-sm block mb-1">کل خریداری:</span>
                       <div className="font-bold text-blue-600 text-lg">{formatPakistaniCurrency(dayBookData.summary.totalPurchaseAmount || 0)}</div>
@@ -358,6 +358,10 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                     <div className="bg-white p-3 rounded-lg shadow-sm border">
                       <span className="text-gray-600 font-urdu text-sm block mb-1">کل منافع:</span>
                       <div className="font-bold text-emerald-600 text-lg">{formatPakistaniCurrency(dayBookData.summary.totalProfit || 0)}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border">
+                      <span className="text-gray-600 font-urdu text-sm block mb-1">کل باقی (فروخت):</span>
+                      <div className="font-bold text-red-600 text-lg">{formatPakistaniCurrency(dayBookData.data?.filter(item => item.type === 'sale').reduce((sum, item) => sum + (item.remainingAmount || 0), 0) || 0)}</div>
                     </div>
                     <div className="bg-white p-3 rounded-lg shadow-sm border">
                       <span className="text-gray-600 font-urdu text-sm block mb-1">کل اندراجات:</span>

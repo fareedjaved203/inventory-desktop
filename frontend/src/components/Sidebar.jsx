@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import API from '../utils/api';
-import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaUtensils } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaUtensils, FaFileAlt } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -62,6 +62,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
 
   const allMenuItems = [
     { path: '/', label: t('dashboard'), icon: <FaChartLine />, permission: 'dashboard' },
+    { path: '/reports', label: 'Reports', icon: <FaFileAlt />, permission: 'reports' },
     { path: '/pos', label: t('pos'), icon: <FaCashRegister />, permission: 'pos' },
     { path: '/employee-stats', label: t('employeeStats'), icon: <FaChartLine />, permission: 'employee-stats', employeeOnly: true },
     { path: '/products', label: t('products'), icon: <FaBoxOpen />, permission: 'products' },
