@@ -166,35 +166,40 @@ export function setupSalesRoutes(app, prisma) {
               const quantityNeeded = item.quantity - product.quantity;
               console.log(`[CREATE] Auto-mfg: Need=${quantityNeeded}`);
               
+              let allAvailable = true;
               for (const ingredient of product.recipe.ingredients) {
                 const needed = ingredient.quantity * quantityNeeded;
                 console.log(`[CREATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
                 if (ingredient.rawMaterial.quantity < needed) {
-                  throw new Error(`Insufficient raw materials to manufacture ${product.name}`);
+                  allAvailable = false;
+                  console.log(`[CREATE] Insufficient ${ingredient.rawMaterial.name}, skipping auto-manufacturing`);
+                  break;
                 }
               }
               
-              for (const ingredient of product.recipe.ingredients) {
-                const needed = ingredient.quantity * quantityNeeded;
-                console.log(`[CREATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
-                await prisma.product.update({
-                  where: { id: ingredient.rawMaterialId },
-                  data: {
-                    quantity: {
-                      decrement: needed
+              if (allAvailable) {
+                for (const ingredient of product.recipe.ingredients) {
+                  const needed = ingredient.quantity * quantityNeeded;
+                  console.log(`[CREATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
+                  await prisma.product.update({
+                    where: { id: ingredient.rawMaterialId },
+                    data: {
+                      quantity: {
+                        decrement: needed
+                      }
                     }
-                  }
-                });
-              }
-              
-              if (product.quantity > 0) {
-                console.log(`[CREATE] Set product to 0 (was ${product.quantity})`);
-                await prisma.product.update({
-                  where: { id: item.productId },
-                  data: {
-                    quantity: 0
-                  }
-                });
+                  });
+                }
+                
+                if (product.quantity > 0) {
+                  console.log(`[CREATE] Set product to 0 (was ${product.quantity})`);
+                  await prisma.product.update({
+                    where: { id: item.productId },
+                    data: {
+                      quantity: 0
+                    }
+                  });
+                }
               }
             } else {
               throw new Error(`Insufficient stock for product ${product.name}`);
@@ -820,35 +825,40 @@ export function setupSalesRoutes(app, prisma) {
               const quantityNeeded = item.quantity - product.quantity;
               console.log(`[UPDATE] Auto-mfg: Need=${quantityNeeded}`);
               
+              let allAvailable = true;
               for (const ingredient of product.recipe.ingredients) {
                 const needed = ingredient.quantity * quantityNeeded;
                 console.log(`[UPDATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
                 if (ingredient.rawMaterial.quantity < needed) {
-                  throw new Error(`Insufficient raw materials to manufacture ${product.name}`);
+                  allAvailable = false;
+                  console.log(`[UPDATE] Insufficient ${ingredient.rawMaterial.name}, skipping auto-manufacturing`);
+                  break;
                 }
               }
               
-              for (const ingredient of product.recipe.ingredients) {
-                const needed = ingredient.quantity * quantityNeeded;
-                console.log(`[UPDATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
-                await prisma.product.update({
-                  where: { id: ingredient.rawMaterialId },
-                  data: {
-                    quantity: {
-                      decrement: needed
+              if (allAvailable) {
+                for (const ingredient of product.recipe.ingredients) {
+                  const needed = ingredient.quantity * quantityNeeded;
+                  console.log(`[UPDATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
+                  await prisma.product.update({
+                    where: { id: ingredient.rawMaterialId },
+                    data: {
+                      quantity: {
+                        decrement: needed
+                      }
                     }
-                  }
-                });
-              }
-              
-              if (product.quantity > 0) {
-                console.log(`[UPDATE] Set product to 0 (was ${product.quantity})`);
-                await prisma.product.update({
-                  where: { id: item.productId },
-                  data: {
-                    quantity: 0
-                  }
-                });
+                  });
+                }
+                
+                if (product.quantity > 0) {
+                  console.log(`[UPDATE] Set product to 0 (was ${product.quantity})`);
+                  await prisma.product.update({
+                    where: { id: item.productId },
+                    data: {
+                      quantity: 0
+                    }
+                  });
+                }
               }
             } else {
               throw new Error(`Insufficient stock for product ${product.name}`);

@@ -352,7 +352,7 @@ function Manufacturing() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800 flex items-center gap-2">
           <FaUtensils />
-          Manufacturing
+          Recipe
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative">
@@ -385,7 +385,7 @@ function Manufacturing() {
             className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap flex items-center gap-2 w-full sm:w-auto"
           >
             <FaPlus />
-            {activeTab === 'recipes' ? 'Add Manufacturing' : 'Start Manufacturing'}
+            {activeTab === 'recipes' ? 'Add Recipe' : 'Start Production'}
           </button>
         </div>
       </div>
@@ -402,7 +402,7 @@ function Manufacturing() {
             }`}
           >
             <FaCog className="inline mr-2" />
-            Manufacturing
+            Recipes
           </button>
           <button
             onClick={() => setActiveTab('production')}
@@ -413,7 +413,7 @@ function Manufacturing() {
             }`}
           >
             <FaUtensils className="inline mr-2" />
-            Manufacturing History
+            Production History
           </button>
         </div>
         
@@ -547,8 +547,8 @@ function Manufacturing() {
             {(!data?.data?.items || data.data.items.length === 0) && (
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
                 <FaUtensils className="w-16 h-16 mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium mb-2">No Manufacturing Found</h3>
-                <p className="text-sm text-center">Create your first manufacturing to get started.</p>
+                <h3 className="text-lg font-medium mb-2">No Recipes Found</h3>
+                <p className="text-sm text-center">Create your first recipe to get started.</p>
               </div>
             )}
           </div>
@@ -559,7 +559,7 @@ function Manufacturing() {
               <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                    Manufacturing Name
+                    Recipe Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                     Product
@@ -627,7 +627,7 @@ function Manufacturing() {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Manufacturing
+                  Recipe
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                   Product
@@ -636,7 +636,7 @@ function Manufacturing() {
                   Quantity Made
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
-                  Manufacturing Cost
+                  Production Cost
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                   Notes
@@ -692,17 +692,17 @@ function Manufacturing() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                {selectedItem ? 'Edit Manufacturing' : 'Add New Manufacturing'}
+                {selectedItem ? 'Edit Recipe' : 'Add New Recipe'}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="recipe-form" onSubmit={handleSubmit(onSubmitRecipe)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Manufacturing Name
+                  Recipe Name
                 </label>
                 <input
-                  {...register('name', { required: 'Manufacturing name is required' })}
+                  {...register('name', { required: 'Recipe name is required' })}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {errors.name && (
@@ -897,17 +897,17 @@ function Manufacturing() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md h-[90vh] shadow-xl border border-gray-200 flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2">
-                Start Manufacturing
+                Start Production
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
               <form id="production-form" onSubmit={handleSubmit(onSubmitProduction)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Manufacturing
+                  Recipe
                 </label>
                 <select
-                  {...register('recipeId', { required: 'Manufacturing is required' })}
+                  {...register('recipeId', { required: 'Recipe is required' })}
                   onChange={(e) => {
                     const recipeId = e.target.value;
                     setSelectedRecipe(recipeId);
@@ -921,7 +921,7 @@ function Manufacturing() {
                   }}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select Manufacturing</option>
+                  <option value="">Select Recipe</option>
                   {recipesData?.data?.items?.map((recipe) => (
                     <option key={recipe.id} value={recipe.id}>
                       {recipe.name} ({recipe.product?.name})

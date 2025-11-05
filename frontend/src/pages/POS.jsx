@@ -217,29 +217,34 @@ function POS() {
 
   // Add product to cart
   const addToCart = async (product) => {
-    // If manufactured product, check raw material availability and deduct
+    let rawMaterialsDeducted = false;
+    
+    // If manufactured product, check raw material availability and deduct if available
     if (product.isManufactured && product.recipe?.ingredients) {
+      let allAvailable = true;
       for (const ingredient of product.recipe.ingredients) {
         const required = Number(ingredient.quantity);
         const available = Number(ingredient.rawMaterial.quantity);
         
         if (available < required) {
-          toast.error(`Insufficient ${ingredient.rawMaterial.name}. Required: ${required} ${ingredient.unit}, Available: ${available} ${ingredient.rawMaterial.unit}`);
-          return;
+          allAvailable = false;
+          break;
         }
       }
 
-      // Deduct raw materials
-      try {
-        for (const ingredient of product.recipe.ingredients) {
-          await API.updateProduct(ingredient.rawMaterialId, {
-            quantity: Number(ingredient.rawMaterial.quantity) - Number(ingredient.quantity)
-          });
+      // Deduct raw materials only if all are available
+      if (allAvailable) {
+        try {
+          for (const ingredient of product.recipe.ingredients) {
+            await API.updateProduct(ingredient.rawMaterialId, {
+              quantity: Number(ingredient.rawMaterial.quantity) - Number(ingredient.quantity)
+            });
+          }
+          rawMaterialsDeducted = true;
+          toast.success(`Manufactured product added! Raw materials deducted.`);
+        } catch (error) {
+          // Ignore error and continue
         }
-        toast.success(`Manufactured product added! Raw materials deducted.`);
-      } catch (error) {
-        toast.error('Failed to deduct raw materials');
-        return;
       }
     }
 
@@ -269,7 +274,8 @@ function POS() {
           quantity: 1,
           maxQuantity: product.isManufactured ? Infinity : Number(product.quantity),
           unit: product.unit,
-          isManufactured: product.isManufactured
+          isManufactured: product.isManufactured,
+          rawMaterialsDeducted: rawMaterialsDeducted
         }];
       }
     });
