@@ -266,21 +266,37 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          recipe: {
+            include: {
+              ingredients: {
+                include: {
+                  rawMaterial: true
+                }
+              }
+            }
+          }
+        }
       }),
     ]);
 
     res.json({
-      items: items.map(item => ({
-        ...item,
-        id: item.id.toString(),
-        price: item.price ? Number(item.price) : null,
-        retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
-        wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
-        purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
-        perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
-        unitValue: item.unitValue ? Number(item.unitValue) : null,
-        quantity: Number(item.quantity)
-      })),
+      items: items.map(item => {
+        const isManufactured = !!item.recipe;
+        return {
+          ...item,
+          id: item.id.toString(),
+          price: item.price ? Number(item.price) : null,
+          retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
+          wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
+          purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+          perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
+          unitValue: item.unitValue ? Number(item.unitValue) : null,
+          quantity: isManufactured ? null : Number(item.quantity),
+          isManufactured,
+          recipe: item.recipe || undefined
+        };
+      }),
       total,
       page,
       totalPages: Math.ceil(total / limit),

@@ -191,8 +191,6 @@ function POS() {
     return response.data;
   });
 
-  console.log(JSON.stringify(shopSettings));
-
   // Handle barcode scan/input
   const handleBarcodeSubmit = async (e) => {
     e.preventDefault();
@@ -218,11 +216,38 @@ function POS() {
   };
 
   // Add product to cart
-  const addToCart = (product) => {
+  const addToCart = async (product) => {
+    // If manufactured product, check raw material availability and deduct
+    if (product.isManufactured && product.recipe?.ingredients) {
+      for (const ingredient of product.recipe.ingredients) {
+        const required = Number(ingredient.quantity);
+        const available = Number(ingredient.rawMaterial.quantity);
+        
+        if (available < required) {
+          toast.error(`Insufficient ${ingredient.rawMaterial.name}. Required: ${required} ${ingredient.unit}, Available: ${available} ${ingredient.rawMaterial.unit}`);
+          return;
+        }
+      }
+
+      // Deduct raw materials
+      try {
+        for (const ingredient of product.recipe.ingredients) {
+          await API.updateProduct(ingredient.rawMaterialId, {
+            quantity: Number(ingredient.rawMaterial.quantity) - Number(ingredient.quantity)
+          });
+        }
+        toast.success(`Manufactured product added! Raw materials deducted.`);
+      } catch (error) {
+        toast.error('Failed to deduct raw materials');
+        return;
+      }
+    }
+
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
       if (existingItem) {
-        if (existingItem.quantity >= Number(product.quantity)) {
+        // For manufactured products, no stock limit check
+        if (!product.isManufactured && existingItem.quantity >= Number(product.quantity)) {
           toast.error('Insufficient stock');
           return prevCart;
         }
@@ -232,7 +257,8 @@ function POS() {
             : item
         );
       } else {
-        if (Number(product.quantity) <= 0) {
+        // For non-manufactured products, check stock
+        if (!product.isManufactured && Number(product.quantity) <= 0) {
           toast.error('Product out of stock');
           return prevCart;
         }
@@ -241,8 +267,9 @@ function POS() {
           name: product.name,
           price: Number(product.retailPrice || product.price),
           quantity: 1,
-          maxQuantity: Number(product.quantity),
-          unit: product.unit
+          maxQuantity: product.isManufactured ? Infinity : Number(product.quantity),
+          unit: product.unit,
+          isManufactured: product.isManufactured
         }];
       }
     });
@@ -292,7 +319,9 @@ function POS() {
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountAmount = discountType === 'percentage' ? (subtotal * discount) / 100 : discount;
+  const discountAmount = viewMode === 'compact' 
+    ? (discountType === 'percentage' ? (subtotal * discount) / 100 : discount)
+    : (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
   const change = paidAmount - total;
   
@@ -726,7 +755,12 @@ function POS() {
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-800">{product.name}</div>
-                          <div className="text-sm text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit}</div>
+                          {!product.isManufactured && product.quantity !== null && (
+                            <div className="text-sm text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit}</div>
+                          )}
+                          {product.isManufactured && (
+                            <div className="text-sm text-blue-600">Made to Order</div>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-primary-600">{formatPakistaniCurrency(product.retailPrice || product.price)}</div>
@@ -1150,16 +1184,26 @@ function POS() {
                             <FaShoppingCart className="text-gray-400 text-2xl" />
                           </div>
                         )}
-                        {Number(product.quantity) <= 5 && (
+                        {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
                           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
                             Low Stock
+                          </span>
+                        )}
+                        {product.isManufactured && (
+                          <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
+                            Made to Order
                           </span>
                         )}
                       </div>
                       <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
+                        {!product.isManufactured && product.quantity !== null && (
+                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
+                        )}
+                        {product.isManufactured && (
+                          <p className="text-xs text-blue-600 font-medium">Made to Order</p>
+                        )}
                         {product.sku && (
                           <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
                         )}
@@ -1221,16 +1265,26 @@ function POS() {
                             <FaShoppingCart className="text-gray-400 text-2xl" />
                           </div>
                         )}
-                        {Number(product.quantity) <= 5 && (
+                        {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
                           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
                             Low Stock
+                          </span>
+                        )}
+                        {product.isManufactured && (
+                          <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
+                            Made to Order
                           </span>
                         )}
                       </div>
                       <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
                       <div className="space-y-1">
                         <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
+                        {!product.isManufactured && product.quantity !== null && (
+                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
+                        )}
+                        {product.isManufactured && (
+                          <p className="text-xs text-blue-600 font-medium">Made to Order</p>
+                        )}
                         {product.sku && (
                           <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
                         )}
@@ -1367,7 +1421,7 @@ function POS() {
                     </button>
                   </div>
                   
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
@@ -1386,61 +1440,6 @@ function POS() {
                     <div className="text-right">
                       <div className="text-xs text-gray-600">{formatPakistaniCurrency(item.price)} each</div>
                       <div className="font-semibold text-xs">{formatPakistaniCurrency(item.price * item.quantity)}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-1">
-                    <div>
-                      <label className="text-[10px] text-gray-500">Qty/{item.unit || 'unit'}</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        defaultValue={item.quantity}
-                        onBlur={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (val > 0) updateCartQuantity(item.id, val);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = parseFloat(e.target.value);
-                            if (val > 0) {
-                              updateCartQuantity(item.id, val);
-                              e.target.blur();
-                            }
-                          }
-                        }}
-                        onWheel={(e) => e.target.blur()}
-                        className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-gray-500">Amount (Rs.)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        defaultValue={(item.price * item.quantity).toFixed(2)}
-                        onBlur={(e) => {
-                          const amount = parseFloat(e.target.value);
-                          if (amount > 0) {
-                            const newQty = amount / item.price;
-                            updateCartQuantity(item.id, newQty);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const amount = parseFloat(e.target.value);
-                            if (amount > 0) {
-                              const newQty = amount / item.price;
-                              updateCartQuantity(item.id, newQty);
-                              e.target.blur();
-                            }
-                          }
-                        }}
-                        onWheel={(e) => e.target.blur()}
-                        className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
-                      />
                     </div>
                   </div>
                 </div>
@@ -1488,7 +1487,7 @@ function POS() {
             </div>
 
             {/* Payment */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Amount to deduct
               </label>
@@ -1500,46 +1499,59 @@ function POS() {
                 onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px]"
               />
-              {change > 0 && (
-                <div className="mt-2 text-sm text-green-600">
-                  Change: {formatPakistaniCurrency(change)}
-                </div>
-              )}
             </div>
 
-            {/* Quick Payment Buttons */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            {/* Cash Received and Balance */}
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+              <div className="text-xs text-blue-700 font-medium mb-2">For Thermal Print Only</div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cash Received</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Balance to Return</label>
+                <input
+                  type="number"
+                  value={balance}
+                  readOnly
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm bg-gray-100 font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Process Sale and Preview Buttons */}
+            <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={() => setPaidAmount(total)}
-                className="px-2 lg:px-3 py-3 bg-gray-200 text-gray-700 rounded-md text-xs lg:text-sm hover:bg-gray-300 active:bg-gray-400 min-h-[48px]"
+                onClick={processSale}
+                disabled={createSale.isLoading}
+                className="col-span-2 bg-primary-600 text-white py-4 rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[52px] text-sm lg:text-base"
               >
-                Exact
+                {createSale.isLoading ? (
+                  <LoadingSpinner size="w-5 h-5" />
+                ) : (
+                  <>
+                    <FaPrint className="mr-2" />
+                    <span className="hidden sm:inline">Complete Sale & Print</span>
+                    <span className="sm:hidden">Complete Sale</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={previewReceipt}
-                className="px-2 lg:px-3 py-3 bg-blue-200 text-blue-700 rounded-md text-xs lg:text-sm hover:bg-blue-300 active:bg-blue-400 flex items-center justify-center min-h-[48px]"
+                disabled={cart.length === 0}
+                className="bg-blue-500 text-white py-4 rounded-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 flex items-center justify-center min-h-[52px]"
                 title="Preview Receipt"
               >
-                <FaEye />
+                <FaEye size={20} />
               </button>
             </div>
-
-            {/* Process Sale Button */}
-            <button
-              onClick={processSale}
-              disabled={createSale.isLoading}
-              className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[52px] text-sm lg:text-base"
-            >
-              {createSale.isLoading ? (
-                <LoadingSpinner size="w-5 h-5" />
-              ) : (
-                <>
-                  <FaPrint className="mr-2" />
-                  <span className="hidden sm:inline">Complete Sale & Print</span>
-                  <span className="sm:hidden">Complete Sale</span>
-                </>
-              )}
-            </button>
           </div>
         )}
         </div>

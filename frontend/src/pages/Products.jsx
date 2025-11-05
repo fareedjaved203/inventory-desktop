@@ -324,13 +324,13 @@ function Products() {
   const handleEdit = (product) => {
     setFormData({
       id: product.id,
-      name: product.name,
-      description: product.description,
+      name: product.name || '',
+      description: product.description || '',
       retailPrice: product.retailPrice ? product.retailPrice.toString() : (product.price ? product.price.toString() : ''),
       wholesalePrice: product.wholesalePrice ? product.wholesalePrice.toString() : '',
       purchasePrice: product.purchasePrice ? product.purchasePrice.toString() : '',
-      sku: product.sku,
-      quantity: product.quantity.toString(),
+      sku: product.sku || '',
+      quantity: product.quantity ? product.quantity.toString() : '0',
       unit: product.unit || 'pcs',
       unitValue: product.unitValue ? product.unitValue.toString() : '',
       lowStockThreshold: (product.lowStockThreshold || 10).toString(),
@@ -816,386 +816,268 @@ function Products() {
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-2">
-              <form id="product-form" onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <input
-                      type="checkbox"
-                      id="isRawMaterial"
-                      checked={formData.isRawMaterial}
-                      onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
-                      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="isRawMaterial" className="text-base font-medium text-blue-800">
-                      Raw Material
-                    </label>
-                    <span className="text-sm text-blue-600">(Manufacturing)</span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaTag className="text-primary-500" /> Category (Optional)
-                    </label>
-                    <select
-                      value={formData.categoryId}
-                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">No Category</option>
-                      {categories?.items?.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.icon} {category.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">Organize products for better POS navigation</p>
-                  </div>
-                </div>
-                
-                {/* Product Image Upload */}
-                <ProductImageUpload
-                  value={formData.image}
-                  onChange={(filename) => setFormData({ ...formData, image: filename })}
-                  className="mb-4"
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaBoxOpen className="text-primary-500" /> {language === 'ur' ? 'نام *' : 'Name *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
-                      // Clear name validation error when user starts typing
-                      if (validationErrors.name) {
-                        const newErrors = { ...validationErrors };
-                        delete newErrors.name;
-                        setValidationErrors(newErrors);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={language === 'ur' ? 'پروڈکٹ کا نام درج کریں' : 'Enter product name'}
-                  />
-                  {validationErrors.name && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'پروڈکٹ کا منفرد نام ضروری ہے' : 'Unique product name is required'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{language === 'ur' ? 'تفصیل' : 'Description'}</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    rows="3"
-                    placeholder={language === 'ur' ? 'پروڈکٹ کی تفصیل (اختیاری)' : 'Product description (optional)'}
-                  />
-                  {validationErrors.description && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FaBarcode className="text-primary-500" /> {language === 'ur' ? 'بارکوڈ/ایس کے یو (اختیاری)' : 'Barcode/SKU (Optional)'}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      disabled={isGeneratingBarcode}
-                      className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        isGeneratingBarcode
-                          ? 'border-gray-300 bg-gray-50 text-gray-700 cursor-not-allowed'
-                          : 'border-primary-200 focus:ring-primary-500'
-                      }`}
-                      placeholder={isGeneratingBarcode ? 'Generating barcode...' : (language === 'ur' ? 'پروڈکٹ کوڈ/بارکوڈ یا اپنا کوڈ درج کریں' : 'Enter barcode/SKU or use generate button')}
-                    />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsGeneratingBarcode(true);
-                        try {
-                          const barcode = await generateUserBarcode();
-                          setFormData({ ...formData, sku: barcode });
-                        } catch (error) {
-                          console.error('Failed to generate barcode:', error);
-                        } finally {
-                          setIsGeneratingBarcode(false);
-                        }
-                      }}
-                      disabled={isGeneratingBarcode}
-                      className="px-3 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 flex items-center gap-1 disabled:opacity-50"
-                      title="Generate new barcode"
-                    >
-                      {isGeneratingBarcode ? <LoadingSpinner size="w-4 h-4" /> : <FaBarcode />}
-                    </button>
-                  </div>
-                  {validationErrors.sku && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.sku}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {language === 'ur' ? 'خودکار بارکوڈ یا اپنا کوڈ استعمال کریں۔ POS میں اسکین کے لیے' : 'Auto-generated or enter your own. Used for scanning in POS system'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaDollarSign className="text-primary-500" /> {language === 'ur' ? 'ریٹیل قیمت (اختیاری)' : 'Retail Price (Optional)'}
-                      <div className="relative group">
-                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          Price for individual customers (MRP)
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                        </div>
-                      </div>
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100000000"
-                      value={formData.retailPrice}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value > 100000000) {
-                          setValidationErrors({...validationErrors, retailPrice: t('priceCannotExceed')});
-                        } else {
-                          setValidationErrors({...validationErrors, retailPrice: undefined});
-                        }
-                        setFormData({ ...formData, retailPrice: e.target.value });
-                      }}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder={language === 'ur' ? 'ریٹیل قیمت' : 'Retail price'}
-                    />
-                    {validationErrors.retailPrice && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.retailPrice}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaDollarSign className="text-green-500" /> {language === 'ur' ? 'ہول سیل قیمت (اختیاری)' : 'Wholesale Price (Optional)'}
-                      <div className="relative group">
-                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          Bulk/wholesale price for resellers
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                        </div>
-                      </div>
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100000000"
-                      value={formData.wholesalePrice}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value > 100000000) {
-                          setValidationErrors({...validationErrors, wholesalePrice: t('priceCannotExceed')});
-                        } else {
-                          setValidationErrors({...validationErrors, wholesalePrice: undefined});
-                        }
-                        setFormData({ ...formData, wholesalePrice: e.target.value });
-                      }}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-3 py-2 border border-green-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder={language === 'ur' ? 'ہول سیل قیمت' : 'Wholesale price'}
-                    />
-                    {validationErrors.wholesalePrice && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.wholesalePrice}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaDollarSign className="text-blue-500" /> {language === 'ur' ? 'خریداری کی قیمت (اختیاری)' : 'Purchase Price (Optional)'}
-                      <div className="relative group">
-                        <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          Individual piece cost / total weighted item cost
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                        </div>
-                      </div>
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100000000"
-                      value={formData.purchasePrice}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value > 100000000) {
-                          setValidationErrors({...validationErrors, purchasePrice: t('purchasePriceCannotExceed')});
-                        } else {
-                          setValidationErrors({...validationErrors, purchasePrice: undefined});
-                        }
-                        // Auto-calculate per unit cost when purchase price changes
-                        const quantity = parseFloat(formData.quantity);
-                        if (value && quantity && quantity > 0) {
-                          const perUnitCost = value / quantity;
-                          setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
-                        } else {
-                          setFormData({ ...formData, purchasePrice: e.target.value });
-                        }
-                      }}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder={language === 'ur' ? 'خریداری کی قیمت' : 'Purchase price'}
-                    />
-                    {validationErrors.purchasePrice && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
-                    )}
-                  </div>
-                  {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                        <FaDollarSign className="text-purple-500" /> Per Unit Cost
-                        <div className="relative group">
-                          <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                          </svg>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                            Cost per single unit for weighted items (Purchase Price / Quantity)
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                          </div>
-                        </div>
+              <form id="product-form" onSubmit={handleSubmit}>
+                <div className="space-y-6">
+                  {/* Section 1: Product Classification */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <FaTag /> Product Classification
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200">
+                      <input
+                        type="checkbox"
+                        id="isRawMaterial"
+                        checked={formData.isRawMaterial}
+                        onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor="isRawMaterial" className="text-sm font-medium text-blue-800">
+                        Raw Material <span className="text-xs text-blue-600">(For Manufacturing)</span>
                       </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                      <select
+                        value={formData.categoryId}
+                        onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      >
+                        <option value="">No Category</option>
+                        {categories?.items?.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.icon} {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Basic Information */}
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <FaBoxOpen /> Basic Information
+                  </h3>
+                  <div className="space-y-3">
+                    <ProductImageUpload
+                      value={formData.image}
+                      onChange={(filename) => setFormData({ ...formData, image: filename })}
+                    />
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Product Name *</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => {
+                          setFormData({ ...formData, name: e.target.value });
+                          if (validationErrors.name) {
+                            const newErrors = { ...validationErrors };
+                            delete newErrors.name;
+                            setValidationErrors(newErrors);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        placeholder="Enter unique product name"
+                      />
+                      {validationErrors.name && <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        rows="2"
+                        placeholder="Product description (optional)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <FaBarcode /> Barcode/SKU
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={formData.sku}
+                          onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                          disabled={isGeneratingBarcode}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                          placeholder={isGeneratingBarcode ? 'Generating...' : 'Enter or generate'}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setIsGeneratingBarcode(true);
+                            try {
+                              const barcode = await generateUserBarcode();
+                              setFormData({ ...formData, sku: barcode });
+                            } catch (error) {
+                              console.error('Failed to generate barcode:', error);
+                            } finally {
+                              setIsGeneratingBarcode(false);
+                            }
+                          }}
+                          disabled={isGeneratingBarcode}
+                          className="px-3 py-2 bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 disabled:opacity-50"
+                        >
+                          {isGeneratingBarcode ? <LoadingSpinner size="w-4 h-4" /> : <FaBarcode />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Pricing */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                  <h3 className="text-sm font-bold text-green-900 mb-3 flex items-center gap-2">
+                    <FaDollarSign /> Pricing
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Retail Price (MRP)</label>
                       <input
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        value={formData.perUnitPurchasePrice || ''}
-                        onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
+                        value={formData.retailPrice}
+                        onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
                         onWheel={(e) => e.target.blur()}
-                        className="w-full px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Cost per unit"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        placeholder="Individual customer price"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Auto-calculated from purchase price / quantity</p>
                     </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{language === 'ur' ? 'منافع کیلکولیشن کے لیے استعمال ہوتا ہے' : 'Purchase price for profit calculation. Per unit cost for manufacturing cost calculation.'}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <FaWarehouse className="text-primary-500" /> {language === 'ur' ? 'مقدار *' : 'Quantity *'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value < 0) {
-                          setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
-                        } else {
-                          setValidationErrors({...validationErrors, quantity: undefined});
-                        }
-                        // Auto-calculate per unit cost when quantity changes
-                        const purchasePrice = parseFloat(formData.purchasePrice);
-                        if (purchasePrice && value && value > 0) {
-                          const perUnitCost = purchasePrice / value;
-                          setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
-                        } else {
-                          setFormData({ ...formData, quantity: e.target.value });
-                        }
-                      }}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder={language === 'ur' ? 'اسٹاک کی مقدار' : 'Stock quantity'}
-                    />
-                    {validationErrors.quantity && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {language === 'ur' ? 'یونٹ' : 'Unit'}
-                    </label>
-                    <select
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="pcs">Pieces</option>
-                      <option value="dozen">Dozen</option>
-                      <option value="kg">Kilogram</option>
-                      <option value="gram">Gram</option>
-                      <option value="ltr">Liter</option>
-                      <option value="ml">Milliliter</option>
-                      <option value="ft">Feet</option>
-                      <option value="metre">Meter</option>
-                      <option value="sqft">Square Feet</option>
-                      <option value="carton">Carton</option>
-                      <option value="roll">Roll</option>
-                      <option value="sheet">Sheet</option>
-                      <option value="drum">Drum</option>
-                      <option value="packet">Packet</option>
-                      <option value="bottle">Bottle</option>
-                      <option value="bag">Bag</option>
-                      <option value="pair">Pair</option>
-                      <option value="set">Set</option>
-                      <option value="ton">Ton</option>
-                      <option value="ohm">Ohm</option>
-                    </select>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Wholesale Price</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={formData.wholesalePrice}
+                        onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
+                        onWheel={(e) => e.target.blur()}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        placeholder="Bulk/reseller price"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-xs text-gray-500 mt-1">
-                  <p>{language === 'ur' ? 'اعشاریہ کی اجازت ہے' : 'Decimals allowed (e.g., 1.5 kg)'}</p>
-                  <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700">
-                    <p className="font-medium">💡 Simple Inventory:</p>
-                    <p>• Enter total quantity available (e.g., 1.5 for 1.5kg chicken)</p>
-                    <p>• Use description for details (e.g., "Steel rod 3m length each")</p>
-                    <p>• Manufactured products: Start with quantity=0</p>
+                {/* Section 4: Cost & Inventory */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
+                  <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
+                    <FaWarehouse /> Cost & Inventory
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Purchase Price</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={formData.purchasePrice}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            const quantity = parseFloat(formData.quantity);
+                            if (value && quantity && quantity > 0) {
+                              const perUnitCost = value / quantity;
+                              setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                            } else {
+                              setFormData({ ...formData, purchasePrice: e.target.value });
+                            }
+                          }}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          placeholder="Total cost"
+                        />
+                      </div>
+                      {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Per Unit Cost</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.perUnitPurchasePrice || ''}
+                            onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-50"
+                            placeholder="Auto-calculated"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Quantity *</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.quantity}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            const purchasePrice = parseFloat(formData.purchasePrice);
+                            if (purchasePrice && value && value > 0) {
+                              const perUnitCost = purchasePrice / value;
+                              setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                            } else {
+                              setFormData({ ...formData, quantity: e.target.value });
+                            }
+                          }}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          placeholder="Stock quantity"
+                        />
+                        {validationErrors.quantity && <p className="text-red-500 text-xs mt-1">{validationErrors.quantity}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                        <select
+                          value={formData.unit}
+                          onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        >
+                          <option value="pcs">Pieces</option>
+                          <option value="dozen">Dozen</option>
+                          <option value="kg">Kilogram</option>
+                          <option value="gram">Gram</option>
+                          <option value="ltr">Liter</option>
+                          <option value="ml">Milliliter</option>
+                          <option value="ft">Feet</option>
+                          <option value="metre">Meter</option>
+                          <option value="sqft">Square Feet</option>
+                          <option value="carton">Carton</option>
+                          <option value="roll">Roll</option>
+                          <option value="sheet">Sheet</option>
+                          <option value="drum">Drum</option>
+                          <option value="packet">Packet</option>
+                          <option value="bottle">Bottle</option>
+                          <option value="bag">Bag</option>
+                          <option value="pair">Pair</option>
+                          <option value="set">Set</option>
+                          <option value="ton">Ton</option>
+                          <option value="ohm">Ohm</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Alert</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.lowStockThreshold}
+                        onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                        onWheel={(e) => e.target.blur()}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                        placeholder="Alert when stock reaches this level"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-orange-500">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                    {language === 'ur' ? 'کم اسٹاک الرٹ کی حد' : 'Low Stock Alert Threshold'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.lowStockThreshold}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (value < 0) {
-                        setValidationErrors({...validationErrors, lowStockThreshold: t('lowStockThresholdMustBeNonNegative')});
-                      } else {
-                        setValidationErrors({...validationErrors, lowStockThreshold: undefined});
-                      }
-                      setFormData({ ...formData, lowStockThreshold: e.target.value });
-                    }}
-                    onWheel={(e) => e.target.blur()}
-                    className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="0.1"
-                  />
-                  {validationErrors.lowStockThreshold && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.lowStockThreshold}</p>
-                  )}
-                  <div className="text-xs text-gray-500 mt-1">
-                    <p>{language === 'ur' ? 'جب مقدار اس قیمت سے کم یا برابر ہو تو الرٹ آئے گا' : 'Low stock alert threshold'}</p>
-
-                  </div>
                 </div>
-              </div>
               </form>
             </div>
             <div className="flex-shrink-0 mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">

@@ -331,28 +331,49 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       })
     ]);
 
-    // Calculate profit as Total Sales - Total Purchases for the period
+    // Calculate gross profit based on actual sale items (retail price - purchase cost per item)
     const calculateProfit = async (startDate, endDate) => {
-      const [totalSales, totalPurchases] = await Promise.all([
-        prisma.sale.aggregate({
-          _sum: { totalAmount: true },
-          where: {
-            userId: req.userId,
-            saleDate: { gte: startDate, lt: endDate }
+      const sales = await prisma.sale.findMany({
+        where: {
+          userId: req.userId,
+          saleDate: { gte: startDate, lt: endDate }
+        },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
           }
-        }),
-        prisma.bulkPurchase.aggregate({
-          _sum: { totalAmount: true },
-          where: {
-            userId: req.userId,
-            purchaseDate: { gte: startDate, lt: endDate }
-          }
-        })
-      ]);
+        }
+      });
       
-      const salesAmount = Number(totalSales._sum.totalAmount || 0);
-      const purchasesAmount = Number(totalPurchases._sum.totalAmount || 0);
-      return salesAmount - purchasesAmount;
+      let totalProfit = 0;
+      
+      for (const sale of sales) {
+        for (const item of sale.items) {
+          const quantity = Number(item.quantity);
+          const salePrice = Number(item.price);
+          const product = item.product;
+          
+          // Determine purchase cost per unit
+          let purchaseCostPerUnit = 0;
+          
+          // For weighted items (kg, ltr, ml, gram, dozen, ton), use perUnitPurchasePrice
+          const weightedUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton'];
+          if (weightedUnits.includes(product.unit?.toLowerCase())) {
+            purchaseCostPerUnit = Number(product.perUnitPurchasePrice || 0);
+          } else {
+            // For regular items, use the purchase price from the sale item or product
+            purchaseCostPerUnit = Number(item.purchasePrice || product.price || 0);
+          }
+          
+          // Calculate profit for this item
+          const itemProfit = (salePrice - purchaseCostPerUnit) * quantity;
+          totalProfit += itemProfit;
+        }
+      }
+      
+      return totalProfit;
     };
 
     // Calculate net profit by subtracting expenses from gross profit

@@ -28,7 +28,7 @@ export function setupManufacturingRoutes(app, prisma) {
   // Get all recipes
   app.get('/api/recipes', authenticateToken, async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '' } = req.query;
+      const { page = 1, limit = 10, search = '', productId } = req.query;
 
       let where = { userId: req.userId };
 
@@ -37,6 +37,10 @@ export function setupManufacturingRoutes(app, prisma) {
           contains: search,
           mode: 'insensitive'
         };
+      }
+
+      if (productId) {
+        where.productId = productId;
       }
 
       const [total, items] = await Promise.all([
@@ -119,6 +123,25 @@ export function setupManufacturingRoutes(app, prisma) {
           }
         });
 
+        // Calculate estimated cost per unit
+        const estimatedCostPerUnit = recipe.ingredients.reduce((total, ingredient) => {
+          const rawMaterial = ingredient.rawMaterial;
+          const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
+          const ingredientCost = Number(ingredient.quantity) * perUnitCost;
+          return total + ingredientCost;
+        }, 0);
+
+        // Update product with estimated purchase price
+        if (estimatedCostPerUnit > 0) {
+          await prisma.product.update({
+            where: { id: req.body.productId },
+            data: {
+              purchasePrice: Math.round(estimatedCostPerUnit),
+              perUnitPurchasePrice: Math.round(estimatedCostPerUnit)
+            }
+          });
+        }
+
         return recipe;
       });
 
@@ -168,6 +191,25 @@ export function setupManufacturingRoutes(app, prisma) {
             }
           }
         });
+
+        // Calculate estimated cost per unit
+        const estimatedCostPerUnit = recipe.ingredients.reduce((total, ingredient) => {
+          const rawMaterial = ingredient.rawMaterial;
+          const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
+          const ingredientCost = Number(ingredient.quantity) * perUnitCost;
+          return total + ingredientCost;
+        }, 0);
+
+        // Update product with estimated purchase price
+        if (estimatedCostPerUnit > 0) {
+          await prisma.product.update({
+            where: { id: existingRecipe.productId },
+            data: {
+              purchasePrice: Math.round(estimatedCostPerUnit),
+              perUnitPurchasePrice: Math.round(estimatedCostPerUnit)
+            }
+          });
+        }
 
         return recipe;
       });
@@ -348,7 +390,7 @@ export function setupManufacturingRoutes(app, prisma) {
           manufacturingCost = recipe.ingredients.reduce((total, ingredient) => {
             const rawMaterial = ingredient.rawMaterial;
             const ingredientAmount = Number(ingredient.quantity) * Number(req.body.quantityProduced);
-            const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
+            const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
             const ingredientCost = ingredientAmount * perUnitCost;
             console.log(`Ingredient ${rawMaterial.name}: ${ingredientAmount} units × ${perUnitCost} = ${ingredientCost}`);
             return total + ingredientCost;
@@ -381,13 +423,14 @@ export function setupManufacturingRoutes(app, prisma) {
           }
         });
 
-        // Update the manufactured product's purchase cost with manufacturing cost
+        // Update the manufactured product's purchase cost with manufacturing cost per unit
         if (manufacturingCost > 0) {
+          const costPerUnit = manufacturingCost / Number(req.body.quantityProduced);
           await prisma.product.update({
             where: { id: recipe.productId },
             data: {
-              purchasePrice: Math.round(manufacturingCost),
-              perUnitPurchasePrice: 0
+              purchasePrice: Math.round(costPerUnit),
+              perUnitPurchasePrice: Math.round(costPerUnit)
             }
           });
         }
@@ -426,7 +469,7 @@ export function setupManufacturingRoutes(app, prisma) {
       const estimatedCost = recipe.ingredients.reduce((total, ingredient) => {
         const rawMaterial = ingredient.rawMaterial;
         const ingredientAmount = Number(ingredient.quantity) * Number(quantityProduced);
-        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
+        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
         const ingredientCost = ingredientAmount * perUnitCost;
         return total + ingredientCost;
       }, 0);
@@ -434,7 +477,7 @@ export function setupManufacturingRoutes(app, prisma) {
       const costBreakdown = recipe.ingredients.map(ingredient => {
         const rawMaterial = ingredient.rawMaterial;
         const ingredientAmount = Number(ingredient.quantity) * Number(quantityProduced);
-        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0) / 100;
+        const perUnitCost = Number(rawMaterial.perUnitPurchasePrice || 0);
         const ingredientCost = ingredientAmount * perUnitCost;
         
         return {

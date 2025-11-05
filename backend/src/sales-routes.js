@@ -132,25 +132,73 @@ export function setupSalesRoutes(app, prisma) {
 
           for (const item of req.body.items) {
             const product = await prisma.product.findUnique({
-              where: { id: item.productId }
+              where: { id: item.productId },
+              include: {
+                recipe: {
+                  include: {
+                    ingredients: {
+                      include: {
+                        rawMaterial: true
+                      }
+                    }
+                  }
+                }
+              }
             });
 
             if (!product) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            if (product.quantity < item.quantity) {
-              throw new Error(`Insufficient stock for product ${product.name}`);
-            }
+            console.log(`[CREATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}`);
 
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: {
-                quantity: {
-                  decrement: item.quantity
+            if (product.quantity >= item.quantity) {
+              console.log(`[CREATE] Direct deduction: ${item.quantity}`);
+              await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: {
+                    decrement: item.quantity
+                  }
+                }
+              });
+            } else if (product.recipe) {
+              const quantityNeeded = item.quantity - product.quantity;
+              console.log(`[CREATE] Auto-mfg: Need=${quantityNeeded}`);
+              
+              for (const ingredient of product.recipe.ingredients) {
+                const needed = ingredient.quantity * quantityNeeded;
+                console.log(`[CREATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
+                if (ingredient.rawMaterial.quantity < needed) {
+                  throw new Error(`Insufficient raw materials to manufacture ${product.name}`);
                 }
               }
-            });
+              
+              for (const ingredient of product.recipe.ingredients) {
+                const needed = ingredient.quantity * quantityNeeded;
+                console.log(`[CREATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
+                await prisma.product.update({
+                  where: { id: ingredient.rawMaterialId },
+                  data: {
+                    quantity: {
+                      decrement: needed
+                    }
+                  }
+                });
+              }
+              
+              if (product.quantity > 0) {
+                console.log(`[CREATE] Set product to 0 (was ${product.quantity})`);
+                await prisma.product.update({
+                  where: { id: item.productId },
+                  data: {
+                    quantity: 0
+                  }
+                });
+              }
+            } else {
+              throw new Error(`Insufficient stock for product ${product.name}`);
+            }
           }
 
           return sale;
@@ -738,25 +786,73 @@ export function setupSalesRoutes(app, prisma) {
 
           for (const item of req.body.items) {
             const product = await prisma.product.findUnique({
-              where: { id: item.productId }
+              where: { id: item.productId },
+              include: {
+                recipe: {
+                  include: {
+                    ingredients: {
+                      include: {
+                        rawMaterial: true
+                      }
+                    }
+                  }
+                }
+              }
             });
 
             if (!product) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            if (product.quantity < item.quantity) {
-              throw new Error(`Insufficient stock for product ${product.name}`);
-            }
+            console.log(`[UPDATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}`);
 
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: {
-                quantity: {
-                  decrement: item.quantity
+            if (product.quantity >= item.quantity) {
+              console.log(`[UPDATE] Direct deduction: ${item.quantity}`);
+              await prisma.product.update({
+                where: { id: item.productId },
+                data: {
+                  quantity: {
+                    decrement: item.quantity
+                  }
+                }
+              });
+            } else if (product.recipe) {
+              const quantityNeeded = item.quantity - product.quantity;
+              console.log(`[UPDATE] Auto-mfg: Need=${quantityNeeded}`);
+              
+              for (const ingredient of product.recipe.ingredients) {
+                const needed = ingredient.quantity * quantityNeeded;
+                console.log(`[UPDATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
+                if (ingredient.rawMaterial.quantity < needed) {
+                  throw new Error(`Insufficient raw materials to manufacture ${product.name}`);
                 }
               }
-            });
+              
+              for (const ingredient of product.recipe.ingredients) {
+                const needed = ingredient.quantity * quantityNeeded;
+                console.log(`[UPDATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
+                await prisma.product.update({
+                  where: { id: ingredient.rawMaterialId },
+                  data: {
+                    quantity: {
+                      decrement: needed
+                    }
+                  }
+                });
+              }
+              
+              if (product.quantity > 0) {
+                console.log(`[UPDATE] Set product to 0 (was ${product.quantity})`);
+                await prisma.product.update({
+                  where: { id: item.productId },
+                  data: {
+                    quantity: 0
+                  }
+                });
+              }
+            } else {
+              throw new Error(`Insufficient stock for product ${product.name}`);
+            }
           }
 
           return updatedSale;
@@ -795,16 +891,43 @@ export function setupSalesRoutes(app, prisma) {
           throw new Error('Sale not found');
         }
 
-        // Restore product quantities from sale items
+        // Restore product quantities and raw materials from sale items
         for (const item of sale.items) {
-          await prisma.product.update({
+          const product = await prisma.product.findUnique({
             where: { id: item.productId },
-            data: {
-              quantity: {
-                increment: item.quantity
+            include: {
+              recipe: {
+                include: {
+                  ingredients: true
+                }
               }
             }
           });
+
+          if (product && product.recipe) {
+            // If product has recipe, restore raw materials instead of final product
+            for (const ingredient of product.recipe.ingredients) {
+              const usedQuantity = ingredient.quantity * item.quantity;
+              await prisma.product.update({
+                where: { id: ingredient.rawMaterialId },
+                data: {
+                  quantity: {
+                    increment: usedQuantity
+                  }
+                }
+              });
+            }
+          } else {
+            // No recipe, restore final product directly
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: {
+                quantity: {
+                  increment: item.quantity
+                }
+              }
+            });
+          }
         }
 
         // Adjust product quantities for returned items (remove them from stock if they were added back)

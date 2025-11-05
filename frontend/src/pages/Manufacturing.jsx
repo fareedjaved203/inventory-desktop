@@ -309,7 +309,7 @@ function Manufacturing() {
   };
 
   const addIngredient = () => {
-    setIngredients([{ rawMaterialId: '', quantity: '', unit: 'pcs' }, ...ingredients]);
+    setIngredients([...ingredients, { rawMaterialId: '', quantity: '', unit: 'pcs' }]);
   };
 
   const removeIngredient = (index) => {
@@ -803,7 +803,7 @@ function Manufacturing() {
                 <button
                   type="button"
                   onClick={addIngredient}
-                  className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+                  className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                 >
                   <FaPlus className="w-4 h-4" />
                   Add New Ingredient
