@@ -9,9 +9,12 @@ import DeleteModal from '../components/DeleteModal';
 import TableSkeleton from '../components/TableSkeleton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { debounce } from 'lodash';
-import { FaSearch, FaTag, FaPalette, FaPlus } from 'react-icons/fa';
+import { FaSearch, FaTag, FaPalette, FaPlus, FaGripVertical } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -28,6 +31,67 @@ const CATEGORY_COLORS = [
 const CATEGORY_ICONS = [
   '📦', '🍔', '👕', '📱', '🏠', '🚗', '💊', '📚', '🎮', '⚽'
 ];
+
+function SortableRow({ category, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-primary-50 transition-colors">
+      <td className="px-2 py-4 cursor-move" {...attributes} {...listeners}>
+        <FaGripVertical className="text-gray-400" />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+            style={{ backgroundColor: category.color }}
+          >
+            {category.icon}
+          </div>
+          <div>
+            <div className="font-medium text-primary-700">{category.name}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-gray-600">
+        {category.description || '-'}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+          {category._count?.products || 0} products
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => onEdit(category)}
+            className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(category)}
+            className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m6.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 function Categories() {
   const queryClient = useQueryClient();
@@ -71,9 +135,57 @@ function Categories() {
         search: debouncedSearchTerm
       };
       
-      return await DataStorageManager.read(STORES.categories, params);
+      const result = await DataStorageManager.read(STORES.categories, params);
+      
+      // Apply custom order from localStorage
+      if (result?.items && !debouncedSearchTerm) {
+        const savedOrder = JSON.parse(localStorage.getItem('categoryOrder') || '[]');
+        if (savedOrder.length > 0) {
+          result.items.sort((a, b) => {
+            const indexA = savedOrder.indexOf(a.id);
+            const indexB = savedOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+          });
+        }
+      }
+      
+      return result;
     }
   );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    
+    if (active.id !== over.id) {
+      const oldIndex = categories.items.findIndex((cat) => cat.id === active.id);
+      const newIndex = categories.items.findIndex((cat) => cat.id === over.id);
+      
+      const newOrder = arrayMove(categories.items, oldIndex, newIndex);
+      const orderIds = newOrder.map(cat => cat.id);
+      
+      // Save to localStorage
+      localStorage.setItem('categoryOrder', JSON.stringify(orderIds));
+      
+      // Update query cache
+      queryClient.setQueryData(['categories', debouncedSearchTerm, currentPage], {
+        ...categories,
+        items: newOrder
+      });
+      
+      toast.success('Category order updated!');
+    }
+  };
 
   useEffect(() => {
     if (searchInputRef.current) {
@@ -252,6 +364,7 @@ function Categories() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
+              {!debouncedSearchTerm && <th className="px-2 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-8"></th>}
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden md:table-cell">Description</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Products</th>
@@ -261,14 +374,14 @@ function Categories() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && debouncedSearchTerm ? (
               <tr>
-                <td colSpan="4" className="px-6 py-8 text-center">
+                <td colSpan="5" className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
                   </div>
                 </td>
               </tr>
-            ) : (
+            ) : debouncedSearchTerm ? (
               categories?.items?.map((category) => (
                 <tr key={category.id} className="hover:bg-primary-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -316,6 +429,14 @@ function Categories() {
                   </td>
                 </tr>
               ))
+            ) : (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={categories?.items?.map(c => c.id) || []} strategy={verticalListSortingStrategy}>
+                  {categories?.items?.map((category) => (
+                    <SortableRow key={category.id} category={category} onEdit={handleEdit} onDelete={handleDelete} />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
           </tbody>
         </table>

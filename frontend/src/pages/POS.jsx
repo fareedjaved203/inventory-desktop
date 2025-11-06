@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import API from '../utils/api';
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
-import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye, FaTh, FaList } from 'react-icons/fa';
+import { FaBarcode, FaSearch, FaTrash, FaPlus, FaMinus, FaPrint, FaShoppingCart, FaTimes, FaEye, FaTh, FaList, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProductImage from '../components/ProductImage';
 import { debounce } from 'lodash';
@@ -36,6 +36,7 @@ function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(true);
   const [selectedProductIndex, setSelectedProductIndex] = useState(-1);
+  const [showCategories, setShowCategories] = useState(true);
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -135,6 +136,20 @@ function POS() {
     async () => {
       const response = await API.get('/categories');
       const cats = Array.isArray(response.data) ? response.data : (response.data?.items || []);
+      
+      // Apply custom order from localStorage
+      const savedOrder = JSON.parse(localStorage.getItem('categoryOrder') || '[]');
+      if (savedOrder.length > 0) {
+        cats.sort((a, b) => {
+          const indexA = savedOrder.indexOf(a.id);
+          const indexB = savedOrder.indexOf(b.id);
+          if (indexA === -1 && indexB === -1) return 0;
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+      }
+      
       // Add "Other Products" category for uncategorized products
       const otherCategory = {
         id: 'other',
@@ -258,6 +273,36 @@ function POS() {
           toast.error('Insufficient stock');
           return prevCart;
         }
+        
+        // Check raw materials when adding more of manufactured product
+        if (product.isManufactured && product.recipe?.ingredients) {
+          const insufficientMaterials = [];
+          const currentConsumption = existingItem.quantity;
+          
+          for (const ingredient of product.recipe.ingredients) {
+            const requiredPerUnit = Number(ingredient.quantity);
+            const totalAvailable = Number(ingredient.rawMaterial.quantity);
+            const alreadyUsed = requiredPerUnit * currentConsumption;
+            const remaining = totalAvailable - alreadyUsed;
+            
+            if (remaining < requiredPerUnit) {
+              insufficientMaterials.push(`${ingredient.rawMaterial.name} (need ${requiredPerUnit}, have ${Math.max(0, remaining)})`);
+            }
+          }
+          
+          if (insufficientMaterials.length > 0) {
+            toast.error(
+              <div>
+                <div className="font-semibold">Insufficient raw materials:</div>
+                {insufficientMaterials.map((msg, idx) => (
+                  <div key={idx} className="text-sm">• {msg}</div>
+                ))}
+              </div>,
+              { duration: 5000 }
+            );
+          }
+        }
+        
         return prevCart.map(item =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -1360,13 +1405,21 @@ function POS() {
 
         {/* Categories Section - Only show in default view */}
         {viewMode === 'default' && (
-        <div className="bg-white rounded-xl shadow-lg p-4 max-h-[300px]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800">Categories</h3>
-            <span className="text-sm text-gray-500">
-              {Array.isArray(categories) ? categories.length : 0} categories
-            </span>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setShowCategories(!showCategories)}
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800">Categories</h3>
+              <span className="text-sm text-gray-500">
+                {Array.isArray(categories) ? categories.length : 0} categories
+              </span>
+            </div>
+            {showCategories ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
           </div>
+          {showCategories && (
+          <div className="p-4 pt-0">
           {!Array.isArray(categories) || categories.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
               <p>No categories available</p>
@@ -1408,6 +1461,8 @@ function POS() {
                 ))}
               </div>
             </div>
+          )}
+          </div>
           )}
         </div>
         )}

@@ -166,20 +166,18 @@ export function setupSalesRoutes(app, prisma) {
               const quantityNeeded = item.quantity - product.quantity;
               console.log(`[CREATE] Auto-mfg: Need=${quantityNeeded}`);
               
-              let allAvailable = true;
+              // Calculate max quantity we can make with available materials
+              let maxCanMake = quantityNeeded;
               for (const ingredient of product.recipe.ingredients) {
-                const needed = ingredient.quantity * quantityNeeded;
-                console.log(`[CREATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
-                if (ingredient.rawMaterial.quantity < needed) {
-                  allAvailable = false;
-                  console.log(`[CREATE] Insufficient ${ingredient.rawMaterial.name}, skipping auto-manufacturing`);
-                  break;
-                }
+                const canMakeWithThis = Math.floor(ingredient.rawMaterial.quantity / ingredient.quantity);
+                maxCanMake = Math.min(maxCanMake, canMakeWithThis);
               }
               
-              if (allAvailable) {
+              console.log(`[CREATE] Can make ${maxCanMake} units with available materials`);
+              
+              if (maxCanMake > 0) {
                 for (const ingredient of product.recipe.ingredients) {
-                  const needed = ingredient.quantity * quantityNeeded;
+                  const needed = ingredient.quantity * maxCanMake;
                   console.log(`[CREATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
                   await prisma.product.update({
                     where: { id: ingredient.rawMaterialId },
@@ -825,20 +823,18 @@ export function setupSalesRoutes(app, prisma) {
               const quantityNeeded = item.quantity - product.quantity;
               console.log(`[UPDATE] Auto-mfg: Need=${quantityNeeded}`);
               
-              let allAvailable = true;
+              // Calculate max quantity we can make with available materials
+              let maxCanMake = quantityNeeded;
               for (const ingredient of product.recipe.ingredients) {
-                const needed = ingredient.quantity * quantityNeeded;
-                console.log(`[UPDATE] ${ingredient.rawMaterial.name}: Recipe=${ingredient.quantity} x ${quantityNeeded} = ${needed}`);
-                if (ingredient.rawMaterial.quantity < needed) {
-                  allAvailable = false;
-                  console.log(`[UPDATE] Insufficient ${ingredient.rawMaterial.name}, skipping auto-manufacturing`);
-                  break;
-                }
+                const canMakeWithThis = Math.floor(ingredient.rawMaterial.quantity / ingredient.quantity);
+                maxCanMake = Math.min(maxCanMake, canMakeWithThis);
               }
               
-              if (allAvailable) {
+              console.log(`[UPDATE] Can make ${maxCanMake} units with available materials`);
+              
+              if (maxCanMake > 0) {
                 for (const ingredient of product.recipe.ingredients) {
-                  const needed = ingredient.quantity * quantityNeeded;
+                  const needed = ingredient.quantity * maxCanMake;
                   console.log(`[UPDATE] Deduct ${ingredient.rawMaterial.name}: ${needed}`);
                   await prisma.product.update({
                     where: { id: ingredient.rawMaterialId },
