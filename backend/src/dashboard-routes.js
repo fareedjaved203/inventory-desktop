@@ -637,13 +637,19 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       if (productId) {
         saleWhere.items = {
           some: {
-            productId: productId
+            productId: productId,
+            product: {
+              userId: req.userId
+            }
           }
         };
         
         purchaseWhere.items = {
           some: {
-            productId: productId
+            productId: productId,
+            product: {
+              userId: req.userId
+            }
           }
         };
       }
@@ -653,6 +659,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         saleWhere.items = {
           some: {
             product: {
+              userId: req.userId,
               category: {
                 name: category
               }
@@ -663,6 +670,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         purchaseWhere.items = {
           some: {
             product: {
+              userId: req.userId,
               category: {
                 name: category
               }
@@ -677,6 +685,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           where: saleWhere,
           include: {
             items: {
+              where: {
+                product: {
+                  userId: req.userId
+                }
+              },
               include: { 
                 product: {
                   include: {
@@ -692,6 +705,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           where: purchaseWhere,
           include: {
             items: {
+              where: {
+                product: {
+                  userId: req.userId
+                }
+              },
               include: { 
                 product: {
                   include: {

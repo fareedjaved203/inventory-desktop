@@ -217,41 +217,43 @@ function POS() {
 
   // Add product to cart
   const addToCart = async (product) => {
-    let rawMaterialsDeducted = false;
+    console.log('Adding product:', product);
+    console.log('Is manufactured:', product.isManufactured);
+    console.log('Recipe:', product.recipe);
     
-    // If manufactured product, check raw material availability and deduct if available
+    // Check raw materials for manufactured products
     if (product.isManufactured && product.recipe?.ingredients) {
-      let allAvailable = true;
+      console.log('Checking ingredients:', product.recipe.ingredients);
+      const insufficientMaterials = [];
+      
       for (const ingredient of product.recipe.ingredients) {
         const required = Number(ingredient.quantity);
         const available = Number(ingredient.rawMaterial.quantity);
+        console.log(`${ingredient.rawMaterial.name}: need ${required}, have ${available}`);
         
         if (available < required) {
-          allAvailable = false;
-          break;
+          insufficientMaterials.push(`${ingredient.rawMaterial.name} (need ${required}, have ${available})`);
         }
       }
 
-      // Deduct raw materials only if all are available
-      if (allAvailable) {
-        try {
-          for (const ingredient of product.recipe.ingredients) {
-            await API.updateProduct(ingredient.rawMaterialId, {
-              quantity: Number(ingredient.rawMaterial.quantity) - Number(ingredient.quantity)
-            });
-          }
-          rawMaterialsDeducted = true;
-          toast.success(`Manufactured product added! Raw materials deducted.`);
-        } catch (error) {
-          // Ignore error and continue
-        }
+      console.log('Insufficient materials:', insufficientMaterials);
+      
+      if (insufficientMaterials.length > 0) {
+        toast.error(
+          <div>
+            <div className="font-semibold">Insufficient raw materials:</div>
+            {insufficientMaterials.map((msg, idx) => (
+              <div key={idx} className="text-sm">• {msg}</div>
+            ))}
+          </div>,
+          { duration: 5000 }
+        );
       }
     }
 
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
       if (existingItem) {
-        // For manufactured products, no stock limit check
         if (!product.isManufactured && existingItem.quantity >= Number(product.quantity)) {
           toast.error('Insufficient stock');
           return prevCart;
@@ -262,7 +264,6 @@ function POS() {
             : item
         );
       } else {
-        // For non-manufactured products, check stock
         if (!product.isManufactured && Number(product.quantity) <= 0) {
           toast.error('Product out of stock');
           return prevCart;
@@ -275,7 +276,7 @@ function POS() {
           maxQuantity: product.isManufactured ? Infinity : Number(product.quantity),
           unit: product.unit,
           isManufactured: product.isManufactured,
-          rawMaterialsDeducted: rawMaterialsDeducted
+          recipe: product.recipe
         }];
       }
     });
@@ -283,6 +284,8 @@ function POS() {
 
   // Update cart item quantity
   const updateCartQuantity = (productId, newQuantity) => {
+    console.log('updateCartQuantity called:', productId, newQuantity);
+    
     if (newQuantity <= 0) {
       removeFromCart(productId);
       return;
@@ -291,10 +294,52 @@ function POS() {
     setCart(prevCart =>
       prevCart.map(item => {
         if (item.id === productId) {
+          console.log('Found item:', item);
+          console.log('Is manufactured:', item.isManufactured);
+          console.log('Has recipe:', item.recipe);
+          console.log('New qty > old qty:', newQuantity > item.quantity);
+          
           if (newQuantity > item.maxQuantity) {
             toast.error('Insufficient stock');
             return item;
           }
+          
+          // Check raw materials when incrementing manufactured products
+          if (item.isManufactured && item.recipe?.ingredients && newQuantity > item.quantity) {
+            console.log('Checking materials on increment');
+            const insufficientMaterials = [];
+            
+            // Calculate how much is already consumed by current cart quantity
+            const currentConsumption = item.quantity;
+            
+            for (const ingredient of item.recipe.ingredients) {
+              const requiredPerUnit = Number(ingredient.quantity);
+              const totalAvailable = Number(ingredient.rawMaterial.quantity);
+              const alreadyUsed = requiredPerUnit * currentConsumption;
+              const remaining = totalAvailable - alreadyUsed;
+              
+              console.log(`${ingredient.rawMaterial.name}: need ${requiredPerUnit}, have ${remaining} remaining (total: ${totalAvailable}, used: ${alreadyUsed})`);
+              
+              if (remaining < requiredPerUnit) {
+                insufficientMaterials.push(`${ingredient.rawMaterial.name} (need ${requiredPerUnit}, have ${Math.max(0, remaining)})`);
+              }
+            }
+            
+            console.log('Insufficient on increment:', insufficientMaterials);
+            
+            if (insufficientMaterials.length > 0) {
+              toast.error(
+                <div>
+                  <div className="font-semibold">Insufficient raw materials:</div>
+                  {insufficientMaterials.map((msg, idx) => (
+                    <div key={idx} className="text-sm">• {msg}</div>
+                  ))}
+                </div>,
+                { duration: 5000 }
+              );
+            }
+          }
+          
           return { ...item, quantity: newQuantity };
         }
         return item;
