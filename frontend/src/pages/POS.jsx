@@ -524,9 +524,9 @@ function POS() {
           }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 13px;
-            font-weight: 900;
-            line-height: 1.2;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.4;
             margin: 0;
             padding: 5mm;
             width: 70mm;
@@ -539,9 +539,10 @@ function POS() {
             margin-bottom: 10px;
           }
           .shop-name {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
+            letter-spacing: 1px;
           }
           .shop-info {
             font-size: 10px;
@@ -606,7 +607,7 @@ function POS() {
         <div class="header">
           ${shopSettings?.logo ? `
             <div style="text-align: center; margin-bottom: 5px;">
-              <img src="${shopSettings.logo}" alt="Logo" style="max-width: 60mm; max-height: 20mm; filter: grayscale(100%) contrast(120%);" />
+              <img src="${shopSettings.logo}" alt="Logo" style="max-width: 60mm; max-height: 20mm; filter: grayscale(100%) contrast(200%) brightness(100%);" onerror="this.style.display='none'" />
             </div>
           ` : ''}
           <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>

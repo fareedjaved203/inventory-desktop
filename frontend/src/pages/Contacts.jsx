@@ -445,18 +445,6 @@ function Contacts() {
     let runningBalance = 0;
     allTransactions.forEach(transaction => {
       runningBalance += (transaction.debit || 0) - (transaction.credit || 0);
-      
-      // Check if this is an audit trail update where payment equals total amount
-      if (transaction.type === 'update' && transaction.updateDetails) {
-        const totalAmount = parseFloat(transaction.updateDetails.totalAmount.replace(/[^0-9.-]/g, ''));
-        const paidAmount = parseFloat(transaction.updateDetails.paidAmount.replace(/[^0-9.-]/g, ''));
-        if (paidAmount >= totalAmount) {
-          transaction.balance = 0;
-          runningBalance = 0;
-          return;
-        }
-      }
-      
       transaction.balance = runningBalance;
     });
     
