@@ -1,6 +1,6 @@
-import { FaEdit, FaTrash, FaPlay, FaStop, FaClock, FaPencilAlt } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlay, FaStop, FaClock, FaPencilAlt, FaCoffee } from 'react-icons/fa';
 
-export default function TableCard({ table, onEdit, onDelete, onCheckin, onCheckout, onEditBooking, formatDuration }) {
+export default function TableCard({ table, onEdit, onDelete, onCheckin, onCheckout, onEditBooking, onRefreshments, formatDuration }) {
   const activeBooking = table.bookings[0];
 
   return (
@@ -34,32 +34,53 @@ export default function TableCard({ table, onEdit, onDelete, onCheckin, onChecko
           </span>
         </div>
         {activeBooking && (
-          <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm">
-            <div className="flex justify-between items-start mb-1">
-              <div className="font-medium text-gray-900">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 mb-3 border border-gray-200">
+            <div className="flex justify-between items-start mb-3">
+              <div className="font-semibold text-gray-900 text-base">
                 {activeBooking.player1Name}{activeBooking.player2Name && ` vs ${activeBooking.player2Name}`}
               </div>
-              <button onClick={() => onEditBooking(activeBooking)} className="text-blue-600 hover:text-blue-800 p-1" title="Edit booking">
-                <FaPencilAlt className="text-xs" />
+              <button onClick={() => onEditBooking(activeBooking)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded" title="Edit booking">
+                <FaPencilAlt className="text-sm" />
               </button>
             </div>
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <FaClock className="text-xs" />
-              <span>{formatDuration(activeBooking.checkInTime)}</span>
+            <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <FaClock className="text-blue-600" />
+                  <span className="text-sm font-medium">Elapsed</span>
+                </div>
+                <span className="text-2xl font-bold text-blue-600">{formatDuration(activeBooking.checkInTime)}</span>
+              </div>
             </div>
-            <div className="text-xs text-gray-600 mb-1">Rs. {activeBooking.charges} / {activeBooking.chargeType.replace('_', ' ')}</div>
-            {activeBooking.expectedDuration && <div className="text-xs text-blue-600 mb-1">Expected: {activeBooking.expectedDuration}</div>}
-            <div className="text-xs text-gray-500">Check-in: {new Date(activeBooking.checkInTime).toLocaleTimeString()}</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white rounded-lg p-2 border border-gray-200">
+                <div className="text-gray-500 mb-1">Rate</div>
+                <div className="font-semibold text-gray-800">Rs. {activeBooking.charges}/{activeBooking.chargeType.replace('per_', '')}</div>
+              </div>
+              {activeBooking.refreshments?.length > 0 && (
+                <div className="bg-orange-50 rounded-lg p-2 border border-orange-200">
+                  <div className="text-orange-600 mb-1">Refreshments</div>
+                  <div className="font-semibold text-orange-700">Rs. {activeBooking.refreshments.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
-        <button
-          onClick={() => table.isAvailable ? onCheckin(table) : onCheckout(table, activeBooking)}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-            table.isAvailable ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'
-          }`}
-        >
-          {table.isAvailable ? <><FaPlay /> Check In</> : <><FaStop /> Check Out</>}
-        </button>
+        <div className="flex gap-2">
+          {!table.isAvailable && (
+            <button onClick={() => onRefreshments(activeBooking)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors">
+              <FaCoffee /> Refreshments
+            </button>
+          )}
+          <button
+            onClick={() => table.isAvailable ? onCheckin(table) : onCheckout(table, activeBooking)}
+            className={`${!table.isAvailable ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              table.isAvailable ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'
+            }`}
+          >
+            {table.isAvailable ? <><FaPlay /> Check In</> : <><FaStop /> Check Out</>}
+          </button>
+        </div>
       </div>
     </div>
   );

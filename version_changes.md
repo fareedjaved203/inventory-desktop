@@ -121,3 +121,29 @@ ALTER TABLE "GameTable" DROP COLUMN "charges";
 ALTER TABLE "GameBooking" ADD COLUMN "chargeType" TEXT NOT NULL DEFAULT 'per_hour';
 ALTER TABLE "GameBooking" ADD COLUMN "charges" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "GameBooking" ADD COLUMN "expectedDuration" TEXT;
+
+-- Create BookingRefreshment table
+CREATE TABLE "BookingRefreshment" (
+    "id" TEXT NOT NULL,
+    "bookingId" TEXT NOT NULL,
+    "playerName" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "productName" TEXT NOT NULL,
+    "quantity" DECIMAL(65,30) NOT NULL,
+    "price" DECIMAL(65,30) NOT NULL,
+    "totalAmount" DECIMAL(65,30) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "BookingRefreshment_pkey" PRIMARY KEY ("id")
+);
+
+-- Create indexes for better query performance
+CREATE INDEX "BookingRefreshment_bookingId_idx" ON "BookingRefreshment"("bookingId");
+CREATE INDEX "BookingRefreshment_bookingId_playerName_idx" ON "BookingRefreshment"("bookingId", "playerName");
+
+-- Add foreign key constraints
+ALTER TABLE "BookingRefreshment" ADD CONSTRAINT "BookingRefreshment_bookingId_fkey" 
+    FOREIGN KEY ("bookingId") REFERENCES "GameBooking"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "BookingRefreshment" ADD CONSTRAINT "BookingRefreshment_productId_fkey" 
+    FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

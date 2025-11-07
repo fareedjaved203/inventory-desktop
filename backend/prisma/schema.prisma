@@ -35,6 +35,7 @@ model Product {
   recipe            Recipe?
   recipeIngredients RecipeItem[] @relation("RecipeRawMaterial")
   category          Category?          @relation(fields: [categoryId], references: [id])
+  bookingRefreshments BookingRefreshment[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -431,10 +432,28 @@ model GameBooking {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   table       GameTable @relation(fields: [tableId], references: [id])
+  refreshments BookingRefreshment[]
 
   @@index([userId])
   @@index([tableId])
   @@index([userId, checkInTime])
+}
+
+model BookingRefreshment {
+  id          String      @id @default(uuid())
+  bookingId   String
+  playerName  String
+  productId   String
+  productName String
+  quantity    Decimal
+  price       Decimal
+  totalAmount Decimal
+  createdAt   DateTime    @default(now())
+  booking     GameBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@index([bookingId])
+  @@index([bookingId, playerName])
 }
 
 model Member {

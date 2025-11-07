@@ -25,22 +25,31 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-in</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-out</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Table</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Refreshments</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {history.map((booking) => (
-              <tr key={booking.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{booking.table.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {booking.player1Name}{booking.player2Name && ` vs ${booking.player2Name}`}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(booking.checkInTime).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{booking.checkOutTime ? new Date(booking.checkOutTime).toLocaleString() : '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{booking.checkOutTime ? formatDuration(booking.checkInTime, booking.checkOutTime) : '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Rs. {booking.totalAmount || 0}</td>
-              </tr>
-            ))}
+            {history.map((booking) => {
+              const refreshmentsTotal = (booking.refreshments || []).reduce((sum, r) => sum + parseFloat(r.totalAmount), 0);
+              const tableAmount = parseFloat(booking.totalAmount || 0);
+              const grandTotal = tableAmount + refreshmentsTotal;
+              return (
+                <tr key={booking.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{booking.table.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {booking.player1Name}{booking.player2Name && ` vs ${booking.player2Name}`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(booking.checkInTime).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{booking.checkOutTime ? new Date(booking.checkOutTime).toLocaleString() : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{booking.checkOutTime ? formatDuration(booking.checkInTime, booking.checkOutTime) : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {tableAmount.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {refreshmentsTotal.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">Rs. {grandTotal.toFixed(2)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

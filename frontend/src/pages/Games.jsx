@@ -7,6 +7,7 @@ import CheckinForm from '../components/games/CheckinForm';
 import CheckoutForm from '../components/games/CheckoutForm';
 import HistoryTable from '../components/games/HistoryTable';
 import DeleteModal from '../components/games/DeleteModal';
+import RefreshmentsModal from '../components/games/RefreshmentsModal';
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState('tables');
@@ -18,6 +19,7 @@ export default function Games() {
   const [showCheckinModal, setShowCheckinModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
+  const [showRefreshmentsModal, setShowRefreshmentsModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
   const [editBookingForm, setEditBookingForm] = useState({ expectedDuration: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -140,6 +142,11 @@ export default function Games() {
     setShowCheckoutModal(true);
   };
 
+  const openRefreshmentsModal = (booking) => {
+    setSelectedBooking(booking);
+    setShowRefreshmentsModal(true);
+  };
+
   const formatDuration = (checkInTime, checkOutTime = null) => {
     const endTime = checkOutTime ? new Date(checkOutTime) : new Date();
     const duration = Math.floor((endTime - new Date(checkInTime)) / 1000 / 60);
@@ -178,7 +185,7 @@ export default function Games() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tables.map((table) => (
-              <TableCard key={table.id} table={table} onEdit={openEditModal} onDelete={(t) => { setDeletingTable(t); setShowDeleteModal(true); }} onCheckin={openCheckinModal} onCheckout={openCheckoutModal} onEditBooking={openEditBookingModal} formatDuration={formatDuration} />
+              <TableCard key={table.id} table={table} onEdit={openEditModal} onDelete={(t) => { setDeletingTable(t); setShowDeleteModal(true); }} onCheckin={openCheckinModal} onCheckout={openCheckoutModal} onEditBooking={openEditBookingModal} onRefreshments={openRefreshmentsModal} formatDuration={formatDuration} />
             ))}
           </div>
         )
@@ -191,6 +198,7 @@ export default function Games() {
       {showTableModal && <TableForm formData={tableForm} setFormData={setTableForm} onSubmit={handleTableSubmit} onCancel={() => { setShowTableModal(false); setTableForm({ name: '', tableType: 'snooker' }); setSelectedTable(null); }} isEditing={!!selectedTable} />}
       {showCheckinModal && <CheckinForm table={selectedTable} formData={checkinForm} setFormData={setCheckinForm} onSubmit={handleCheckin} onCancel={() => { setShowCheckinModal(false); setCheckinForm({ player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_hour', charges: '', expectedDuration: '' }); setSelectedTable(null); }} />}
       {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0 }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
+      {showRefreshmentsModal && selectedBooking && <RefreshmentsModal booking={selectedBooking} onClose={() => { setShowRefreshmentsModal(false); setSelectedBooking(null); }} onUpdate={fetchTables} />}
       {showEditBookingModal && editingBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
