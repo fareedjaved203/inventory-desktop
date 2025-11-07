@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import API from '../utils/api';
-import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaUtensils, FaFileAlt } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave, FaBuilding, FaShoppingCart, FaUndo, FaCog, FaCodeBranch, FaUsers, FaCashRegister, FaTag, FaBars, FaTimes, FaTruck, FaEye, FaEyeSlash, FaUtensils, FaFileAlt, FaIdCard, FaGamepad } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -74,6 +74,8 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
     { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart />, permission: 'bulk-purchases' },
     { path: '/returns', label: t('returns'), icon: <FaUndo />, permission: 'returns' },
     { path: '/expenses', label: t('expenses'), icon: <FaMoneyBillWave />, permission: 'expenses' },
+    { path: '/members', label: 'Members', icon: <FaIdCard />, permission: 'members' },
+    { path: '/games', label: 'Games', icon: <FaGamepad />, permission: 'games' },
     { path: '/branches', label: t('branches'), icon: <FaCodeBranch />, permission: 'branches' },
     { path: '/employees', label: t('employees'), icon: <FaUsers />, permission: 'employees' },
     { path: '/settings', label: t('settings'), icon: <FaCog />, permission: 'settings' },

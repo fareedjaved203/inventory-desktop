@@ -25,6 +25,8 @@ import EmployeeStats from './pages/EmployeeStats';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Members from './pages/Members';
+import Games from './pages/Games';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
@@ -260,6 +262,8 @@ function AppContent() {
               <Route path="/returns" element={<Returns />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/members" element={<Members />} />
+              <Route path="/games" element={<Games />} />
               <Route path="/branches" element={<Branches />} />
               <Route path="/employees" element={<Employees />} />
               <Route path="/settings" element={<Settings />} />

@@ -207,6 +207,14 @@ app.use('/api/expenses', createExpenseRoutes(prisma));
 // Backup routes
 app.use('/api/backup', backupRoutes);
 
+// Member routes
+import memberRoutes from './member-routes.js';
+app.use('/api/members', memberRoutes);
+
+// Game routes
+import gameRoutes from './game-routes.js';
+app.use('/api/games', gameRoutes);
+
 // Get next barcode for user (optimized for performance)
 app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
   try {

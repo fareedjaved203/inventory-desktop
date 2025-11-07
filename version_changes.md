@@ -44,3 +44,80 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 # 5.10.8:
 
 - ALTER TABLE "BulkPurchase" ADD COLUMN "description" TEXT;
+
+# 5.10.9:
+
+-- Create Member table
+CREATE TABLE "Member" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT NOT NULL,
+    "cnic" TEXT,
+    "membershipType" TEXT NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiryDate" TIMESTAMP(3) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Member_pkey" PRIMARY KEY ("id")
+);
+
+-- Create indexes for better query performance
+CREATE INDEX "Member_userId_idx" ON "Member"("userId");
+CREATE INDEX "Member_userId_expiryDate_idx" ON "Member"("userId", "expiryDate");
+CREATE INDEX "Member_userId_isActive_idx" ON "Member"("userId", "isActive");
+
+-- Create GameTable
+CREATE TABLE "GameTable" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "tableType" TEXT NOT NULL DEFAULT 'snooker',
+    "chargeType" TEXT NOT NULL,
+    "charges" DECIMAL(65,30) NOT NULL,
+    "isAvailable" BOOLEAN NOT NULL DEFAULT true,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "GameTable_pkey" PRIMARY KEY ("id")
+);
+
+-- Create GameBooking
+CREATE TABLE "GameBooking" (
+    "id" TEXT NOT NULL,
+    "tableId" TEXT NOT NULL,
+    "player1Name" TEXT NOT NULL,
+    "player1Phone" TEXT,
+    "player2Name" TEXT,
+    "player2Phone" TEXT,
+    "checkInTime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "checkOutTime" TIMESTAMP(3),
+    "gamesPlayed" INTEGER DEFAULT 0,
+    "totalAmount" DECIMAL(65,30) DEFAULT 0,
+    "isPaid" BOOLEAN NOT NULL DEFAULT false,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "GameBooking_pkey" PRIMARY KEY ("id")
+);
+
+-- Create indexes
+CREATE INDEX "GameTable_userId_idx" ON "GameTable"("userId");
+CREATE INDEX "GameTable_userId_isAvailable_idx" ON "GameTable"("userId", "isAvailable");
+CREATE INDEX "GameBooking_userId_idx" ON "GameBooking"("userId");
+CREATE INDEX "GameBooking_tableId_idx" ON "GameBooking"("tableId");
+CREATE INDEX "GameBooking_userId_checkInTime_idx" ON "GameBooking"("userId", "checkInTime");
+
+-- Add foreign key
+ALTER TABLE "GameBooking" ADD CONSTRAINT "GameBooking_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "GameTable"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Remove charge fields from GameTable
+ALTER TABLE "GameTable" DROP COLUMN "chargeType";
+ALTER TABLE "GameTable" DROP COLUMN "charges";
+
+-- Add charge fields to GameBooking
+ALTER TABLE "GameBooking" ADD COLUMN "chargeType" TEXT NOT NULL DEFAULT 'per_hour';
+ALTER TABLE "GameBooking" ADD COLUMN "charges" DECIMAL(65,30) NOT NULL DEFAULT 0;
+ALTER TABLE "GameBooking" ADD COLUMN "expectedDuration" TEXT;

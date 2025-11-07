@@ -398,3 +398,61 @@ model AuditTrail {
   @@index([purchaseId])
 }
 
+model GameTable {
+  id          String        @id @default(uuid())
+  name        String
+  tableType   String        @default("snooker")
+  isAvailable Boolean       @default(true)
+  userId      String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  bookings    GameBooking[]
+
+  @@index([userId])
+  @@index([userId, isAvailable])
+}
+
+model GameBooking {
+  id          String    @id @default(uuid())
+  tableId     String
+  player1Name String
+  player1Phone String?
+  player2Name String?
+  player2Phone String?
+  chargeType  String
+  charges     Decimal
+  expectedDuration String?
+  checkInTime DateTime  @default(now())
+  checkOutTime DateTime?
+  gamesPlayed Int?      @default(0)
+  totalAmount Decimal?  @default(0)
+  isPaid      Boolean   @default(false)
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  table       GameTable @relation(fields: [tableId], references: [id])
+
+  @@index([userId])
+  @@index([tableId])
+  @@index([userId, checkInTime])
+}
+
+model Member {
+  id             String   @id @default(uuid())
+  name           String
+  email          String?
+  phone          String
+  cnic           String?
+  membershipType String
+  startDate      DateTime @default(now())
+  expiryDate     DateTime
+  isActive       Boolean  @default(true)
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, expiryDate])
+  @@index([userId, isActive])
+}
+
