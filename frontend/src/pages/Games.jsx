@@ -8,6 +8,8 @@ import CheckoutForm from '../components/games/CheckoutForm';
 import HistoryTable from '../components/games/HistoryTable';
 import DeleteModal from '../components/games/DeleteModal';
 import RefreshmentsModal from '../components/games/RefreshmentsModal';
+import TransferModal from '../components/games/TransferModal';
+import PlayerCheckoutModal from '../components/games/PlayerCheckoutModal';
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState('tables');
@@ -20,16 +22,20 @@ export default function Games() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   const [showRefreshmentsModal, setShowRefreshmentsModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showPlayerCheckoutModal, setShowPlayerCheckoutModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
   const [editBookingForm, setEditBookingForm] = useState({ expectedDuration: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingTable, setDeletingTable] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tableForm, setTableForm] = useState({ name: '', tableType: 'snooker' });
-  const [checkinForm, setCheckinForm] = useState({ player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_hour', charges: '', expectedDuration: '' });
-  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0 });
+  const [checkinForm, setCheckinForm] = useState({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', player1Charges: '0', player2Charges: '0', expectedDuration: '' });
+  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' });
 
   useEffect(() => { fetchTables(); }, []);
   useEffect(() => { if (activeTab === 'history') fetchHistory(); }, [activeTab, historyPage]);
@@ -79,12 +85,15 @@ export default function Games() {
   const handleCheckin = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id });
+      await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
       setShowCheckinModal(false);
-      setCheckinForm({ player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_hour', charges: '', expectedDuration: '' });
+      setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', player1Charges: '0', player2Charges: '0', expectedDuration: '' });
       setSelectedTable(null);
       fetchTables();
     } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Error checking in';
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
       console.error('Error checking in:', error);
     }
   };
@@ -94,7 +103,7 @@ export default function Games() {
     try {
       await axios.post(`/api/games/bookings/${selectedBooking.id}/checkout`, checkoutForm);
       setShowCheckoutModal(false);
-      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0 });
+      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' });
       setSelectedBooking(null);
       fetchTables();
     } catch (error) {
@@ -131,20 +140,33 @@ export default function Games() {
     setShowCheckinModal(true);
   };
 
-  const openCheckoutModal = (table, booking) => {
+  const openPlayerCheckoutModal = (table, booking) => {
     setSelectedTable(table);
     setSelectedBooking(booking);
-    const duration = (new Date() - new Date(booking.checkInTime)) / 1000 / 60;
-    let amount = 0;
-    if (booking.chargeType === 'per_min') amount = (duration * parseFloat(booking.charges)).toFixed(2);
-    else if (booking.chargeType === 'per_hour') amount = ((duration / 60) * parseFloat(booking.charges)).toFixed(2);
-    setCheckoutForm({ gamesPlayed: 0, totalAmount: amount });
-    setShowCheckoutModal(true);
+    setShowPlayerCheckoutModal(true);
   };
 
   const openRefreshmentsModal = (booking) => {
     setSelectedBooking(booking);
     setShowRefreshmentsModal(true);
+  };
+
+  const openTransferModal = (table, booking) => {
+    setSelectedTable(table);
+    setSelectedBooking(booking);
+    setShowTransferModal(true);
+  };
+
+  const handleTransfer = async (newTableId) => {
+    try {
+      await axios.put(`/api/games/bookings/${selectedBooking.id}/transfer`, { newTableId });
+      setShowTransferModal(false);
+      setSelectedTable(null);
+      setSelectedBooking(null);
+      fetchTables();
+    } catch (error) {
+      console.error('Error transferring table:', error);
+    }
   };
 
   const formatDuration = (checkInTime, checkOutTime = null) => {
@@ -185,7 +207,7 @@ export default function Games() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tables.map((table) => (
-              <TableCard key={table.id} table={table} onEdit={openEditModal} onDelete={(t) => { setDeletingTable(t); setShowDeleteModal(true); }} onCheckin={openCheckinModal} onCheckout={openCheckoutModal} onEditBooking={openEditBookingModal} onRefreshments={openRefreshmentsModal} formatDuration={formatDuration} />
+              <TableCard key={table.id} table={table} onEdit={openEditModal} onDelete={(t) => { setDeletingTable(t); setShowDeleteModal(true); }} onCheckin={openCheckinModal} onPlayerCheckout={openPlayerCheckoutModal} onEditBooking={openEditBookingModal} onRefreshments={openRefreshmentsModal} formatDuration={formatDuration} />
             ))}
           </div>
         )
@@ -196,8 +218,25 @@ export default function Games() {
       )}
 
       {showTableModal && <TableForm formData={tableForm} setFormData={setTableForm} onSubmit={handleTableSubmit} onCancel={() => { setShowTableModal(false); setTableForm({ name: '', tableType: 'snooker' }); setSelectedTable(null); }} isEditing={!!selectedTable} />}
-      {showCheckinModal && <CheckinForm table={selectedTable} formData={checkinForm} setFormData={setCheckinForm} onSubmit={handleCheckin} onCancel={() => { setShowCheckinModal(false); setCheckinForm({ player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_hour', charges: '', expectedDuration: '' }); setSelectedTable(null); }} />}
-      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0 }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
+      {showCheckinModal && <CheckinForm table={selectedTable} formData={checkinForm} setFormData={setCheckinForm} onSubmit={handleCheckin} onCancel={() => { setShowCheckinModal(false); setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' }); setSelectedTable(null); }} />}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-red-600">Error</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">{errorMessage}</p>
+              <p className="text-sm text-gray-600 mb-6">Do you want to proceed as walk-in customer?</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button onClick={() => setShowErrorModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={() => { setCheckinForm({ ...checkinForm, memberId: null, member2Id: null, player1Charges: '0', player2Charges: '0' }); setShowErrorModal(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Proceed as Walk-in</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
       {showRefreshmentsModal && selectedBooking && <RefreshmentsModal booking={selectedBooking} onClose={() => { setShowRefreshmentsModal(false); setSelectedBooking(null); }} onUpdate={fetchTables} />}
       {showEditBookingModal && editingBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -223,6 +262,8 @@ export default function Games() {
         </div>
       )}
       {showDeleteModal && deletingTable && <DeleteModal table={deletingTable} onDelete={async () => { try { await axios.delete(`/api/games/tables/${deletingTable.id}`); setShowDeleteModal(false); setDeletingTable(null); fetchTables(); } catch (error) { console.error('Error deleting table:', error); } }} onCancel={() => { setShowDeleteModal(false); setDeletingTable(null); }} />}
+      {showTransferModal && selectedBooking && <TransferModal booking={selectedBooking} availableTables={tables.filter(t => t.isAvailable)} onTransfer={handleTransfer} onCancel={() => { setShowTransferModal(false); setSelectedTable(null); setSelectedBooking(null); }} />}
+      {showPlayerCheckoutModal && selectedBooking && <PlayerCheckoutModal booking={selectedBooking} onClose={() => { setShowPlayerCheckoutModal(false); setSelectedTable(null); setSelectedBooking(null); }} onUpdate={fetchTables} />}
     </div>
   );
 }

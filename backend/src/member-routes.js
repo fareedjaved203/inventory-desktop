@@ -53,13 +53,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // Create member
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, email, phone, cnic, membershipType, duration } = req.body;
+    const { name, email, phone, cnic, membershipType, duration, membershipPrice, totalGames, perFrameCharge } = req.body;
     const userId = req.userId;
     
     const expiryDate = new Date();
-    if (membershipType === 'monthly') expiryDate.setMonth(expiryDate.getMonth() + duration);
-    else if (membershipType === 'quarterly') expiryDate.setMonth(expiryDate.getMonth() + (duration * 3));
-    else if (membershipType === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + duration);
+    expiryDate.setMonth(expiryDate.getMonth() + 1);
     
     const member = await prisma.member.create({
       data: {
@@ -68,6 +66,10 @@ router.post('/', authenticateToken, async (req, res) => {
         phone,
         cnic,
         membershipType,
+        membershipPrice: membershipPrice || 0,
+        totalGames: totalGames || 0,
+        remainingGames: totalGames || 0,
+        perFrameCharge: perFrameCharge || 0,
         expiryDate,
         userId
       }
@@ -83,7 +85,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, cnic, membershipType } = req.body;
+    const { name, email, phone, cnic, membershipType, membershipPrice, totalGames, perFrameCharge } = req.body;
     
     const member = await prisma.member.update({
       where: { id },
@@ -92,7 +94,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
         email,
         phone,
         cnic,
-        membershipType
+        membershipType,
+        membershipPrice,
+        totalGames,
+        perFrameCharge
       }
     });
     
@@ -106,18 +111,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.post('/:id/renew', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { duration } = req.body;
-    
     const member = await prisma.member.findUnique({ where: { id } });
     const expiryDate = new Date();
-    
-    if (member.membershipType === 'monthly') expiryDate.setMonth(expiryDate.getMonth() + duration);
-    else if (member.membershipType === 'quarterly') expiryDate.setMonth(expiryDate.getMonth() + (duration * 3));
-    else if (member.membershipType === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + duration);
+    expiryDate.setMonth(expiryDate.getMonth() + 1);
     
     const updated = await prisma.member.update({
       where: { id },
-      data: { expiryDate }
+      data: { 
+        expiryDate,
+        remainingGames: member.totalGames,
+        lastResetDate: new Date()
+      }
     });
     
     res.json(updated);
@@ -132,6 +136,24 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     await prisma.member.delete({ where: { id } });
     res.json({ message: 'Member deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get active members for dropdown
+router.get('/active', authenticateToken, async (req, res) => {
+  try {
+    const members = await prisma.member.findMany({
+      where: { 
+        userId: req.userId,
+        expiryDate: { gte: new Date() },
+        isActive: true
+      },
+      select: { id: true, name: true, phone: true, totalGames: true, remainingGames: true, membershipType: true, perFrameCharge: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(members);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

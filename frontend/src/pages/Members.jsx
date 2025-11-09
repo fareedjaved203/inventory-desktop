@@ -23,8 +23,10 @@ export default function Members() {
     email: '',
     phone: '',
     cnic: '',
-    membershipType: 'monthly',
-    duration: 1
+    membershipType: '',
+    membershipPrice: 0,
+    totalGames: 0,
+    perFrameCharge: 0
   });
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export default function Members() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', cnic: '', membershipType: 'monthly', duration: 1 });
+    setFormData({ name: '', email: '', phone: '', cnic: '', membershipType: '', membershipPrice: 0, totalGames: 0, perFrameCharge: 0 });
     setEditingMember(null);
   };
 
@@ -111,7 +113,9 @@ export default function Members() {
       phone: member.phone,
       cnic: member.cnic || '',
       membershipType: member.membershipType,
-      duration: 1
+      membershipPrice: member.membershipPrice,
+      totalGames: member.totalGames,
+      perFrameCharge: member.perFrameCharge
     });
     setShowModal(true);
   };

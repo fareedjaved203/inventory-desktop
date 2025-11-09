@@ -28,6 +28,7 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Table</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Refreshments</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -47,6 +48,11 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {tableAmount.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {refreshmentsTotal.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">Rs. {grandTotal.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 capitalize">
+                      {booking.paymentMethod || 'cash'}
+                    </span>
+                  </td>
                 </tr>
               );
             })}

@@ -23,18 +23,44 @@ export default function CheckoutForm({ table, booking, formData, setFormData, on
             </div>
             <div className="text-sm text-gray-600 mt-2">Duration: {formatDuration(booking.checkInTime)}</div>
           </div>
-          {booking?.chargeType === 'per_game' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Games Played *</label>
-              <input type="number" min="0" value={formData.gamesPlayed} onChange={(e) => {
-                const games = parseInt(e.target.value);
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Games Played</label>
+            <input type="number" min="0" value={formData.gamesPlayed} onChange={(e) => {
+              const games = parseInt(e.target.value) || 0;
+              if (booking?.chargeType === 'per_game') {
                 setFormData({ ...formData, gamesPlayed: games, totalAmount: (games * parseFloat(booking.charges)).toFixed(2) });
-              }} onWheel={(e) => e.target.blur()} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-            </div>
-          )}
+              } else {
+                setFormData({ ...formData, gamesPlayed: games });
+              }
+            }} onWheel={(e) => e.target.blur()} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            {booking?.member?.totalGames > 0 && formData.gamesPlayed > booking.member.remainingGames && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ Exceeded by {formData.gamesPlayed - booking.member.remainingGames} games. Member has only {booking.member.remainingGames} games left.
+                </p>
+              </div>
+            )}
+            {booking?.member2?.totalGames > 0 && formData.gamesPlayed > booking.member2.remainingGames && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ Player 2 exceeded by {formData.gamesPlayed - booking.member2.remainingGames} games. Has only {booking.member2.remainingGames} games left.
+                </p>
+              </div>
+            )}
+            {(booking?.member || booking?.member2) && <p className="text-xs text-gray-500 mt-1">Will be deducted from member's remaining games</p>}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Table Charges (Rs.) *</label>
             <input type="number" min="0" step="0.01" value={formData.totalAmount} onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} onWheel={(e) => e.target.blur()} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+            <select value={formData.paymentMethod || 'cash'} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="cash">Cash</option>
+              <option value="easypaisa">Easypaisa</option>
+              <option value="jazzcash">JazzCash</option>
+              <option value="bank">Bank Account</option>
+            </select>
           </div>
 
           {(booking.refreshments || []).length > 0 && (

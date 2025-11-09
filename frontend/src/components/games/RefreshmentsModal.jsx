@@ -5,8 +5,9 @@ import axios from '../../utils/axios';
 export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
   const [products, setProducts] = useState([]);
   const [refreshments, setRefreshments] = useState([]);
+  const [playerBills, setPlayerBills] = useState([]);
   const [search, setSearch] = useState('');
-  const [selectedPlayer, setSelectedPlayer] = useState(booking.player1Name);
+  const [selectedPlayer, setSelectedPlayer] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,15 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
   useEffect(() => {
     fetchProducts();
     fetchRefreshments();
+    fetchPlayerBills();
   }, []);
+
+  useEffect(() => {
+    if (playerBills.length > 0 && !selectedPlayer) {
+      const firstActive = playerBills.find(b => !b.isPaid);
+      if (firstActive) setSelectedPlayer(firstActive.playerName);
+    }
+  }, [playerBills]);
 
   const fetchProducts = async () => {
     try {
@@ -40,12 +49,23 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
     }
   };
 
+  const fetchPlayerBills = async () => {
+    try {
+      const { data } = await axios.get(`/api/games/bookings/${booking.id}/player-bills`);
+      setPlayerBills(data);
+    } catch (error) {
+      console.error('Error fetching player bills:', error);
+    }
+  };
+
   const handleAdd = async (productId) => {
     if (!productId || !quantity) return;
     setLoading(true);
     try {
+      const playerBill = playerBills.find(b => b.playerName === selectedPlayer);
       await axios.post(`/api/games/bookings/${booking.id}/refreshments`, {
         playerName: selectedPlayer,
+        playerBillId: playerBill?.id,
         productId,
         quantity: parseFloat(quantity)
       });
@@ -131,7 +151,7 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const players = [booking.player1Name, booking.player2Name].filter(Boolean);
+  const activePlayers = playerBills.filter(b => !b.isPaid);
   const groupedRefreshments = refreshments.reduce((acc, r) => {
     if (!acc[r.playerName]) acc[r.playerName] = [];
     acc[r.playerName].push(r);
@@ -162,7 +182,7 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Player</label>
                 <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white" required>
-                  {players.map(p => <option key={p} value={p}>{p}</option>)}
+                  {activePlayers.map(b => <option key={b.id} value={b.playerName}>{b.playerName}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -244,15 +264,15 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
           </div>
 
           <div className="space-y-4">
-            {players.map(player => (
-              <div key={player} className="border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+            {activePlayers.map(bill => (
+              <div key={bill.id} className="border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200">
-                  <h3 className="font-bold text-gray-800 text-lg">{player}</h3>
+                  <h3 className="font-bold text-gray-800 text-lg">{bill.playerName}</h3>
                 </div>
                 <div className="p-4">
-                  {groupedRefreshments[player]?.length > 0 ? (
+                  {groupedRefreshments[bill.playerName]?.length > 0 ? (
                     <div className="space-y-2">
-                      {groupedRefreshments[player].map(r => (
+                      {groupedRefreshments[bill.playerName].map(r => (
                         <div key={r.id} className="flex justify-between items-center bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-all">
                           <div className="flex items-center gap-3">
                             <div className="bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-lg text-sm">
@@ -271,7 +291,7 @@ export default function RefreshmentsModal({ booking, onClose, onUpdate }) {
                       <div className="flex justify-between items-center pt-3 mt-3 border-t-2 border-gray-300">
                         <span className="text-gray-600 font-semibold">Subtotal</span>
                         <span className="font-bold text-2xl text-blue-600">
-                          Rs. {groupedRefreshments[player].reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}
+                          Rs. {groupedRefreshments[bill.playerName].reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}
                         </span>
                       </div>
                     </div>

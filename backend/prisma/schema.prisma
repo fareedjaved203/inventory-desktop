@@ -416,26 +416,36 @@ model GameTable {
 model GameBooking {
   id          String    @id @default(uuid())
   tableId     String
+  memberId    String?
+  member2Id   String?
   player1Name String
   player1Phone String?
   player2Name String?
   player2Phone String?
   chargeType  String
   charges     Decimal
+  player1Charges Decimal @default(0)
+  player2Charges Decimal @default(0)
   expectedDuration String?
   checkInTime DateTime  @default(now())
   checkOutTime DateTime?
   gamesPlayed Int?      @default(0)
   totalAmount Decimal?  @default(0)
+  paymentMethod String? @default("cash")
   isPaid      Boolean   @default(false)
   userId      String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  table       GameTable @relation(fields: [tableId], references: [id])
+  table       GameTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  member      Member?   @relation("Player1Member", fields: [memberId], references: [id])
+  member2     Member?   @relation("Player2Member", fields: [member2Id], references: [id])
   refreshments BookingRefreshment[]
+  playerBills PlayerBill[]
 
   @@index([userId])
   @@index([tableId])
+  @@index([memberId])
+  @@index([member2Id])
   @@index([userId, checkInTime])
 }
 
@@ -443,6 +453,7 @@ model BookingRefreshment {
   id          String      @id @default(uuid())
   bookingId   String
   playerName  String
+  playerBillId String?
   productId   String
   productName String
   quantity    Decimal
@@ -450,10 +461,38 @@ model BookingRefreshment {
   totalAmount Decimal
   createdAt   DateTime    @default(now())
   booking     GameBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  playerBill  PlayerBill? @relation(fields: [playerBillId], references: [id])
   product     Product     @relation(fields: [productId], references: [id])
 
   @@index([bookingId])
   @@index([bookingId, playerName])
+  @@index([playerBillId])
+}
+
+model PlayerBill {
+  id             String      @id @default(uuid())
+  bookingId      String
+  memberId       String?
+  playerName     String
+  playerPhone    String?
+  chargeType     String
+  chargePerGame  Decimal     @default(0)
+  gamesPlayed    Int         @default(0)
+  totalAmount    Decimal     @default(0)
+  paymentMethod  String?
+  isPaid         Boolean     @default(false)
+  checkoutTime   DateTime?
+  userId         String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  booking        GameBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  member         Member?     @relation(fields: [memberId], references: [id])
+  refreshments   BookingRefreshment[]
+
+  @@index([bookingId])
+  @@index([memberId])
+  @@index([userId])
+  @@index([isPaid])
 }
 
 model Member {
@@ -463,12 +502,20 @@ model Member {
   phone          String
   cnic           String?
   membershipType String
+  membershipPrice Decimal @default(0)
+  totalGames     Int      @default(0)
+  remainingGames Int      @default(0)
+  perFrameCharge Decimal? @default(0)
   startDate      DateTime @default(now())
   expiryDate     DateTime
+  lastResetDate  DateTime @default(now())
   isActive       Boolean  @default(true)
   userId         String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  bookingsAsPlayer1 GameBooking[] @relation("Player1Member")
+  bookingsAsPlayer2 GameBooking[] @relation("Player2Member")
+  playerBills    PlayerBill[]
 
   @@index([userId])
   @@index([userId, expiryDate])
