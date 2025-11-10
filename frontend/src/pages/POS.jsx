@@ -37,6 +37,10 @@ function POS() {
   const [showPaymentDetails, setShowPaymentDetails] = useState(true);
   const [selectedProductIndex, setSelectedProductIndex] = useState(-1);
   const [showCategories, setShowCategories] = useState(true);
+  const [showSearchInputs, setShowSearchInputs] = useState(() => {
+    const saved = localStorage.getItem('posShowSearchInputs');
+    return saved ? JSON.parse(saved) : true;
+  });
   const barcodeInputRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -505,17 +509,23 @@ function POS() {
     createSale.mutate(saleData);
   };
 
-  // Keyboard shortcut for completing sale (Ctrl+Enter)
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ctrl+Enter to complete sale
       if (e.ctrlKey && e.key === 'Enter' && cart.length > 0 && !createSale.isLoading && !creatingContact) {
         e.preventDefault();
         processSale();
       }
+      // Shift to toggle cart in default view
+      if (e.key === 'Shift' && viewMode === 'default') {
+        e.preventDefault();
+        setShowCart(prev => !prev);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart.length, createSale.isLoading, creatingContact, processSale]);
+  }, [cart.length, createSale.isLoading, creatingContact, processSale, viewMode]);
 
   // Print receipt function
   const printReceipt = (saleData) => {
@@ -569,9 +579,9 @@ function POS() {
           }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            line-height: 1.4;
+            line-height: 1.3;
             margin: 0;
             padding: 5mm;
             width: 70mm;
@@ -579,72 +589,81 @@ function POS() {
           }
           .header {
             text-align: center;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
           }
           .shop-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 3px;
-            letter-spacing: 1px;
+            margin-bottom: 4px;
           }
           .shop-info {
-            font-size: 10px;
-            margin-bottom: 1px;
+            font-size: 9px;
+            line-height: 1.4;
+            margin-bottom: 2px;
+          }
+          .divider {
+            border-bottom: 1px dashed #000;
+            margin: 8px 0;
           }
           .receipt-info {
-            margin-bottom: 10px;
             font-size: 10px;
+            margin-bottom: 8px;
           }
-          .items {
-            border-bottom: 1px dashed #000;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-          }
-          .item {
-            margin-bottom: 5px;
-            font-size: 11px;
-          }
-          .item-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 5px;
-          }
-          .item-name {
-            word-wrap: break-word;
-            word-break: break-word;
-            line-height: 1.3;
-            white-space: normal;
-            flex: 1;
-            min-width: 0;
-            max-width: 40mm;
-          }
-          .item-qty-price {
-            white-space: nowrap;
-            flex-shrink: 0;
-          }
-          .totals {
-            margin-bottom: 10px;
-          }
-          .total-line {
+          .info-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 2px;
           }
-          .total-line.grand-total {
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+          }
+          th {
+            text-align: left;
+            font-size: 10px;
+            padding: 4px 2px;
+            border-bottom: 1px solid #000;
+            border-right: 2px solid #000;
+          }
+          th:last-child { border-right: none; }
+          th.center { text-align: center; }
+          th.right { text-align: right; }
+          td {
+            padding: 4px 2px;
+            font-size: 10px;
+            vertical-align: top;
+            border-right: 2px solid #000;
+          }
+          td:last-child { border-right: none; }
+          td.center { text-align: center; }
+          td.right { text-align: right; }
+          .totals {
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            margin-bottom: 8px;
+          }
+          .total-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 11px;
+          }
+          .total-line.grand {
+            font-size: 13px;
             font-weight: bold;
-            font-size: 14px;
+            margin-top: 4px;
+            padding-top: 4px;
             border-top: 1px solid #000;
-            padding-top: 2px;
           }
           .footer {
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             border-top: 1px dashed #000;
-            padding-top: 5px;
-            margin-top: 10px;
+            padding-top: 6px;
+            margin-top: 8px;
+            line-height: 1.4;
           }
         </style>
       </head>
@@ -652,65 +671,83 @@ function POS() {
         <div class="header">
           ${shopSettings?.logo ? `
             <div style="text-align: center; margin-bottom: 5px;">
-              <img src="${shopSettings.logo}" alt="Logo" style="max-width: 60mm; max-height: 20mm; filter: grayscale(100%) contrast(200%) brightness(100%);" onerror="this.style.display='none'" />
+              <img src="${shopSettings.logo}" alt="Logo" style="max-width: 50mm; max-height: 18mm; filter: grayscale(100%) contrast(200%) brightness(100%);" onerror="this.style.display='none'" />
             </div>
           ` : ''}
           <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
+          ${shopSettings?.shopDescription2 ? `<div class="shop-info">${shopSettings.shopDescription2}</div>` : ''}
+          ${shopSettings?.userPhone1 ? `<div class="shop-info">Contact# ${shopSettings.userPhone1}</div>` : ''}
         </div>
+        
+        <div class="divider"></div>
         
         <div class="receipt-info">
-          <div>Receipt #: ${saleData.billNumber}</div>
-          <div>Date: ${now.toLocaleDateString()}</div>
-          <div>Time: ${now.toLocaleTimeString()}</div>
-          ${customerName ? `<div>Customer: ${customerName}</div>` : ''}
+          <div class="info-row">
+            <span>Cashier: ${shopSettings?.userName1 || 'N/A'}</span>
+            <span>${now.toLocaleDateString()}</span>
+          </div>
+          <div class="info-row">
+            <span>Number: ${saleData.billNumber}</span>
+            <span>${now.toLocaleTimeString()}</span>
+          </div>
+          ${customerName && `<div class="info-row"><span>Customer:</span><span>${customerName}</span></div>` }
         </div>
         
-        <div class="items">
-          ${cart.map(item => `
-            <div class="item">
-              <div class="item-row">
-                <div class="item-name">${item.name}</div>
-                <div class="item-qty-price">${Number(item.quantity).toFixed(1)} ${item.unit || 'unit'} x ${formatPakistaniCurrency(item.price)}</div>
-              </div>
-              <div style="text-align: right; font-size: 10px; margin-top: 2px;">
-                ${formatPakistaniCurrency(item.price * item.quantity)}
-              </div>
-            </div>
-          `).join('')}
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 8%;">0</th>
+              <th style="width: 42%;">Descriptions</th>
+              <th class="center" style="width: 15%;">Qty</th>
+              <th class="right" style="width: 17%;">Rate</th>
+              <th class="right" style="width: 18%;">Amnt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cart.map((item, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td style="word-wrap: break-word;">${item.name}</td>
+                <td class="center">${Number(item.quantity).toFixed(1)}</td>
+                <td class="right">${Number(item.price).toFixed(1)}</td>
+                <td class="right">${Number(item.price * item.quantity).toFixed(1)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
         
         <div class="totals">
-          <div class="total-line grand-total">
-            <span>TOTAL:</span>
-            <span>${formatPakistaniCurrency(total)}</span>
+          <div class="total-line">
+            <span>Total Rs :</span>
+            <span>${Number(subtotal).toFixed(1)}</span>
           </div>
-          ${cashReceived > 0 ? `
+          ${discountAmount > 0 ? `
             <div class="total-line">
-              <span>Cash Received:</span>
-              <span>${formatPakistaniCurrency(cashReceived)}</span>
-            </div>
-            ${balance > 0 ? `
-              <div class="total-line">
-                <span>Balance:</span>
-                <span>${formatPakistaniCurrency(balance)}</span>
-              </div>
-            ` : ''}
-          ` : ''}
-          ${paidAmount > 0 && paidAmount < total ? `
-            <div class="total-line">
-              <span>Credit:</span>
-              <span>${formatPakistaniCurrency(total - paidAmount)}</span>
+              <span>Total Disc: Rs :</span>
+              <span>${Number(discountAmount).toFixed(1)}</span>
             </div>
           ` : ''}
+          <div class="total-line">
+            <span>Sub Total Rs :</span>
+            <span>${Number(total).toFixed(1)}</span>
+          </div>
+          <div class="total-line grand">
+            <span>Paid Rs :</span>
+            <span>${Number(cashReceived || paidAmount || total).toFixed(1)}</span>
+          </div>
+          ${cashReceived > 0 && balance !== 0 ? `
+            <div class="total-line">
+              <span>Change Rs :</span>
+              <span>${Number(balance).toFixed(1)}</span>
+            </div>
+          ` : '<div class="total-line"><span>Change Rs :</span><span>0.0</span></div>'}
         </div>
         
         <div class="footer">
-          <div>
-            <div>${shopSettings?.shopDescription2 || ''}</div>
-            <div>${shopSettings?.userPhone1 || ''}</div>
+          <div style="margin-bottom: 6px; font-weight: bold;">Thank You for Visiting Us!</div>
+          <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #000; font-size: 10px;">
+            Powered By Hisab Ghar 03142740270
           </div>
-          <div style="margin-top: 10px; padding-top: 5px; border-top: 1px dashed #000; font-size: 10px;">Thank you for shopping with us!</div>
-          <div>Visit again soon</div>
         </div>
       </body>
       </html>
@@ -727,13 +764,30 @@ function POS() {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 relative">
       {/* View Mode Toggle */}
-      <div className="bg-white shadow-sm p-3 border-b border-gray-200">
+      <div className="bg-white shadow-sm p-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+          <h1 className="text-lg font-bold text-gray-800">Point of Sale</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const newValue = !showSearchInputs;
+                setShowSearchInputs(newValue);
+                localStorage.setItem('posShowSearchInputs', JSON.stringify(newValue));
+              }}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                showSearchInputs
+                  ? 'bg-primary-100 text-primary-700 border border-primary-300'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="Toggle Search Inputs"
+            >
+              <FaSearch className="inline mr-1" />
+              Search
+            </button>
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('default')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
                   viewMode === 'default'
                     ? 'bg-white text-primary-700 shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
@@ -744,7 +798,7 @@ function POS() {
               </button>
               <button
                 onClick={() => setViewMode('compact')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
                   viewMode === 'compact'
                     ? 'bg-white text-primary-700 shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
@@ -754,14 +808,13 @@ function POS() {
                 Compact
               </button>
             </div>
-            <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
           </div>
         </div>
       </div>
 
       <div className={`flex-1 flex ${viewMode === 'default' ? 'flex-col lg:flex-row' : 'flex-col'} relative`}>
-      {/* Mobile Cart Toggle Button - Only show in default view */}
-      {isMobile && viewMode === 'default' && (
+      {/* Cart Toggle Button - Show in default view */}
+      {viewMode === 'default' && (
         <div className="fixed bottom-4 right-4 z-30">
           <button
             onClick={() => setShowCart(!showCart)}
@@ -786,8 +839,9 @@ function POS() {
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col p-2 lg:p-4 ${viewMode === 'default' ? 'lg:pr-96' : ''}`} style={{ marginRight: viewMode === 'compact' && showPaymentDetails ? '384px' : '0' }}>
+      <div className={`flex-1 flex flex-col p-2 lg:p-4`} style={{ marginRight: viewMode === 'compact' && showPaymentDetails ? '384px' : '0' }}>
         {/* Search & Barcode Input */}
+        {showSearchInputs && (
         <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 mb-3 lg:mb-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
             {/* Barcode Scanner */}
@@ -870,6 +924,7 @@ function POS() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Compact View - Retail POS Layout */}
         {viewMode === 'compact' && (
@@ -1241,7 +1296,7 @@ function POS() {
 
         {/* Product Display Area - Only show in default view */}
         {viewMode === 'default' && (
-        <div className="bg-white rounded-xl shadow-lg p-4 mb-4 flex-1 overflow-auto">
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2 flex-1 overflow-auto">
           {(productsLoading || categoriesLoading || categoryProductsLoading) ? (
             <div className="flex justify-center items-center h-32">
               <LoadingSpinner size="w-8 h-8" />
@@ -1249,10 +1304,10 @@ function POS() {
           ) : debouncedSearchTerm ? (
             // Show search results
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Search Results</h3>
-                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {products.length} products found
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-gray-800">Search Results</h3>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {products.length} products
                 </span>
               </div>
               {products.length === 0 ? (
@@ -1262,49 +1317,36 @@ function POS() {
                   <p className="text-sm">Try a different search term</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                   {products.map((product) => (
                     <div
                       key={product.id}
                       onClick={() => addToCart(product)}
-                      className="group bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100 rounded-xl p-3 cursor-pointer hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                      className="group bg-white border border-gray-200 rounded-lg p-2 cursor-pointer hover:border-primary-400 hover:shadow-md transition-all"
                     >
                       <div className="relative">
                         {product.image ? (
                           <ProductImage
                             filename={product.image}
                             alt={product.name}
-                            className="w-full h-20 object-cover rounded-lg mb-3 group-hover:shadow-md transition-shadow"
+                            className="w-full h-16 object-cover rounded mb-1"
                           />
                         ) : (
-                          <div className="w-full h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 flex items-center justify-center">
-                            <FaShoppingCart className="text-gray-400 text-2xl" />
+                          <div className="w-full h-16 bg-gray-100 rounded mb-1 flex items-center justify-center">
+                            <FaShoppingCart className="text-gray-400 text-lg" />
                           </div>
                         )}
                         {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
-                            Low Stock
-                          </span>
-                        )}
-                        {product.isManufactured && (
-                          <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
-                            Made to Order
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
+                            Low
                           </span>
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
-                      <div className="space-y-1">
-                        <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        {!product.isManufactured && product.quantity !== null && (
-                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
-                        )}
-                        {product.isManufactured && (
-                          <p className="text-xs text-blue-600 font-medium">Made to Order</p>
-                        )}
-                        {product.sku && (
-                          <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
-                        )}
-                      </div>
+                      <h4 className="font-medium text-[10px] mb-1 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <p className="text-primary-600 font-bold text-xs">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                      {!product.isManufactured && product.quantity !== null && (
+                        <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1313,24 +1355,24 @@ function POS() {
           ) : selectedCategory ? (
             // Show selected category products
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSelectedCategory(null)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
                   >
-                    <FaTimes className="text-gray-500" />
+                    <FaTimes className="text-gray-500 text-xs" />
                   </button>
                   <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs"
                     style={{ backgroundColor: selectedCategory.color }}
                   >
                     {selectedCategory.icon}
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-800">{selectedCategory.name}</h3>
+                  <h3 className="text-sm font-bold text-gray-800">{selectedCategory.name}</h3>
                 </div>
-                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {categoryProducts.length} products
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {categoryProducts.length}
                 </span>
               </div>
               {categoryProductsLoading ? (
@@ -1343,49 +1385,36 @@ function POS() {
                   <p className="text-lg">No products in this category</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                   {categoryProducts.map((product) => (
                     <div
                       key={product.id}
                       onClick={() => addToCart(product)}
-                      className="group bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100 rounded-xl p-3 cursor-pointer hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                      className="group bg-white border border-gray-200 rounded-lg p-2 cursor-pointer hover:border-primary-400 hover:shadow-md transition-all"
                     >
                       <div className="relative">
                         {product.image ? (
                           <ProductImage
                             filename={product.image}
                             alt={product.name}
-                            className="w-full h-20 object-cover rounded-lg mb-3 group-hover:shadow-md transition-shadow"
+                            className="w-full h-16 object-cover rounded mb-1"
                           />
                         ) : (
-                          <div className="w-full h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 flex items-center justify-center">
-                            <FaShoppingCart className="text-gray-400 text-2xl" />
+                          <div className="w-full h-16 bg-gray-100 rounded mb-1 flex items-center justify-center">
+                            <FaShoppingCart className="text-gray-400 text-lg" />
                           </div>
                         )}
                         {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap min-w-[70px] text-center">
-                            Low Stock
-                          </span>
-                        )}
-                        {product.isManufactured && (
-                          <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
-                            Made to Order
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
+                            Low
                           </span>
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800 line-clamp-2 leading-tight break-words overflow-hidden">{product.name}</h4>
-                      <div className="space-y-1">
-                        <p className="text-primary-600 font-bold text-lg">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                        {!product.isManufactured && product.quantity !== null && (
-                          <p className="text-xs text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit}</p>
-                        )}
-                        {product.isManufactured && (
-                          <p className="text-xs text-blue-600 font-medium">Made to Order</p>
-                        )}
-                        {product.sku && (
-                          <p className="text-xs text-gray-400 truncate">SKU: {product.sku}</p>
-                        )}
-                      </div>
+                      <h4 className="font-medium text-[10px] mb-1 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
+                      <p className="text-primary-600 font-bold text-xs">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
+                      {!product.isManufactured && product.quantity !== null && (
+                        <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1405,64 +1434,44 @@ function POS() {
 
         {/* Categories Section - Only show in default view */}
         {viewMode === 'default' && (
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div 
-            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => setShowCategories(!showCategories)}
-          >
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-gray-800">Categories</h3>
-              <span className="text-sm text-gray-500">
-                {Array.isArray(categories) ? categories.length : 0} categories
-              </span>
-            </div>
-            {showCategories ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
-          </div>
-          {showCategories && (
-          <div className="p-4 pt-0">
+        <div className="bg-white rounded-lg shadow-sm p-2">
           {!Array.isArray(categories) || categories.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              <p>No categories available</p>
+            <div className="text-center text-gray-500 py-2 text-xs">
+              <p>No categories</p>
             </div>
           ) : (
-            <div className="overflow-y-auto max-h-[220px]">
-              <div className="flex flex-wrap gap-3">
-                {categories.map((category) => (
+            <div className="overflow-x-auto">
+              <div className="flex gap-1.5">
+                {categories.slice(0, 10).map((category) => (
                   <div
                     key={category.id}
                     onClick={() => setSelectedCategory(category)}
-                    className={`group cursor-pointer rounded-lg p-4 transition-all duration-200 border w-40 ${
+                    className={`cursor-pointer rounded p-1.5 transition-all border flex-shrink-0 ${
                       selectedCategory?.id === category.id
-                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg border-primary-600'
-                        : 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-primary-50 hover:to-primary-100 border-gray-200 hover:border-primary-300'
+                        ? 'bg-primary-500 text-white shadow-md border-primary-600'
+                        : 'bg-gray-50 hover:bg-primary-50 border-gray-200 hover:border-primary-300'
                     }`}
+                    style={{ width: 'calc(10% - 6px)', minWidth: '70px' }}
                   >
                     <div className="text-center">
                       <div 
-                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl mx-auto mb-3 shadow-sm ${
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mx-auto mb-0.5 ${
                           selectedCategory?.id === category.id ? 'bg-white bg-opacity-20' : ''
                         }`}
                         style={{ backgroundColor: selectedCategory?.id === category.id ? 'rgba(255,255,255,0.2)' : category.color }}
                       >
                         {category.icon}
                       </div>
-                      <h4 className={`font-semibold text-sm mb-1 line-clamp-1 ${
-                        selectedCategory?.id === category.id ? 'text-white' : 'text-gray-800 group-hover:text-primary-700'
+                      <h4 className={`font-medium text-[11px] line-clamp-2 leading-tight ${
+                        selectedCategory?.id === category.id ? 'text-white' : 'text-gray-800'
                       }`}>
                         {category.name}
                       </h4>
-                      <p className={`text-xs ${
-                        selectedCategory?.id === category.id ? 'text-primary-100' : 'text-gray-500'
-                      }`}>
-                        Click to view
-                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-          </div>
           )}
         </div>
         )}
@@ -1472,25 +1481,25 @@ function POS() {
       {viewMode === 'default' && (
         <div className={`
           ${isMobile 
-            ? `fixed right-0 top-0 h-[90vh] w-full max-w-sm transform transition-transform duration-300 z-50 ${
+            ? `fixed right-0 top-0 h-full w-full max-w-sm transform transition-transform duration-300 z-50 ${
                 showCart ? 'translate-x-0' : 'translate-x-full'
               }` 
-            : 'fixed right-4 top-16 w-80 xl:w-96 h-[90vh]'
+            : `fixed right-0 top-0 w-96 h-full transform transition-transform duration-300 z-40 ${
+                showCart ? 'translate-x-0' : 'translate-x-full'
+              }`
           } 
-          bg-white shadow-lg flex flex-col
+          bg-white shadow-xl flex flex-col border-l
         `}>
         {/* Cart Header */}
-        <div className="p-3 lg:p-4 border-b border-gray-200">
+        <div className="p-3 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            {isMobile && (
-              <button
-                onClick={() => setShowCart(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg mr-2"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
-            )}
-            <h2 className="text-lg lg:text-xl font-bold text-gray-800 flex items-center flex-1">
+            <button
+              onClick={() => setShowCart(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg mr-2"
+            >
+              <FaTimes className="w-5 h-5" />
+            </button>
+            <h2 className="text-base font-bold text-gray-800 flex items-center flex-1">
               <FaShoppingCart className="mr-2" />
               Cart ({cart.length})
             </h2>
@@ -1638,25 +1647,24 @@ function POS() {
               <button
                 onClick={processSale}
                 disabled={createSale.isLoading}
-                className="col-span-2 bg-primary-600 text-white py-4 rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[52px] text-sm lg:text-base"
+                className="col-span-2 bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs"
               >
                 {createSale.isLoading ? (
-                  <LoadingSpinner size="w-5 h-5" />
+                  <LoadingSpinner size="w-4 h-4" />
                 ) : (
                   <>
-                    <FaPrint className="mr-2" />
-                    <span className="hidden sm:inline">Complete Sale & Print</span>
-                    <span className="sm:hidden">Complete Sale</span>
+                    <FaPrint className="mr-1.5" size={12} />
+                    <span>Complete Sale</span>
                   </>
                 )}
               </button>
               <button
                 onClick={previewReceipt}
                 disabled={cart.length === 0}
-                className="bg-blue-500 text-white py-4 rounded-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 flex items-center justify-center min-h-[52px]"
+                className="bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
                 title="Preview Receipt"
               >
-                <FaEye size={20} />
+                <FaEye size={16} />
               </button>
             </div>
           </div>

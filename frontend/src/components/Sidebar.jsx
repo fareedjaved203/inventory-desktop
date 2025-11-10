@@ -112,10 +112,10 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
       {/* Sidebar */}
       <div className={`
         ${isMobile 
-          ? `fixed left-0 top-0 h-full w-64 transform transition-transform duration-300 ease-in-out z-50 ${
+          ? `fixed left-0 top-0 h-full w-56 transform transition-transform duration-300 ease-in-out z-50 ${
               isMobileOpen ? 'translate-x-0' : '-translate-x-full'
             }` 
-          : `${collapsed ? 'w-16' : 'w-64'} transition-all duration-300`
+          : `${collapsed ? 'w-14' : 'w-52'} transition-all duration-300`
         } 
         bg-gradient-to-b from-primary-700 to-primary-900 text-white shadow-xl h-full flex flex-col 
         ${language === 'ur' ? 'font-urdu' : ''}
@@ -133,7 +133,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
         
         {(!collapsed || isMobile) && (
           <div className={`${isMobile ? 'flex-1 ml-2' : 'flex-1'}`}>
-            <h1 className="text-xl font-bold text-white mb-2">
+            <h1 className="text-base font-bold text-white mb-1">
               {shopSettings?.shopName || 'Inventory System'}
             </h1>
             <LanguageToggle />
@@ -182,33 +182,33 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-6'} py-4 text-white hover:bg-primary-600 active:bg-primary-500 transition-colors ${
+            className={`flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-4'} py-3 text-white hover:bg-primary-600 active:bg-primary-500 transition-colors ${
               location.pathname === item.path ? 'bg-primary-600 border-l-4 border-accent-400' : ''
             } ${isMobile ? 'min-h-[48px]' : ''}`}
             title={collapsed && !isMobile ? item.label : ''}
           >
-            <span className={`text-xl ${isMobile ? 'mr-4' : 'mr-4'}`}>{item.icon}</span>
-            {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.label}</span>}
+            <span className={`text-base ${isMobile ? 'mr-3' : 'mr-3'}`}>{item.icon}</span>
+            {(!collapsed || isMobile) && <span className="text-xs font-medium">{item.label}</span>}
           </Link>
         ))}
       </nav>
       
       {/* Logout Button */}
-      <div className="p-4 border-t border-primary-600">
+      <div className="p-3 border-t border-primary-600">
         <button
           onClick={onLogout}
-          className={`w-full flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-2'} py-3 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 rounded-lg transition-colors ${isMobile ? 'min-h-[48px]' : ''}`}
+          className={`w-full flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-2'} py-2 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 rounded-lg transition-colors ${isMobile ? 'min-h-[48px]' : ''}`}
           title={collapsed && !isMobile ? 'Logout' : ''}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
           </svg>
-          {(!collapsed || isMobile) && <span className="ml-3 text-sm font-medium">{t('logout')}</span>}
+          {(!collapsed || isMobile) && <span className="ml-2 text-xs font-medium">{t('logout')}</span>}
         </button>
       </div>
       
-      <div className="p-4 text-center text-xs text-primary-300">
-        {(!collapsed || isMobile) && <p>Hisab Ghar</p>}
+      <div className="p-2 text-center text-xs text-primary-300">
+        {(!collapsed || isMobile) && <p className="text-xs">Hisab Ghar</p>}
       </div>
       </div>
 
