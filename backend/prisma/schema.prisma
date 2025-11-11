@@ -432,6 +432,8 @@ model GameBooking {
   gamesPlayed Int?      @default(0)
   totalAmount Decimal?  @default(0)
   paymentMethod String? @default("cash")
+  payer       String?
+  lastPayerId String?
   isPaid      Boolean   @default(false)
   userId      String
   createdAt   DateTime  @default(now())
@@ -441,6 +443,7 @@ model GameBooking {
   member2     Member?   @relation("Player2Member", fields: [member2Id], references: [id])
   refreshments BookingRefreshment[]
   playerBills PlayerBill[]
+  gameHistory GameHistory[]
 
   @@index([userId])
   @@index([tableId])
@@ -493,6 +496,19 @@ model PlayerBill {
   @@index([memberId])
   @@index([userId])
   @@index([isPaid])
+}
+
+model GameHistory {
+  id          String      @id @default(uuid())
+  bookingId   String
+  payerBillId String
+  frameNumber Int
+  amount      Decimal
+  createdAt   DateTime    @default(now())
+  booking     GameBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([bookingId, frameNumber])
 }
 
 model Member {

@@ -11,11 +11,20 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
   const [newPlayerForm, setNewPlayerForm] = useState({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
   const [showWinnerSelection, setShowWinnerSelection] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState(null);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+  const [lastPayerId, setLastPayerId] = useState(null);
+  const [gameHistory, setGameHistory] = useState([]);
 
   useEffect(() => {
     fetchPlayerBills();
     fetchAvailableBookings();
-  }, []);
+    fetchGameHistory();
+    // Set lastPayerId from booking
+    if (booking.lastPayerId) {
+      setLastPayerId(booking.lastPayerId);
+    }
+  }, [booking.lastPayerId]);
 
   const fetchPlayerBills = async () => {
     try {
@@ -25,6 +34,15 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
       console.error('Error fetching player bills:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGameHistory = async () => {
+    try {
+      const { data } = await axios.get(`/api/games/bookings/${booking.id}/game-history`);
+      setGameHistory(data);
+    } catch (error) {
+      console.error('Error fetching game history:', error);
     }
   };
 
@@ -57,15 +75,16 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
     }
   };
 
-  const continuePlayer = async (billId) => {
+  const renewMatch = async () => {
+    // Reset lastPayerId to start fresh match, keeping history intact
     try {
-      await axios.post(`/api/games/player-bills/${billId}/continue`);
+      await axios.put(`/api/games/bookings/${booking.id}`, { lastPayerId: null });
+      setLastPayerId(null);
       onUpdate();
       await fetchPlayerBills();
-      await fetchAvailableBookings();
+      onClose();
     } catch (error) {
-      console.error('Error continuing player:', error);
-      alert(error.response?.data?.error || 'Error continuing player');
+      console.error('Error renewing match:', error);
     }
   };
 
@@ -94,15 +113,60 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
             <div className="text-center py-8">Loading...</div>
           ) : (
             <div className="space-y-4">
+              {gameHistory.length > 0 && (
+                <div className="mb-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                  <h3 className="font-semibold text-gray-800 mb-2">Frame History</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-300">
+                          <th className="text-left py-2 px-2">Frame</th>
+                          <th className="text-left py-2 px-2">Paid By</th>
+                          <th className="text-right py-2 px-2">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gameHistory.map((history) => {
+                          const payerBill = playerBills.find(b => b.id === history.payerBillId);
+                          return (
+                            <tr key={history.id} className="border-b border-gray-200">
+                              <td className="py-2 px-2">Frame {history.frameNumber}</td>
+                              <td className="py-2 px-2 font-medium">{payerBill?.playerName || 'Unknown'}</td>
+                              <td className="py-2 px-2 text-right">Rs. {parseFloat(history.amount).toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              
               {playerBills.map((bill) => (
                 <div key={bill.id} className={`border rounded-lg p-4 ${bill.isPaid ? 'bg-green-50 border-green-300' : 'bg-white border-gray-300'}`}>
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="font-bold text-lg text-gray-900">{bill.playerName}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-bold text-lg text-gray-900">{bill.playerName}</div>
+                        {lastPayerId === bill.id && !bill.isPaid && (
+                          <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded font-medium">Paying</span>
+                        )}
+                        <button
+                          onClick={() => { setSelectedBill(bill); setShowBillModal(true); }}
+                          className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                        >
+                          View Bill
+                        </button>
+                      </div>
                       <div className="text-sm text-gray-600">{bill.playerPhone}</div>
                       {bill.member && (
                         <div className="text-xs text-blue-600 mt-1">
                           {bill.member.totalGames > 0 ? `${bill.member.remainingGames} games left` : `Rs. ${bill.member.perFrameCharge}/frame`}
+                        </div>
+                      )}
+                      {!bill.isPaid && bill.gamesPlayed > 0 && (
+                        <div className="text-sm text-gray-700 mt-1 font-medium">
+                          Frames Played: {bill.gamesPlayed}
                         </div>
                       )}
                     </div>
@@ -111,14 +175,16 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                     )}
                   </div>
                   
-                  {!bill.isPaid && (
+                  {!bill.isPaid && bill.gamesPlayed > 0 && (
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                      <div className="text-xs text-blue-800">
+                        💰 Paid for {gameHistory.filter(h => h.payerBillId === bill.id).length} frame(s)
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!bill.isPaid && lastPayerId && bill.gamesPlayed > 0 && (
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => continuePlayer(bill.id)}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        Continue Playing
-                      </button>
                       <button
                         onClick={() => { setTransferringBill(bill.id); setShowTransferModal(true); }}
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
@@ -137,10 +203,12 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                   {!bill.isPaid && bill.showCheckout && (
                     <div className="mt-3 border-t pt-3">
                       <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-600">Game:</span>
-                          <span className="font-medium">1 × Rs. {bill.chargePerGame}</span>
-                        </div>
+                        {parseFloat(bill.totalAmount) > 0 && (
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-600">Game Charges:</span>
+                            <span className="font-medium">Rs. {parseFloat(bill.totalAmount).toFixed(2)}</span>
+                          </div>
+                        )}
                         {bill.refreshments?.length > 0 && (
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Refreshments:</span>
@@ -149,7 +217,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                         )}
                         <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                           <span>Total:</span>
-                          <span className="text-blue-600">Rs. {(parseFloat(bill.chargePerGame) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2)}</span>
+                          <span className="text-blue-600">Rs. {(parseFloat(bill.totalAmount) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2)}</span>
                         </div>
                       </div>
                       
@@ -200,18 +268,28 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowAddPlayer(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Add Player
-            </button>
-            {activePlayers.length === 2 && activePlayers.every(b => !b.isPaid) && (
+            {lastPayerId && playerBills.some(b => !b.isPaid && b.gamesPlayed > 0) && (
+              <>
+                <button
+                  onClick={renewMatch}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Renew Match
+                </button>
+                <button
+                  onClick={() => setShowAddPlayer(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add Player
+                </button>
+              </>
+            )}
+            {!lastPayerId && playerBills.filter(b => !b.isPaid).length === 2 && (
               <button
                 onClick={() => setShowWinnerSelection(true)}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
-                Who Won?
+                Select Payer
               </button>
             )}
           </div>
@@ -223,12 +301,12 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Who Won?</h2>
+              <h2 className="text-xl font-bold text-gray-800">Select Payer</h2>
             </div>
             <div className="p-6">
-              <p className="text-gray-600 mb-4">Select the winner (loser pays for this game):</p>
+              <p className="text-gray-600 mb-4">Select who will pay for this game:</p>
               <div className="space-y-2">
-                {activePlayers.map((bill) => (
+                {playerBills.filter(b => !b.isPaid).map((bill) => (
                   <button
                     key={bill.id}
                     onClick={() => setSelectedWinner(bill.id)}
@@ -257,17 +335,19 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
               </button>
               <button
                 onClick={async () => {
-                  if (!selectedWinner) return alert('Please select a winner');
-                  const loserBill = activePlayers.find(b => b.id !== selectedWinner);
-                  if (!loserBill) return;
+                  if (!selectedWinner) return alert('Please select a payer');
+                  const payerBill = playerBills.filter(b => !b.isPaid).find(b => b.id === selectedWinner);
+                  if (!payerBill) return;
                   
                   try {
-                    // Add game charge to loser's bill
-                    await axios.post(`/api/games/player-bills/${loserBill.id}/add-game`);
+                    // Add game charge to payer's bill
+                    const { data } = await axios.post(`/api/games/player-bills/${payerBill.id}/add-game`);
+                    setLastPayerId(payerBill.id);
                     setShowWinnerSelection(false);
                     setSelectedWinner(null);
                     onUpdate();
                     await fetchPlayerBills();
+                    await fetchGameHistory();
                   } catch (error) {
                     alert(error.response?.data?.error || 'Error recording game result');
                   }
@@ -275,7 +355,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                 disabled={!selectedWinner}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                Confirm Winner
+                Confirm Payer
               </button>
             </div>
           </div>
@@ -382,6 +462,144 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
               <button onClick={() => { setShowTransferModal(false); setTransferringBill(null); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBillModal && selectedBill && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Current Bill</h2>
+              <button
+                onClick={() => {
+                  const printWindow = window.open('', '', 'width=300,height=600');
+                  const refreshmentsTotal = (selectedBill.refreshments || []).reduce((sum, r) => sum + parseFloat(r.totalAmount), 0);
+                  const gameCharges = parseFloat(selectedBill.chargePerGame) * selectedBill.gamesPlayed;
+                  const total = gameCharges + refreshmentsTotal;
+                  
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>Bill - ${selectedBill.playerName}</title>
+                        <style>
+                          @media print { @page { margin: 0; size: 80mm auto; } }
+                          body { font-family: monospace; font-size: 12px; margin: 10px; width: 80mm; }
+                          .header { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 2px dashed #000; padding-bottom: 8px; }
+                          .info { margin-bottom: 8px; font-size: 11px; }
+                          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+                          .item { display: flex; justify-content: space-between; margin: 4px 0; }
+                          .total { font-weight: bold; font-size: 13px; border-top: 2px solid #000; padding-top: 6px; margin-top: 8px; }
+                          .footer { text-align: center; font-size: 10px; margin-top: 10px; border-top: 1px dashed #000; padding-top: 8px; }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="header">CURRENT BILL</div>
+                        <div class="info">
+                          <div><strong>Player:</strong> ${selectedBill.playerName}</div>
+                          ${selectedBill.playerPhone ? `<div><strong>Phone:</strong> ${selectedBill.playerPhone}</div>` : ''}
+                          <div><strong>Date:</strong> ${new Date().toLocaleString()}</div>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="item"><span>Games Played:</span><span>${selectedBill.gamesPlayed}</span></div>
+                        ${parseFloat(selectedBill.totalAmount) > 0 ? `
+                          <div class="item"><span>Rate/Game:</span><span>Rs. ${parseFloat(selectedBill.chargePerGame).toFixed(2)}</span></div>
+                          <div class="item"><span>Game Charges:</span><span>Rs. ${parseFloat(selectedBill.totalAmount).toFixed(2)}</span></div>
+                        ` : ''}
+                        ${(selectedBill.refreshments || []).length > 0 ? `
+                          <div class="divider"></div>
+                          <div style="font-weight: bold; margin: 6px 0;">Refreshments:</div>
+                          ${(selectedBill.refreshments || []).map(r => `
+                            <div class="item">
+                              <span>${r.productName} x${r.quantity}</span>
+                              <span>Rs. ${parseFloat(r.totalAmount).toFixed(2)}</span>
+                            </div>
+                          `).join('')}
+                          <div class="item"><span><strong>Refreshments Total:</strong></span><span><strong>Rs. ${refreshmentsTotal.toFixed(2)}</strong></span></div>
+                        ` : ''}
+                        <div class="total">
+                          <div class="item"><span>TOTAL:</span><span>Rs. ${total.toFixed(2)}</span></div>
+                        </div>
+                        <div class="footer">Thank you!</div>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                  printWindow.print();
+                }}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+              >
+                Print
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="font-bold text-lg mb-2">{selectedBill.playerName}</div>
+                {selectedBill.playerPhone && <div className="text-sm text-gray-600 mb-2">{selectedBill.playerPhone}</div>}
+                {selectedBill.member && (
+                  <div className="text-xs text-blue-600">
+                    {selectedBill.member.totalGames > 0 ? `${selectedBill.member.remainingGames} games left` : `Rs. ${selectedBill.member.perFrameCharge}/frame`}
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Games Played:</span>
+                  <span className="font-medium">{selectedBill.gamesPlayed}</span>
+                </div>
+                {parseFloat(selectedBill.totalAmount) > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Rate per Game:</span>
+                      <span className="font-medium">Rs. {parseFloat(selectedBill.chargePerGame).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Game Charges:</span>
+                      <span className="font-medium">Rs. {parseFloat(selectedBill.totalAmount).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                
+                {(selectedBill.refreshments || []).length > 0 && (
+                  <>
+                    <div className="border-t pt-2 mt-2">
+                      <div className="font-semibold text-sm mb-2">Refreshments:</div>
+                      {selectedBill.refreshments.map(r => (
+                        <div key={r.id} className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-600">{r.productName} x{r.quantity}</span>
+                          <span className="font-medium">Rs. {parseFloat(r.totalAmount).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Refreshments Total:</span>
+                      <span className="font-medium">Rs. {(selectedBill.refreshments || []).reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                
+                <div className="flex justify-between text-lg font-bold border-t-2 pt-3 mt-3">
+                  <span>Total:</span>
+                  <span className="text-blue-600">Rs. {(parseFloat(selectedBill.totalAmount) + (selectedBill.refreshments || []).reduce((sum, r) => sum + parseFloat(r.totalAmount), 0)).toFixed(2)}</span>
+                </div>
+                
+                {selectedBill.isPaid && (
+                  <div className="bg-green-50 border border-green-200 rounded p-2 mt-3">
+                    <div className="text-sm text-green-800 font-medium">✓ PAID</div>
+                    <div className="text-xs text-green-700">Method: {selectedBill.paymentMethod}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => { setShowBillModal(false); setSelectedBill(null); }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

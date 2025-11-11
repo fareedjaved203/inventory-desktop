@@ -243,3 +243,22 @@ ALTER TABLE "GameBooking"
 ADD CONSTRAINT "GameBooking_tableId_fkey" 
 FOREIGN KEY ("tableId") REFERENCES "GameTable"("id") 
 ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "GameBooking" ADD COLUMN "payer" TEXT;
+
+-- Create GameHistory table
+CREATE TABLE "GameHistory" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "bookingId" TEXT NOT NULL,
+  "payerBillId" TEXT NOT NULL,
+  "frameNumber" INTEGER NOT NULL,
+  "amount" DECIMAL NOT NULL,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "GameHistory_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "GameBooking"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX "GameHistory_bookingId_idx" ON "GameHistory"("bookingId");
+CREATE INDEX "GameHistory_bookingId_frameNumber_idx" ON "GameHistory"("bookingId", "frameNumber");
+
+-- Add lastPayerId to GameBooking (if not already added)
+ALTER TABLE "GameBooking" ADD COLUMN "lastPayerId" TEXT;

@@ -216,15 +216,9 @@ export default function CheckinForm({ table, formData, setFormData, onSubmit, on
                 <option value="per_game">Per Game</option>
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Player 1 Charges (Rs.)</label>
-                <input type="number" min="0" step="0.01" value={formData.player1Charges} onChange={(e) => setFormData({ ...formData, player1Charges: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Player 2 Charges (Rs.)</label>
-                <input type="number" min="0" step="0.01" value={formData.player2Charges} onChange={(e) => setFormData({ ...formData, player2Charges: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Charges (Rs.)</label>
+              <input type="number" min="0" step="0.01" value={formData.charges} onChange={(e) => setFormData({ ...formData, charges: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Expected Duration/Games</label>

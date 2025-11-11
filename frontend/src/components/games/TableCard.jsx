@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { FaEdit, FaTrash, FaPlay, FaClock, FaPencilAlt, FaCoffee, FaMoneyBillWave } from 'react-icons/fa';
 
 export default function TableCard({ table, onEdit, onDelete, onCheckin, onPlayerCheckout, onEditBooking, onRefreshments, formatDuration }) {
+  const [isFlipped, setIsFlipped] = useState(false);
   const activeBooking = table.bookings[0];
   const activePlayers = activeBooking?.playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs ') || 
                         (activeBooking?.player1Name + (activeBooking?.player2Name ? ` vs ${activeBooking.player2Name}` : ''));
@@ -19,13 +21,39 @@ export default function TableCard({ table, onEdit, onDelete, onCheckin, onPlayer
           </div>
         </div>
         {table.tableType === 'snooker' && (
-          <div className="relative h-32 bg-green-800 rounded-lg border-4 border-amber-900 shadow-inner">
-            <div className="absolute inset-2 border-2 border-white/20 rounded"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full"></div>
-            <div className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full"></div>
-            <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full"></div>
-            <div className="absolute bottom-2 left-2 w-2 h-2 bg-green-400 rounded-full"></div>
-            <div className="absolute bottom-2 right-2 w-2 h-2 bg-pink-400 rounded-full"></div>
+          <div 
+            className="relative h-32 cursor-pointer perspective-1000"
+            onClick={() => activeBooking && setIsFlipped(!isFlipped)}
+          >
+            <div className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+              {/* Front */}
+              <div className="absolute inset-0 backface-hidden bg-green-800 rounded-lg border-4 border-amber-900 shadow-inner">
+                <div className="absolute inset-2 border-2 border-white/20 rounded"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full"></div>
+                <div className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full"></div>
+                <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full"></div>
+                <div className="absolute bottom-2 left-2 w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className="absolute bottom-2 right-2 w-2 h-2 bg-pink-400 rounded-full"></div>
+              </div>
+              {/* Back */}
+              {activeBooking && (
+                <div className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-4 border-blue-900 shadow-inner p-2 flex flex-col justify-center">
+                  <div className="text-center mb-1">
+                    <div className="text-xs font-semibold truncate">{activePlayers}</div>
+                  </div>
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <FaClock className="text-xs" />
+                    <span className="text-lg font-bold">{formatDuration(activeBooking.checkInTime)}</span>
+                  </div>
+                  {activeBooking.refreshments?.length > 0 && (
+                    <div className="text-center">
+                      <div className="text-xs opacity-80">Refreshments</div>
+                      <div className="text-sm font-bold">Rs. {activeBooking.refreshments.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -36,30 +64,10 @@ export default function TableCard({ table, onEdit, onDelete, onCheckin, onPlayer
           </span>
         </div>
         {activeBooking && (
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 mb-3 border border-gray-200">
-            <div className="flex justify-between items-start mb-3">
-              <div className="font-semibold text-gray-900 text-base">
-                {activePlayers}
-              </div>
-              <button onClick={() => onEditBooking(activeBooking)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded" title="Edit booking">
-                <FaPencilAlt className="text-sm" />
-              </button>
-            </div>
-            <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FaClock className="text-blue-600" />
-                  <span className="text-sm font-medium">Elapsed</span>
-                </div>
-                <span className="text-2xl font-bold text-blue-600">{formatDuration(activeBooking.checkInTime)}</span>
-              </div>
-            </div>
-            {activeBooking.refreshments?.length > 0 && (
-              <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                <div className="text-orange-600 text-xs mb-1">Refreshments</div>
-                <div className="font-semibold text-orange-700">Rs. {activeBooking.refreshments.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}</div>
-              </div>
-            )}
+          <div className="mb-3">
+            <button onClick={() => onEditBooking(activeBooking)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded" title="Edit booking">
+              <FaPencilAlt className="text-sm" />
+            </button>
           </div>
         )}
         <div className="flex gap-2">

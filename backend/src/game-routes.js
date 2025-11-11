@@ -70,17 +70,25 @@ router.delete('/tables/:id', authenticateToken, async (req, res) => {
 // Check-in booking
 router.post('/bookings/checkin', authenticateToken, async (req, res) => {
   try {
-    const { tableId, memberId, member2Id, player1Name, player1Phone, player2Name, player2Phone, chargeType, charges, player1Charges, player2Charges, expectedDuration, totalPlayers } = req.body;
+    const { tableId, memberId, member2Id, player1Name, player1Phone, player2Name, player2Phone, chargeType, charges, expectedDuration, totalPlayers } = req.body;
     
     const framesToDeduct = totalPlayers || 1;
+    let player1Charge = charges; // Default to walk-in rate
+    let player2Charge = charges; // Default to walk-in rate
     
-    // Validate members at check-in
+    // Validate members at check-in and set charges
     if (memberId) {
       const member = await prisma.member.findUnique({ where: { id: memberId } });
       if (!member) return res.status(404).json({ error: 'Player 1 member not found' });
       if (member.expiryDate < new Date()) return res.status(400).json({ error: 'Player 1 membership expired. Please renew.' });
-      if (member.totalGames > 0 && member.remainingGames <= 0) {
-        return res.status(400).json({ error: 'Player 1 has no games remaining. Please renew membership.' });
+      
+      // Member with games remaining: 0 charge
+      if (member.totalGames > 0 && member.remainingGames > 0) {
+        player1Charge = 0;
+      }
+      // Member with 0 games but active membership: 120/frame
+      else if (member.totalGames > 0 && member.remainingGames <= 0 && member.expiryDate >= new Date()) {
+        player1Charge = 120;
       }
     }
     
@@ -88,13 +96,19 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       const member2 = await prisma.member.findUnique({ where: { id: member2Id } });
       if (!member2) return res.status(404).json({ error: 'Player 2 member not found' });
       if (member2.expiryDate < new Date()) return res.status(400).json({ error: 'Player 2 membership expired. Please renew.' });
-      if (member2.totalGames > 0 && member2.remainingGames <= 0) {
-        return res.status(400).json({ error: 'Player 2 has no games remaining. Please renew membership.' });
+      
+      // Member with games remaining: 0 charge
+      if (member2.totalGames > 0 && member2.remainingGames > 0) {
+        player2Charge = 0;
+      }
+      // Member with 0 games but active membership: 120/frame
+      else if (member2.totalGames > 0 && member2.remainingGames <= 0 && member2.expiryDate >= new Date()) {
+        player2Charge = 120;
       }
     }
     
     const booking = await prisma.gameBooking.create({
-      data: { tableId, memberId, member2Id, player1Name, player1Phone, player2Name, player2Phone, chargeType, charges, player1Charges: player1Charges || 0, player2Charges: player2Charges || 0, expectedDuration, userId: req.userId },
+      data: { tableId, memberId, member2Id, player1Name, player1Phone, player2Name, player2Phone, chargeType, charges, player1Charges: player1Charge, player2Charges: player2Charge, expectedDuration, userId: req.userId },
       include: { refreshments: true, member: true, member2: true }
     });
     
@@ -106,7 +120,7 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
         playerName: player1Name,
         playerPhone: player1Phone,
         chargeType,
-        chargePerGame: player1Charges || 0,
+        chargePerGame: player1Charge,
         userId: req.userId
       }
     });
@@ -119,7 +133,7 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
           playerName: player2Name,
           playerPhone: player2Phone,
           chargeType,
-          chargePerGame: player2Charges || 0,
+          chargePerGame: player2Charge,
           userId: req.userId
         }
       });
@@ -135,10 +149,14 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
 // Update booking
 router.put('/bookings/:id', authenticateToken, async (req, res) => {
   try {
-    const { expectedDuration } = req.body;
+    const { expectedDuration, lastPayerId } = req.body;
+    const updateData = {};
+    if (expectedDuration !== undefined) updateData.expectedDuration = expectedDuration;
+    if (lastPayerId !== undefined) updateData.lastPayerId = lastPayerId;
+    
     const booking = await prisma.gameBooking.update({
       where: { id: req.params.id },
-      data: { expectedDuration },
+      data: updateData,
       include: { refreshments: true }
     });
     res.json(booking);
@@ -213,7 +231,7 @@ router.get('/bookings/:id/refreshments', authenticateToken, async (req, res) => 
 // Check-out booking
 router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
   try {
-    const { gamesPlayed, totalAmount, paymentMethod } = req.body;
+    const { gamesPlayed, totalAmount, paymentMethod, payer } = req.body;
     
     const booking = await prisma.gameBooking.findUnique({
       where: { id: req.params.id },
@@ -222,23 +240,7 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
 
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     
-    // Deduct games from members if gamesPlayed > 0
-    if (gamesPlayed && gamesPlayed > 0) {
-      if (booking.memberId && booking.member && booking.member.totalGames > 0) {
-        const newRemaining = Math.max(0, booking.member.remainingGames - gamesPlayed);
-        await prisma.member.update({
-          where: { id: booking.memberId },
-          data: { remainingGames: newRemaining }
-        });
-      }
-      if (booking.member2Id && booking.member2 && booking.member2.totalGames > 0) {
-        const newRemaining = Math.max(0, booking.member2.remainingGames - gamesPlayed);
-        await prisma.member.update({
-          where: { id: booking.member2Id },
-          data: { remainingGames: newRemaining }
-        });
-      }
-    }
+    // Note: Games are already deducted when selecting payer in PlayerCheckoutModal
 
     // Create sale for refreshments if any
     if (booking.refreshments.length > 0) {
@@ -280,7 +282,7 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
 
     const updatedBooking = await prisma.gameBooking.update({
       where: { id: req.params.id },
-      data: { checkOutTime: new Date(), gamesPlayed, totalAmount, paymentMethod: paymentMethod || 'cash', isPaid: true },
+      data: { checkOutTime: new Date(), gamesPlayed, totalAmount, paymentMethod: paymentMethod || 'cash', payer, isPaid: true },
       include: { refreshments: true }
     });
     
@@ -354,6 +356,19 @@ router.get('/bookings/:id/player-bills', authenticateToken, async (req, res) => 
   }
 });
 
+// Get game history for a booking
+router.get('/bookings/:id/game-history', authenticateToken, async (req, res) => {
+  try {
+    const history = await prisma.gameHistory.findMany({
+      where: { bookingId: req.params.id },
+      orderBy: { frameNumber: 'asc' }
+    });
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 // Checkout individual player (1 game)
@@ -368,17 +383,10 @@ router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) =>
     if (!bill) return res.status(404).json({ error: 'Player bill not found' });
     if (bill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
     
-    const gamesPlayed = 1;
-    let totalAmount = Number(bill.chargePerGame);
+    const gamesPlayed = bill.gamesPlayed; // Use existing games played
+    let totalAmount = Number(bill.totalAmount); // Use existing total amount
     
-    // Deduct 1 game from member if applicable
-    if (bill.memberId && bill.member && bill.member.totalGames > 0) {
-      const newRemaining = Math.max(0, bill.member.remainingGames - 1);
-      await prisma.member.update({
-        where: { id: bill.memberId },
-        data: { remainingGames: newRemaining }
-      });
-    }
+    // Note: Games are already deducted when selecting payer, no need to deduct again
     
     // Create sale for refreshments if any
     if (bill.refreshments.length > 0) {
@@ -469,36 +477,73 @@ router.put('/player-bills/:id/transfer', authenticateToken, async (req, res) => 
   }
 });
 
-// Add game charge to player bill (loser pays)
+// Add game charge to player bill (payer pays)
 router.post('/player-bills/:id/add-game', authenticateToken, async (req, res) => {
   try {
-    const bill = await prisma.playerBill.findUnique({
+    const payerBill = await prisma.playerBill.findUnique({
       where: { id: req.params.id },
       include: { member: true }
     });
     
-    if (!bill) return res.status(404).json({ error: 'Player bill not found' });
-    if (bill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
+    if (!payerBill) return res.status(404).json({ error: 'Player bill not found' });
+    if (payerBill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
     
-    const newGamesPlayed = bill.gamesPlayed + 1;
-    const newTotalAmount = Number(bill.totalAmount) + Number(bill.chargePerGame);
+    // Get all active player bills for this booking
+    const allBills = await prisma.playerBill.findMany({
+      where: { bookingId: payerBill.bookingId, isPaid: false },
+      include: { member: true }
+    });
     
-    // Deduct 1 game from member if applicable
-    if (bill.memberId && bill.member && bill.member.totalGames > 0) {
-      const newRemaining = Math.max(0, bill.member.remainingGames - 1);
-      await prisma.member.update({
-        where: { id: bill.memberId },
-        data: { remainingGames: newRemaining }
+    // Increment gamesPlayed for all active players, but only add charge to payer
+    const newFrameNumber = payerBill.gamesPlayed + 1;
+    
+    for (const bill of allBills) {
+      const newGamesPlayed = bill.gamesPlayed + 1;
+      const isPayerBill = bill.id === req.params.id;
+      // Only payer gets the charge added to their total
+      const newTotalAmount = isPayerBill ? Number(bill.totalAmount) + Number(bill.chargePerGame) : Number(bill.totalAmount);
+      
+      // Deduct 1 game from member if applicable
+      if (bill.memberId && bill.member && bill.member.totalGames > 0) {
+        const newRemaining = Math.max(0, bill.member.remainingGames - 1);
+        await prisma.member.update({
+          where: { id: bill.memberId },
+          data: { remainingGames: newRemaining }
+        });
+      }
+      
+      await prisma.playerBill.update({
+        where: { id: bill.id },
+        data: { 
+          gamesPlayed: newGamesPlayed, 
+          totalAmount: newTotalAmount 
+        }
       });
     }
     
-    const updatedBill = await prisma.playerBill.update({
+    // Update booking with lastPayerId
+    await prisma.gameBooking.update({
+      where: { id: payerBill.bookingId },
+      data: { lastPayerId: req.params.id }
+    });
+    
+    // Record in game history
+    await prisma.gameHistory.create({
+      data: {
+        bookingId: payerBill.bookingId,
+        payerBillId: req.params.id,
+        frameNumber: newFrameNumber,
+        amount: Number(payerBill.chargePerGame)
+      }
+    });
+    
+    // Return updated payer bill
+    const updatedPayerBill = await prisma.playerBill.findUnique({
       where: { id: req.params.id },
-      data: { gamesPlayed: newGamesPlayed, totalAmount: newTotalAmount },
       include: { member: true, refreshments: true }
     });
     
-    res.json(updatedBill);
+    res.json(updatedPayerBill);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

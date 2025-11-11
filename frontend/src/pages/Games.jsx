@@ -34,8 +34,8 @@ export default function Games() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tableForm, setTableForm] = useState({ name: '', tableType: 'snooker' });
-  const [checkinForm, setCheckinForm] = useState({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', player1Charges: '0', player2Charges: '0', expectedDuration: '' });
-  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' });
+  const [checkinForm, setCheckinForm] = useState({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' });
+  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' });
 
   useEffect(() => { fetchTables(); }, []);
   useEffect(() => { if (activeTab === 'history') fetchHistory(); }, [activeTab, historyPage]);
@@ -87,7 +87,7 @@ export default function Games() {
     try {
       await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
       setShowCheckinModal(false);
-      setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', player1Charges: '0', player2Charges: '0', expectedDuration: '' });
+      setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' });
       setSelectedTable(null);
       fetchTables();
     } catch (error) {
@@ -103,7 +103,7 @@ export default function Games() {
     try {
       await axios.post(`/api/games/bookings/${selectedBooking.id}/checkout`, checkoutForm);
       setShowCheckoutModal(false);
-      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' });
+      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' });
       setSelectedBooking(null);
       fetchTables();
     } catch (error) {
@@ -205,7 +205,7 @@ export default function Games() {
             <p className="text-gray-500 mt-2">Loading tables...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {tables.map((table) => (
               <TableCard key={table.id} table={table} onEdit={openEditModal} onDelete={(t) => { setDeletingTable(t); setShowDeleteModal(true); }} onCheckin={openCheckinModal} onPlayerCheckout={openPlayerCheckoutModal} onEditBooking={openEditBookingModal} onRefreshments={openRefreshmentsModal} formatDuration={formatDuration} />
             ))}
@@ -231,12 +231,12 @@ export default function Games() {
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
               <button onClick={() => setShowErrorModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={() => { setCheckinForm({ ...checkinForm, memberId: null, member2Id: null, player1Charges: '0', player2Charges: '0' }); setShowErrorModal(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Proceed as Walk-in</button>
+              <button onClick={() => { setCheckinForm({ ...checkinForm, memberId: null, member2Id: null }); setShowErrorModal(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Proceed as Walk-in</button>
             </div>
           </div>
         </div>
       )}
-      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash' }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
+      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
       {showRefreshmentsModal && selectedBooking && <RefreshmentsModal booking={selectedBooking} onClose={() => { setShowRefreshmentsModal(false); setSelectedBooking(null); }} onUpdate={fetchTables} />}
       {showEditBookingModal && editingBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
