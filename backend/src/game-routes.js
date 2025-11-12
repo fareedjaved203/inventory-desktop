@@ -70,7 +70,7 @@ router.delete('/tables/:id', authenticateToken, async (req, res) => {
 // Check-in booking
 router.post('/bookings/checkin', authenticateToken, async (req, res) => {
   try {
-    const { tableId, memberId, member2Id, player1Name, player1Phone, player2Name, player2Phone, chargeType, charges, expectedDuration, totalPlayers } = req.body;
+    const { tableId, memberId, member2Id, member3Id, member4Id, player1Name, player1Phone, player2Name, player2Phone, player3Name, player3Phone, player4Name, player4Phone, chargeType, charges, expectedDuration, totalPlayers } = req.body;
     
     const framesToDeduct = totalPlayers || 1;
     let player1Charge = charges; // Default to walk-in rate
@@ -112,31 +112,39 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       include: { refreshments: true, member: true, member2: true }
     });
     
-    // Create player bills
-    await prisma.playerBill.create({
-      data: {
-        bookingId: booking.id,
-        memberId,
-        playerName: player1Name,
-        playerPhone: player1Phone,
-        chargeType,
-        chargePerGame: player1Charge,
-        userId: req.userId
-      }
-    });
+    // Create player bills for all players
+    const players = [
+      { memberId, name: player1Name, phone: player1Phone, charge: player1Charge },
+      { memberId: member2Id, name: player2Name, phone: player2Phone, charge: player2Charge },
+      { memberId: member3Id, name: player3Name, phone: player3Phone, charge: charges },
+      { memberId: member4Id, name: player4Name, phone: player4Phone, charge: charges }
+    ];
     
-    if (player2Name) {
-      await prisma.playerBill.create({
-        data: {
-          bookingId: booking.id,
-          memberId: member2Id,
-          playerName: player2Name,
-          playerPhone: player2Phone,
-          chargeType,
-          chargePerGame: player2Charge,
-          userId: req.userId
+    for (const player of players) {
+      if (player.name) {
+        // Check member charge if applicable
+        let playerCharge = player.charge;
+        if (player.memberId) {
+          const member = await prisma.member.findUnique({ where: { id: player.memberId } });
+          if (member && member.totalGames > 0 && member.remainingGames > 0) {
+            playerCharge = 0;
+          } else if (member && member.totalGames > 0 && member.remainingGames <= 0 && member.expiryDate >= new Date()) {
+            playerCharge = 120;
+          }
         }
-      });
+        
+        await prisma.playerBill.create({
+          data: {
+            bookingId: booking.id,
+            memberId: player.memberId,
+            playerName: player.name,
+            playerPhone: player.phone,
+            chargeType,
+            chargePerGame: playerCharge,
+            userId: req.userId
+          }
+        });
+      }
     }
     
     await prisma.gameTable.update({ where: { id: tableId }, data: { isAvailable: false } });
@@ -288,6 +296,34 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
     
     await prisma.gameTable.update({ where: { id: booking.tableId }, data: { isAvailable: true } });
     res.json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create booking for transfer to empty table
+router.post('/bookings/transfer-to-empty', authenticateToken, async (req, res) => {
+  try {
+    const { tableId, playerBillId } = req.body;
+    
+    // Get player bill info
+    const playerBill = await prisma.playerBill.findUnique({ where: { id: playerBillId } });
+    if (!playerBill) return res.status(404).json({ error: 'Player bill not found' });
+    
+    // Create new booking
+    const booking = await prisma.gameBooking.create({
+      data: {
+        tableId,
+        player1Name: playerBill.playerName,
+        player1Phone: playerBill.playerPhone,
+        chargeType: playerBill.chargeType,
+        charges: playerBill.chargePerGame,
+        userId: req.userId
+      }
+    });
+    
+    await prisma.gameTable.update({ where: { id: tableId }, data: { isAvailable: false } });
+    res.json(booking);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

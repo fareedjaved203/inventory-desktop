@@ -125,13 +125,28 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
     try {
       const { data } = await axios.get('/api/games/tables');
       const activeBookings = data
-        .filter(t => !t.isAvailable && t.bookings[0]?.id !== booking.id)
-        .map(t => ({
-          ...t.bookings[0],
-          tableName: t.name,
-          activePlayers: t.bookings[0].playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs ') || 
-                        (t.bookings[0].player1Name + (t.bookings[0].player2Name ? ` vs ${t.bookings[0].player2Name}` : ''))
-        }));
+        .filter(t => t.bookings[0]?.id !== booking.id)
+        .map(t => {
+          if (!t.isAvailable && t.bookings[0]) {
+            return {
+              ...t.bookings[0],
+              tableId: t.id,
+              tableName: t.name,
+              activePlayers: t.bookings[0].playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs ') || 
+                            (t.bookings[0].player1Name + (t.bookings[0].player2Name ? ` vs ${t.bookings[0].player2Name}` : ''))
+            };
+          } else {
+            // Available table with no booking
+            return {
+              id: null,
+              tableId: t.id,
+              tableName: t.name,
+              activePlayers: 'Empty table',
+              playerBills: [],
+              isEmpty: true
+            };
+          }
+        });
       setAvailableBookings(activeBookings);
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -163,7 +178,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
     }
   };
 
-  const transferPlayer = async (newBookingId) => {
+  const transferPlayer = async (targetBookingIdOrTable) => {
     try {
       if (transferMode === 'switch' && selectedPlayerToSwap) {
         await axios.put(`/api/games/player-bills/switch`, {
@@ -171,7 +186,18 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
           bill2Id: selectedPlayerToSwap
         });
       } else {
-        await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId });
+        // Check if target is an empty table
+        const targetBooking = availableBookings.find(b => b.id === targetBookingIdOrTable || b.tableId === targetBookingIdOrTable);
+        if (targetBooking?.isEmpty) {
+          // Create a new booking for the empty table first
+          const { data: newBooking } = await axios.post('/api/games/bookings/transfer-to-empty', {
+            tableId: targetBooking.tableId,
+            playerBillId: transferringBill
+          });
+          await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId: newBooking.id });
+        } else {
+          await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId: targetBookingIdOrTable });
+        }
       }
       setShowTransferModal(false);
       setTransferringBill(null);
