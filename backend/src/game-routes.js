@@ -323,6 +323,12 @@ router.post('/player-bills', authenticateToken, async (req, res) => {
   try {
     const { bookingId, memberId, playerName, playerPhone, chargePerGame, chargeType } = req.body;
     
+    // Check current player count
+    const existingBills = await prisma.playerBill.count({ where: { bookingId } });
+    if (existingBills >= 4) {
+      return res.status(400).json({ error: 'Maximum 4 players allowed per table' });
+    }
+    
     const newBill = await prisma.playerBill.create({
       data: {
         bookingId,
@@ -456,6 +462,12 @@ router.put('/player-bills/:id/transfer', authenticateToken, async (req, res) => 
     if (!bill) return res.status(404).json({ error: 'Player bill not found' });
     if (bill.isPaid) return res.status(400).json({ error: 'Cannot transfer paid bill' });
     
+    // Check if target table has space (max 4 players)
+    const targetPlayerCount = await prisma.playerBill.count({ where: { bookingId: newBookingId } });
+    if (targetPlayerCount >= 4) {
+      return res.status(400).json({ error: 'Target table is full (max 4 players)' });
+    }
+    
     // Update player bill
     const updatedBill = await prisma.playerBill.update({
       where: { id: req.params.id },
@@ -472,6 +484,45 @@ router.put('/player-bills/:id/transfer', authenticateToken, async (req, res) => 
     }
     
     res.json(updatedBill);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Switch players between tables
+router.put('/player-bills/switch', authenticateToken, async (req, res) => {
+  try {
+    const { bill1Id, bill2Id } = req.body;
+    
+    const [bill1, bill2] = await Promise.all([
+      prisma.playerBill.findUnique({ where: { id: bill1Id }, include: { refreshments: true } }),
+      prisma.playerBill.findUnique({ where: { id: bill2Id }, include: { refreshments: true } })
+    ]);
+    
+    if (!bill1 || !bill2) return res.status(404).json({ error: 'Player bill not found' });
+    if (bill1.isPaid || bill2.isPaid) return res.status(400).json({ error: 'Cannot switch paid bills' });
+    
+    const tempBookingId = bill1.bookingId;
+    
+    // Swap bookings
+    await prisma.playerBill.update({ where: { id: bill1Id }, data: { bookingId: bill2.bookingId } });
+    await prisma.playerBill.update({ where: { id: bill2Id }, data: { bookingId: tempBookingId } });
+    
+    // Swap refreshments
+    if (bill1.refreshments.length > 0) {
+      await prisma.bookingRefreshment.updateMany({
+        where: { playerBillId: bill1Id },
+        data: { bookingId: bill2.bookingId }
+      });
+    }
+    if (bill2.refreshments.length > 0) {
+      await prisma.bookingRefreshment.updateMany({
+        where: { playerBillId: bill2Id },
+        data: { bookingId: tempBookingId }
+      });
+    }
+    
+    res.json({ message: 'Players switched successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

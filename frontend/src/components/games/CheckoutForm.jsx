@@ -1,5 +1,7 @@
 export default function CheckoutForm({ table, booking, formData, setFormData, onSubmit, onCancel, formatDuration }) {
-  const players = [booking.player1Name, booking.player2Name].filter(Boolean);
+  const players = booking.playerBills?.length > 0 
+    ? booking.playerBills.map(b => b.playerName)
+    : [booking.player1Name, booking.player2Name].filter(Boolean);
   const groupedRefreshments = (booking.refreshments || []).reduce((acc, r) => {
     if (!acc[r.playerName]) acc[r.playerName] = [];
     acc[r.playerName].push(r);

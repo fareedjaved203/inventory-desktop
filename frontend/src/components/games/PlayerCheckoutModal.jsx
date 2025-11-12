@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from '../../utils/axios';
 
 export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
@@ -6,9 +6,16 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
   const [loading, setLoading] = useState(true);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferringBill, setTransferringBill] = useState(null);
+  const [transferMode, setTransferMode] = useState('move');
+  const [selectedPlayerToSwap, setSelectedPlayerToSwap] = useState(null);
   const [availableBookings, setAvailableBookings] = useState([]);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayerForm, setNewPlayerForm] = useState({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
+  const [members, setMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const searchRef = useRef(null);
   const [showWinnerSelection, setShowWinnerSelection] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [showBillModal, setShowBillModal] = useState(false);
@@ -20,11 +27,30 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
     fetchPlayerBills();
     fetchAvailableBookings();
     fetchGameHistory();
+    fetchMembers();
     // Set lastPayerId from booking
     if (booking.lastPayerId) {
       setLastPayerId(booking.lastPayerId);
     }
   }, [booking.lastPayerId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const filtered = getFilteredMembers();
+      if (memberSearch && filtered.length > 0) {
+        setShowMemberDropdown(true);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [memberSearch, members]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowMemberDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchPlayerBills = async () => {
     try {
@@ -43,6 +69,55 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
       setGameHistory(data);
     } catch (error) {
       console.error('Error fetching game history:', error);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const { data } = await axios.get('/api/members/active');
+      setMembers(data);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+    }
+  };
+
+  const getFilteredMembers = () => {
+    return memberSearch.trim()
+      ? members.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.phone.includes(memberSearch))
+      : [];
+  };
+
+  const handleMemberSelect = (member) => {
+    setShowMemberDropdown(false);
+    setHighlightedIndex(-1);
+    if (member) {
+      setMemberSearch(member.name);
+      setNewPlayerForm({
+        memberId: member.id,
+        playerName: member.name,
+        playerPhone: member.phone,
+        chargePerGame: member.totalGames > 0 ? '0' : member.perFrameCharge
+      });
+    } else {
+      setMemberSearch('');
+      setNewPlayerForm({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    const filteredMembers = getFilteredMembers();
+    if (!showMemberDropdown || filteredMembers.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev < filteredMembers.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev > -1 ? prev - 1 : -1));
+    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleMemberSelect(filteredMembers[highlightedIndex]);
+    } else if (e.key === 'Escape') {
+      setShowMemberDropdown(false);
     }
   };
 
@@ -90,9 +165,18 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
 
   const transferPlayer = async (newBookingId) => {
     try {
-      await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId });
+      if (transferMode === 'switch' && selectedPlayerToSwap) {
+        await axios.put(`/api/games/player-bills/switch`, {
+          bill1Id: transferringBill,
+          bill2Id: selectedPlayerToSwap
+        });
+      } else {
+        await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId });
+      }
       setShowTransferModal(false);
       setTransferringBill(null);
+      setTransferMode('move');
+      setSelectedPlayerToSwap(null);
       onUpdate();
       await fetchPlayerBills();
       await fetchAvailableBookings();
@@ -284,7 +368,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                 </button>
               </>
             )}
-            {!lastPayerId && playerBills.filter(b => !b.isPaid).length === 2 && (
+            {!lastPayerId && playerBills.filter(b => !b.isPaid).length >= 2 && (
               <button
                 onClick={() => setShowWinnerSelection(true)}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -369,41 +453,92 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
               <h2 className="text-xl font-bold text-gray-800">Add New Player</h2>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Player Name *</label>
+              <div className="relative" ref={searchRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Search Member</label>
                 <input
                   type="text"
-                  required
-                  value={newPlayerForm.playerName}
-                  onChange={(e) => setNewPlayerForm({...newPlayerForm, playerName: e.target.value})}
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search by name or phone"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {showMemberDropdown && getFilteredMembers().length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {getFilteredMembers().map((m, idx) => (
+                      <div
+                        key={m.id}
+                        onMouseDown={(e) => { e.preventDefault(); handleMemberSelect(m); }}
+                        className={`px-4 py-3 cursor-pointer border-b last:border-b-0 ${highlightedIndex === idx ? 'bg-blue-500 text-white' : 'hover:bg-gray-50'}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className={`font-semibold ${highlightedIndex === idx ? 'text-white' : 'text-gray-800'}`}>{m.name}</div>
+                            <div className={`text-sm ${highlightedIndex === idx ? 'text-blue-100' : 'text-gray-500'}`}>{m.phone}</div>
+                          </div>
+                          <div className={`text-sm ${highlightedIndex === idx ? 'text-blue-100' : 'text-gray-600'}`}>
+                            {m.totalGames > 0 ? `${m.remainingGames} games left` : `Rs. ${m.perFrameCharge}/frame`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Player Phone</label>
-                <input
-                  type="tel"
-                  value={newPlayerForm.playerPhone}
-                  onChange={(e) => setNewPlayerForm({...newPlayerForm, playerPhone: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Charge Per Game (Rs.) *</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="0.01"
-                  value={newPlayerForm.chargePerGame}
-                  onChange={(e) => setNewPlayerForm({...newPlayerForm, chargePerGame: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+              {!newPlayerForm.memberId && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Player Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPlayerForm.playerName}
+                      onChange={(e) => setNewPlayerForm({...newPlayerForm, playerName: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Player Phone</label>
+                    <input
+                      type="tel"
+                      value={newPlayerForm.playerPhone}
+                      onChange={(e) => setNewPlayerForm({...newPlayerForm, playerPhone: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Charge Per Game (Rs.) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={newPlayerForm.chargePerGame}
+                      onChange={(e) => setNewPlayerForm({...newPlayerForm, chargePerGame: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </>
+              )}
+              {newPlayerForm.memberId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="font-semibold text-gray-800">{newPlayerForm.playerName}</div>
+                  <div className="text-sm text-gray-600">{newPlayerForm.playerPhone}</div>
+                  <div className="text-sm text-blue-600 mt-1">
+                    {parseFloat(newPlayerForm.chargePerGame) === 0 ? 'Member with game package' : `Rs. ${newPlayerForm.chargePerGame}/frame`}
+                  </div>
+                  <button
+                    onClick={() => handleMemberSelect(null)}
+                    className="mt-2 text-sm text-red-600 hover:text-red-700"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              )}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
               <button
-                onClick={() => { setShowAddPlayer(false); setNewPlayerForm({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' }); }}
+                onClick={() => { setShowAddPlayer(false); setNewPlayerForm({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' }); setMemberSearch(''); }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
@@ -414,6 +549,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                   try {
                     await axios.post('/api/games/player-bills', {
                       bookingId: booking.id,
+                      memberId: newPlayerForm.memberId,
                       playerName: newPlayerForm.playerName,
                       playerPhone: newPlayerForm.playerPhone,
                       chargePerGame: newPlayerForm.chargePerGame,
@@ -421,6 +557,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                     });
                     setShowAddPlayer(false);
                     setNewPlayerForm({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
+                    setMemberSearch('');
                     onUpdate();
                     await fetchPlayerBills();
                   } catch (error) {
@@ -443,25 +580,82 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
               <h2 className="text-xl font-bold text-gray-800">Transfer Player</h2>
             </div>
             <div className="p-6">
-              <p className="text-gray-600 mb-4">Select a table to transfer this player to:</p>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => { setTransferMode('move'); setSelectedPlayerToSwap(null); }}
+                  className={`flex-1 px-3 py-2 rounded-lg transition-colors ${transferMode === 'move' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  Move
+                </button>
+                <button
+                  onClick={() => setTransferMode('switch')}
+                  className={`flex-1 px-3 py-2 rounded-lg transition-colors ${transferMode === 'switch' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  Switch
+                </button>
+              </div>
+              <p className="text-gray-600 mb-4">{transferMode === 'move' ? 'Select a table to move this player to:' : 'Select a player to switch with:'}</p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {availableBookings.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => transferPlayer(b.id)}
-                    className="w-full text-left px-4 py-3 border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition-colors"
-                  >
-                    <div className="font-semibold text-gray-800">{b.tableName}</div>
-                    <div className="text-sm text-gray-500">{b.activePlayers}</div>
-                  </button>
-                ))}
+                {availableBookings.map((b) => {
+                  const playerCount = b.playerBills?.filter(pb => !pb.isPaid).length || 0;
+                  const canMove = playerCount < 4;
+                  return transferMode === 'move' ? (
+                    <button
+                      key={b.id}
+                      onClick={() => canMove ? transferPlayer(b.id) : alert('Table is full (max 4 players)')}
+                      disabled={!canMove}
+                      className={`w-full text-left px-4 py-3 border rounded-lg transition-colors ${
+                        canMove 
+                          ? 'border-gray-300 hover:bg-blue-50 hover:border-blue-500' 
+                          : 'border-red-300 bg-red-50 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold text-gray-800">{b.tableName}</div>
+                          <div className="text-sm text-gray-500">{b.activePlayers}</div>
+                        </div>
+                        <div className={`text-xs font-medium px-2 py-1 rounded ${canMove ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {playerCount}/4
+                        </div>
+                      </div>
+                    </button>
+                  ) : (
+                    <div key={b.id} className="border border-gray-300 rounded-lg p-3">
+                      <div className="font-semibold text-gray-800 mb-2">{b.tableName}</div>
+                      <div className="space-y-1">
+                        {b.playerBills?.filter(pb => !pb.isPaid).map(pb => (
+                          <button
+                            key={pb.id}
+                            onClick={() => setSelectedPlayerToSwap(pb.id)}
+                            className={`w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                              selectedPlayerToSwap === pb.id
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-50 hover:bg-gray-100'
+                            }`}
+                          >
+                            {pb.playerName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               {availableBookings.length === 0 && (
                 <p className="text-center text-gray-500 py-4">No other active tables</p>
               )}
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-              <button onClick={() => { setShowTransferModal(false); setTransferringBill(null); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button onClick={() => { setShowTransferModal(false); setTransferringBill(null); setTransferMode('move'); setSelectedPlayerToSwap(null); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+              {transferMode === 'switch' && selectedPlayerToSwap && (
+                <button
+                  onClick={() => transferPlayer(null)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Confirm Switch
+                </button>
+              )}
             </div>
           </div>
         </div>
