@@ -40,7 +40,7 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
                 <tr key={booking.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{booking.table.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {booking.player1Name}{booking.player2Name && ` vs ${booking.player2Name}`}
+                    {booking.payer || booking.player1Name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(booking.checkInTime).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{booking.checkOutTime ? new Date(booking.checkOutTime).toLocaleString() : '-'}</td>
