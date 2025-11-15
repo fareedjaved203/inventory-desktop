@@ -751,6 +751,8 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                         <style>
                           @media print { @page { margin: 0; size: 80mm auto; } }
                           body { font-family: monospace; font-size: 12px; margin: 10px; width: 80mm; }
+                          .logo { text-align: center; margin-bottom: 8px; }
+                          .logo img { max-width: 30mm; height: auto; }
                           .header { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 2px dashed #000; padding-bottom: 8px; }
                           .info { margin-bottom: 8px; font-size: 11px; }
                           .divider { border-top: 1px dashed #000; margin: 8px 0; }
@@ -760,6 +762,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                         </style>
                       </head>
                       <body>
+                        ${shopSettings?.logo ? `<div class="logo"><img src="${shopSettings.logo}" alt="Logo" onload="window.print()" /></div>` : ''}
                         <div class="header">${shopSettings?.shopName || 'CURRENT BILL'}</div>
                         <div class="info">
                           <div><strong>Player:</strong> ${selectedBill.playerName}</div>
@@ -791,7 +794,9 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                     </html>
                   `);
                   printWindow.document.close();
-                  printWindow.print();
+                  if (!shopSettings?.logo) {
+                    printWindow.print();
+                  }
                 }}
                 className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
               >
