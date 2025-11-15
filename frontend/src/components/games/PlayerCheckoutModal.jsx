@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import axios from '../../utils/axios';
 
 export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
@@ -22,6 +23,11 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
   const [selectedBill, setSelectedBill] = useState(null);
   const [lastPayerId, setLastPayerId] = useState(null);
   const [gameHistory, setGameHistory] = useState([]);
+
+  const { data: shopSettings } = useQuery(['shop-settings'], async () => {
+    const { data } = await axios.get('/api/shop-settings');
+    return data;
+  });
 
   useEffect(() => {
     fetchPlayerBills();
@@ -96,7 +102,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
         memberId: member.id,
         playerName: member.name,
         playerPhone: member.phone,
-        chargePerGame: member.totalGames > 0 ? '0' : member.perFrameCharge
+        chargePerGame: member.perFrameCharge === 0 && member.remainingGames > 0 ? '0' : '120'
       });
     } else {
       setMemberSearch('');
@@ -155,7 +161,9 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
 
   const checkoutPlayer = async (billId, paymentMethod) => {
     try {
-      await axios.post(`/api/games/player-bills/${billId}/checkout`, { paymentMethod });
+      const bill = playerBills.find(b => b.id === billId);
+      const updatedTotal = bill.editableTotal !== undefined ? bill.editableTotal : bill.totalAmount;
+      await axios.post(`/api/games/player-bills/${billId}/checkout`, { paymentMethod, totalAmount: updatedTotal });
       onUpdate();
       await fetchPlayerBills();
       await fetchAvailableBookings();
@@ -325,9 +333,21 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                             <span className="font-medium">Rs. {bill.refreshments.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0).toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                        <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2">
                           <span>Total:</span>
-                          <span className="text-blue-600">Rs. {(parseFloat(bill.totalAmount) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2)}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={bill.editableTotalDisplay !== undefined ? bill.editableTotalDisplay : (parseFloat(bill.totalAmount) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2)}
+                            onChange={(e) => {
+                              const refreshmentsTotal = bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0;
+                              const newTotal = parseFloat(e.target.value) || 0;
+                              const newGameCharges = Math.max(0, newTotal - refreshmentsTotal);
+                              setPlayerBills(prev => prev.map(b => b.id === bill.id ? {...b, editableTotal: newGameCharges, editableTotalDisplay: e.target.value} : b));
+                            }}
+                            className="text-right text-blue-600 bg-transparent border-0 border-b border-blue-300 focus:border-blue-500 focus:outline-none w-24 font-bold text-lg"
+                          />
                         </div>
                       </div>
                       
@@ -339,6 +359,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select payment method</option>
+                          <option value="none">None (Free)</option>
                           <option value="cash">Cash</option>
                           <option value="easypaisa">Easypaisa</option>
                           <option value="jazzcash">JazzCash</option>
@@ -394,6 +415,25 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                 </button>
               </>
             )}
+            {!lastPayerId && playerBills.filter(b => !b.isPaid).length === 1 && (
+              <button
+                onClick={async () => {
+                  const singlePlayer = playerBills.filter(b => !b.isPaid)[0];
+                  try {
+                    await axios.post(`/api/games/player-bills/${singlePlayer.id}/add-game`);
+                    setLastPayerId(singlePlayer.id);
+                    onUpdate();
+                    await fetchPlayerBills();
+                    await fetchGameHistory();
+                  } catch (error) {
+                    alert(error.response?.data?.error || 'Error starting game');
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Start Playing
+              </button>
+            )}
             {!lastPayerId && playerBills.filter(b => !b.isPaid).length >= 2 && (
               <button
                 onClick={() => setShowWinnerSelection(true)}
@@ -404,6 +444,11 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
             )}
           </div>
           <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">Close</button>
+        </div>
+        <div className="px-6 py-3 bg-gray-50 text-center">
+          <p className="text-xs text-gray-600">
+            This feature is for recording payments only. The system does not facilitate or endorse betting or gambling activities.
+          </p>
         </div>
       </div>
 
@@ -715,7 +760,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                         </style>
                       </head>
                       <body>
-                        <div class="header">CURRENT BILL</div>
+                        <div class="header">${shopSettings?.shopName || 'CURRENT BILL'}</div>
                         <div class="info">
                           <div><strong>Player:</strong> ${selectedBill.playerName}</div>
                           ${selectedBill.playerPhone ? `<div><strong>Phone:</strong> ${selectedBill.playerPhone}</div>` : ''}

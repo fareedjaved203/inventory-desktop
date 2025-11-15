@@ -38,8 +38,11 @@ export default function TableCard({ table, onEdit, onDelete, onCheckin, onPlayer
               {/* Back */}
               {activeBooking && (
                 <div className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-4 border-blue-900 shadow-inner p-2 flex flex-col justify-center">
-                  <div className="text-center mb-1">
+                  <div className="text-center mb-1 relative group">
                     <div className="text-xs font-semibold truncate">{activePlayers}</div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10 pointer-events-none">
+                      {activePlayers}
+                    </div>
                   </div>
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <FaClock className="text-xs" />

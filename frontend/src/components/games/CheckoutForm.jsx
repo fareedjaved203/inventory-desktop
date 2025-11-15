@@ -107,6 +107,11 @@ export default function CheckoutForm({ table, booking, formData, setFormData, on
           <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
           <button onClick={onSubmit} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Check Out & Pay</button>
         </div>
+        <div className="px-6 py-3 bg-gray-50 text-center">
+          <p className="text-xs text-gray-600">
+            This feature is for recording payments only. The system does not facilitate or endorse betting or gambling activities.
+          </p>
+        </div>
       </div>
     </div>
   );

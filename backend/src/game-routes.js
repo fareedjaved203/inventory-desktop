@@ -82,12 +82,12 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       if (!member) return res.status(404).json({ error: 'Player 1 member not found' });
       if (member.expiryDate < new Date()) return res.status(400).json({ error: 'Player 1 membership expired. Please renew.' });
       
-      // Member with games remaining: 0 charge
-      if (member.totalGames > 0 && member.remainingGames > 0) {
+      // Only premium members (perFrameCharge=0) with remaining games get free games
+      if (member.perFrameCharge === 0 && member.remainingGames > 0) {
         player1Charge = 0;
       }
-      // Member with 0 games but active membership: 120/frame
-      else if (member.totalGames > 0 && member.remainingGames <= 0 && member.expiryDate >= new Date()) {
+      // All other active members pay 120
+      else if (member.expiryDate >= new Date()) {
         player1Charge = 120;
       }
     }
@@ -97,12 +97,12 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       if (!member2) return res.status(404).json({ error: 'Player 2 member not found' });
       if (member2.expiryDate < new Date()) return res.status(400).json({ error: 'Player 2 membership expired. Please renew.' });
       
-      // Member with games remaining: 0 charge
-      if (member2.totalGames > 0 && member2.remainingGames > 0) {
+      // Only premium members (perFrameCharge=0) with remaining games get free games
+      if (member2.perFrameCharge === 0 && member2.remainingGames > 0) {
         player2Charge = 0;
       }
-      // Member with 0 games but active membership: 120/frame
-      else if (member2.totalGames > 0 && member2.remainingGames <= 0 && member2.expiryDate >= new Date()) {
+      // All other active members pay 120
+      else if (member2.expiryDate >= new Date()) {
         player2Charge = 120;
       }
     }
@@ -126,9 +126,9 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
         let playerCharge = player.charge;
         if (player.memberId) {
           const member = await prisma.member.findUnique({ where: { id: player.memberId } });
-          if (member && member.totalGames > 0 && member.remainingGames > 0) {
+          if (member && member.perFrameCharge === 0 && member.remainingGames > 0) {
             playerCharge = 0;
-          } else if (member && member.totalGames > 0 && member.remainingGames <= 0 && member.expiryDate >= new Date()) {
+          } else if (member && member.expiryDate >= new Date()) {
             playerCharge = 120;
           }
         }
@@ -416,7 +416,7 @@ router.get('/bookings/:id/game-history', authenticateToken, async (req, res) => 
 // Checkout individual player (1 game)
 router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) => {
   try {
-    const { paymentMethod } = req.body;
+    const { paymentMethod, totalAmount } = req.body;
     const bill = await prisma.playerBill.findUnique({
       where: { id: req.params.id },
       include: { member: true, refreshments: true, booking: { include: { table: true } } }
@@ -426,7 +426,7 @@ router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) =>
     if (bill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
     
     const gamesPlayed = bill.gamesPlayed; // Use existing games played
-    let totalAmount = Number(bill.totalAmount); // Use existing total amount
+    const finalTotalAmount = totalAmount !== undefined ? Number(totalAmount) : Number(bill.totalAmount); // Use edited total if provided
     
     // Note: Games are already deducted when selecting payer, no need to deduct again
     
@@ -468,7 +468,7 @@ router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) =>
     
     const updatedBill = await prisma.playerBill.update({
       where: { id: req.params.id },
-      data: { isPaid: true, gamesPlayed, totalAmount, checkoutTime: new Date(), paymentMethod: paymentMethod || 'cash' },
+      data: { isPaid: true, gamesPlayed, totalAmount: finalTotalAmount, checkoutTime: new Date(), paymentMethod: paymentMethod || 'cash' },
       include: { member: true, refreshments: true }
     });
     
@@ -675,7 +675,7 @@ router.get('/bookings', authenticateToken, async (req, res) => {
       prisma.gameBooking.count({ where: { userId: req.userId } }),
       prisma.gameBooking.findMany({
         where: { userId: req.userId },
-        include: { table: true, refreshments: true, member: true, member2: true },
+        include: { table: true, refreshments: true, member: true, member2: true, playerBills: true },
         skip: (page - 1) * limit,
         take: parseInt(limit),
         orderBy: { checkInTime: 'desc' }

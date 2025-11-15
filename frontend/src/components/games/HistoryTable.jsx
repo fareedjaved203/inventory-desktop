@@ -34,7 +34,8 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
           <tbody className="bg-white divide-y divide-gray-200">
             {history.map((booking) => {
               const refreshmentsTotal = (booking.refreshments || []).reduce((sum, r) => sum + parseFloat(r.totalAmount), 0);
-              const tableAmount = parseFloat(booking.totalAmount || 0);
+              const playerBillsTotal = (booking.playerBills || []).reduce((sum, bill) => sum + parseFloat(bill.totalAmount || 0), 0);
+              const tableAmount = playerBillsTotal || parseFloat(booking.totalAmount || 0);
               const grandTotal = tableAmount + refreshmentsTotal;
               return (
                 <tr key={booking.id} className="hover:bg-gray-50">
@@ -50,7 +51,16 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">Rs. {grandTotal.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 capitalize">
-                      {booking.paymentMethod || 'cash'}
+                      {(() => {
+                        // Check if there are player bills with payment methods
+                        const playerPaymentMethods = (booking.playerBills || []).filter(bill => bill.isPaid && bill.paymentMethod).map(bill => bill.paymentMethod);
+                        if (playerPaymentMethods.length > 0) {
+                          // Show the first payment method found
+                          return playerPaymentMethods[0];
+                        }
+                        // Fallback to booking payment method
+                        return booking.paymentMethod === 'none' ? 'None' : (booking.paymentMethod || 'Cash');
+                      })()} 
                     </span>
                   </td>
                 </tr>
