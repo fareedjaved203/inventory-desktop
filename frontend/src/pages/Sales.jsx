@@ -75,6 +75,9 @@ function Sales() {
   const [createNewContact, setCreateNewContact] = useState(false);
   const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
   const [creatingContact, setCreatingContact] = useState(false);
+  const [orderBookerSearchTerm, setOrderBookerSearchTerm] = useState("");
+  const [debouncedOrderBookerSearchTerm, setDebouncedOrderBookerSearchTerm] = useState("");
+  const [selectedOrderBooker, setSelectedOrderBooker] = useState(null);
   const [description, setDescription] = useState('');
   const [selectedTransport, setSelectedTransport] = useState(null);
   const [transportSearchTerm, setTransportSearchTerm] = useState('');
@@ -161,6 +164,19 @@ function Sales() {
     debouncedContactSearch(value);
   };
 
+  // Debounced order booker search
+  const debouncedOrderBookerSearch = useCallback(
+    debounce((term) => {
+      setDebouncedOrderBookerSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  const handleOrderBookerSearchChange = (value) => {
+    setOrderBookerSearchTerm(value);
+    debouncedOrderBookerSearch(value);
+  };
+
   // Debounced transport search
   const debouncedTransportSearch = useCallback(
     debounce((term) => {
@@ -193,6 +209,19 @@ function Sales() {
       const result = await API.getContacts({
         limit: 100,
         search: debouncedContactSearchTerm
+      });
+      return result.items;
+    }
+  );
+
+  // Fetch order bookers for dropdown with search
+  const { data: orderBookers, isLoading: orderBookersLoading } = useQuery(
+    ["order-bookers", debouncedOrderBookerSearchTerm],
+    async () => {
+      const result = await API.getContacts({
+        limit: 100,
+        search: debouncedOrderBookerSearchTerm,
+        contactType: 'order_booker'
       });
       return result.items;
     }
@@ -236,6 +265,17 @@ function Sales() {
       if (selectedDate) {
         const [year, month, day] = selectedDate.split("-");
         params.date = `${day}/${month}/${year}`;
+      }
+
+      // Use dedicated endpoints for pending payments and credit balance
+      if (showPendingPayments) {
+        const response = await API.get('/sales/pending-payments', { params });
+        return response.data;
+      }
+      
+      if (showCreditBalance) {
+        const response = await API.get('/sales/credit-balance', { params });
+        return response.data;
       }
 
       return await API.getSales(params);
@@ -548,6 +588,8 @@ function Sales() {
     setDiscount(discountPercentage.toFixed(1));
     setPaidAmount(sale.paidAmount || 0);
     setSelectedContact(sale.contact || null);
+    setSelectedOrderBooker(sale.orderBooker || null);
+    setOrderBookerSearchTerm(sale.orderBooker?.name || '');
     setSaleDate(new Date(sale.saleDate).toISOString().split("T")[0]);
     setDescription(sale.description || '');
     setTransportSearchTerm(sale.carNumber || '');
@@ -619,6 +661,7 @@ function Sales() {
       discount: Number(discountAmount),
       paidAmount: Number(parsedPaidAmount),
       ...(contactId && { contactId }),
+      ...(selectedOrderBooker?.id && { orderBookerId: selectedOrderBooker.id }),
       ...(saleDate && { saleDate }),
       description: description || null,
       carNumber: transportSearchTerm || null,
@@ -728,7 +771,7 @@ function Sales() {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search bill number..."
+              placeholder="Search bill, contact, or order booker..."
               value={searchTerm}
               onChange={handleSearchChange}
               className="w-full sm:w-48 md:w-64 pl-10 pr-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -864,6 +907,9 @@ function Sales() {
                 Contact
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                Order Booker
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
                 Car Number
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
@@ -908,6 +954,15 @@ function Sales() {
                   {sale.contact ? (
                     <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                       {sale.contact.name}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {sale.orderBooker ? (
+                    <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                      {sale.orderBooker.name}
                     </span>
                   ) : (
                     <span className="text-gray-400 text-sm">-</span>
@@ -1531,6 +1586,62 @@ function Sales() {
                     Contact & Transport
                   </h3>
                   <div className="space-y-4">
+                {/* Order Booker Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Order Booker <span className="text-gray-400 text-xs">({t('optional')})</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={orderBookerSearchTerm}
+                      onChange={(e) => {
+                        handleOrderBookerSearchChange(e.target.value);
+                        if (!e.target.value) {
+                          setSelectedOrderBooker(null);
+                        }
+                      }}
+                      placeholder="Search order bookers..."
+                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    {orderBookerSearchTerm && !selectedOrderBooker && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-primary-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {orderBookersLoading ? (
+                          <div className="px-4 py-3 flex items-center justify-center">
+                            <LoadingSpinner size="w-4 h-4" />
+                            <span className="ml-2 text-gray-500 text-sm">Searching...</span>
+                          </div>
+                        ) : orderBookers?.length > 0 ? (
+                          orderBookers.map((booker) => (
+                            <div
+                              key={booker.id}
+                              onClick={() => {
+                                setSelectedOrderBooker(booker);
+                                setOrderBookerSearchTerm(booker.name);
+                              }}
+                              className="px-4 py-2 cursor-pointer hover:bg-primary-50"
+                            >
+                              <div className="font-medium">{booker.name}</div>
+                              {booker.phoneNumber && (
+                                <div className="text-sm text-gray-600">
+                                  {booker.phoneNumber}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-gray-500 text-sm">
+                            No order bookers found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Contact Selection */}
                 <div>
                   <div className="flex items-center justify-between mb-2">

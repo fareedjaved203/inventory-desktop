@@ -262,3 +262,14 @@ CREATE INDEX "GameHistory_bookingId_frameNumber_idx" ON "GameHistory"("bookingId
 
 -- Add lastPayerId to GameBooking (if not already added)
 ALTER TABLE "GameBooking" ADD COLUMN "lastPayerId" TEXT;
+
+-- Add orderBookerId column to Sale table
+ALTER TABLE "Sale" ADD COLUMN "orderBookerId" TEXT;
+
+-- Add foreign key constraint
+ALTER TABLE "Sale" ADD CONSTRAINT "Sale_orderBookerId_fkey" 
+  FOREIGN KEY ("orderBookerId") REFERENCES "Contact"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Create index for better query performance
+CREATE INDEX "Sale_orderBookerId_idx" ON "Sale"("orderBookerId");
+

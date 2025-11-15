@@ -91,21 +91,22 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
   // If no visible columns provided, show all columns
   const columnsToShow = visibleColumns.length > 0 ? visibleColumns : [
     ['date', { label: 'Date' }],
+    ['customerName', { label: 'Customer' }],
+    ['orderBookerName', { label: 'Order Booker' }],
+    ['supplierName', { label: 'Supplier' }],
+    ['carNumber', { label: 'Car Number' }],
     ['loadingDate', { label: 'Loading Date' }],
     ['arrivalDate', { label: 'Arrival Date' }],
-    ['carNumber', { label: 'Car Number' }],
     ['productName', { label: 'Product Name' }],
     ['category', { label: 'Category' }],
-    ['productDescription', { label: 'Description' }],
     ['purchaseQuantity', { label: 'Purchase Qty' }],
     ['purchasePrice', { label: 'Purchase Price' }],
-    ['transportCost', { label: 'Transport Cost' }],
-    ['supplierName', { label: 'Supplier' }],
     ['totalPurchaseCost', { label: 'Total Cost' }],
-    ['customerName', { label: 'Customer' }],
     ['saleQuantity', { label: 'Sale Qty' }],
     ['saleUnitPrice', { label: 'Unit Price' }],
     ['totalSalePrice', { label: 'Total Price' }],
+    ['paidAmount', { label: 'Paid Amount' }],
+    ['remainingAmount', { label: 'Remaining Amount' }],
     ['profitLoss', { label: 'Profit/Loss' }]
   ];
   
@@ -136,24 +137,23 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
             const getCellValue = (key) => {
               switch (key) {
                 case 'date': return new Date(item.date).toLocaleDateString();
-                case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
-                case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
-                case 'carNumber': return item.carNumber || '-';
+                case 'customerName': return item.customerName || '-';
+                case 'orderBookerName': return item.orderBookerName || '-';
+                case 'supplierName': return item.supplierName || '-';
                 case 'productName': return item.productName;
                 case 'category': return item.category || '-';
-                case 'productDescription': return item.productDescription || '-';
-                case 'saleDescription': return item.saleDescription || '-';
-                case 'purchaseDescription': return item.purchaseDescription || '-';
                 case 'purchaseQuantity': return item.purchaseQuantity ? (Number(item.purchaseQuantity) % 1 === 0 ? item.purchaseQuantity : Number(item.purchaseQuantity).toFixed(2)) : '-';
                 case 'purchasePrice': return item.purchasePrice ? formatPakistaniCurrency(item.purchasePrice) : '-';
-                case 'transportCost': return item.transportCost ? formatPakistaniCurrency(item.transportCost) : '-';
-                case 'supplierName': return item.supplierName || '-';
                 case 'totalPurchaseCost': return item.totalPurchaseCost ? formatPakistaniCurrency(item.totalPurchaseCost) : '-';
-                case 'customerName': return item.customerName || '-';
                 case 'saleQuantity': return item.saleQuantity ? (Number(item.saleQuantity) % 1 === 0 ? item.saleQuantity : Number(item.saleQuantity).toFixed(2)) : '-';
                 case 'saleUnitPrice': return item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-';
                 case 'totalSalePrice': return item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-';
+                case 'paidAmount': return item.paidAmount ? formatPakistaniCurrency(item.paidAmount) : '-';
+                case 'remainingAmount': return item.remainingAmount ? formatPakistaniCurrency(item.remainingAmount) : '-';
                 case 'profitLoss': return item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-';
+                case 'carNumber': return item.carNumber || '-';
+                case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
+                case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
                 default: return '-';
               }
             };

@@ -774,6 +774,7 @@ function Contacts() {
             <option value="customer">Customers</option>
             <option value="supplier">Suppliers</option>
             <option value="both">Both</option>
+            <option value="order_booker">Order Bookers</option>
           </select>
           <button
             onClick={() => {
@@ -828,9 +829,13 @@ function Contacts() {
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     (contact.contactType || 'customer') === 'customer' 
                       ? 'bg-blue-100 text-blue-800' 
-                      : (contact.contactType === 'supplier' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800')
+                      : contact.contactType === 'supplier' 
+                      ? 'bg-green-100 text-green-800' 
+                      : contact.contactType === 'order_booker'
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-purple-100 text-purple-800'
                   }`}>
-                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : (contact.contactType === 'supplier' ? 'Supplier' : 'Both')}
+                    {(contact.contactType || 'customer') === 'customer' ? 'Customer' : contact.contactType === 'supplier' ? 'Supplier' : contact.contactType === 'order_booker' ? 'Order Booker' : 'Both'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{contact.address || '-'}</td>
@@ -950,6 +955,7 @@ function Contacts() {
                     <option value="customer">Customer</option>
                     <option value="supplier">Supplier</option>
                     <option value="both">Both (Supplier + Customer)</option>
+                    <option value="order_booker">Order Booker</option>
                   </select>
                   {errors.contactType && (
                     <p className="text-red-500 text-sm mt-1">{errors.contactType.message}</p>

@@ -315,6 +315,18 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                 </p>
               </div>
               <div>
+                <p className="text-gray-600">Order Booker</p>
+                <p className="font-medium">
+                  {sale.orderBooker ? (
+                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm">
+                      {sale.orderBooker.name}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">Not specified</span>
+                  )}
+                </p>
+              </div>
+              <div>
                 <p className="text-gray-600">Car Number</p>
                 <p className="font-medium">{sale.carNumber || <span className="text-gray-400">Not specified</span>}</p>
               </div>

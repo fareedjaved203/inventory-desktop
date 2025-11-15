@@ -7,28 +7,29 @@ import API from '../utils/api';
 
 const DEFAULT_COLUMNS = {
   date: { label: 'Date', visible: true },
-  loadingDate: { label: 'Loading Date', visible: true },
-  arrivalDate: { label: 'Arrival Date', visible: true },
-  carNumber: { label: 'Car Number', visible: false },
-  barcode: { label: 'Barcode', visible: false },
+  customerName: { label: 'Customer', visible: true },
+  orderBookerName: { label: 'Order Booker', visible: true },
+  supplierName: { label: 'Supplier', visible: true },
   productName: { label: 'Product Name', visible: true },
   category: { label: 'Category', visible: true },
-  productDescription: { label: 'Product Description', visible: true },
-  saleDescription: { label: 'Sale Description', visible: true },
-  purchaseDescription: { label: 'Purchase Description', visible: true },
   purchaseQuantity: { label: 'Purchase Qty', visible: true },
   purchasePrice: { label: 'Purchase Price', visible: true },
-  transportCost: { label: 'Transport Cost', visible: false },
-  supplierName: { label: 'Supplier', visible: true },
   totalPurchaseCost: { label: 'Total Cost', visible: true },
-  paidAmount: { label: 'Paid Amount', visible: true },
-  paymentDifference: { label: 'Payment Difference', visible: true },
-  remainingAmount: { label: 'Remaining Amount', visible: true },
-  customerName: { label: 'Customer', visible: true },
   saleQuantity: { label: 'Sale Qty', visible: true },
   saleUnitPrice: { label: 'Unit Price', visible: true },
   totalSalePrice: { label: 'Total Price', visible: true },
-  profitLoss: { label: 'Profit/Loss', visible: true }
+  paidAmount: { label: 'Paid Amount', visible: true },
+  paymentDifference: { label: 'Payment Difference', visible: true },
+  remainingAmount: { label: 'Remaining Amount', visible: true },
+  profitLoss: { label: 'Profit/Loss', visible: true },
+  carNumber: { label: 'Car Number', visible: false },
+  loadingDate: { label: 'Loading Date', visible: false },
+  arrivalDate: { label: 'Arrival Date', visible: false },
+  transportCost: { label: 'Transport Cost', visible: false },
+  barcode: { label: 'Barcode', visible: false },
+  productDescription: { label: 'Product Description', visible: false },
+  saleDescription: { label: 'Sale Description', visible: false },
+  purchaseDescription: { label: 'Purchase Description', visible: false }
 };
 
 function DayBookReportModal({ isOpen, onClose }) {
@@ -40,6 +41,7 @@ function DayBookReportModal({ isOpen, onClose }) {
   });
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedOrderBooker, setSelectedOrderBooker] = useState('');
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
@@ -80,15 +82,26 @@ function DayBookReportModal({ isOpen, onClose }) {
 
   const categories = categoriesData || [];
 
+  // Fetch order bookers
+  const { data: orderBookers, isLoading: orderBookersLoading } = useQuery(
+    ['order-bookers'],
+    async () => {
+      const result = await API.getContacts({ contactType: 'order_booker', limit: 1000 });
+      return result.items || [];
+    },
+    { enabled: isOpen }
+  );
+
   const { data: dayBookData, isLoading, refetch } = useQuery(
-    ['day-book-report', startDate, endDate, selectedProductId, selectedCategory],
+    ['day-book-report', startDate, endDate, selectedProductId, selectedCategory, selectedOrderBooker],
     async () => {
       const token = localStorage.getItem('authToken');
       const params = new URLSearchParams({
         startDate,
         endDate,
         ...(selectedProductId && { productId: selectedProductId }),
-        ...(selectedCategory && { category: selectedCategory })
+        ...(selectedCategory && { category: selectedCategory }),
+        ...(selectedOrderBooker && { orderBookerId: selectedOrderBooker })
       });
       console.log('Day book API params:', params.toString());
       const response = await fetch(
@@ -129,7 +142,7 @@ function DayBookReportModal({ isOpen, onClose }) {
         <div className="p-6 flex-1 overflow-hidden flex flex-col">
           {/* Controls */}
           <div className="mb-6 bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                   <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +225,31 @@ function DayBookReportModal({ isOpen, onClose }) {
                   )}
                 </select>
               </div>
-              <div className="flex gap-2">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Order Booker
+                </label>
+                <select
+                  value={selectedOrderBooker}
+                  onChange={(e) => setSelectedOrderBooker(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white"
+                >
+                  <option value="">All Order Bookers</option>
+                  {orderBookersLoading ? (
+                    <option disabled>Loading...</option>
+                  ) : (
+                    orderBookers?.map(booker => (
+                      <option key={booker.id} value={booker.id}>
+                        {booker.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => refetch()}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
@@ -313,6 +350,7 @@ function DayBookReportModal({ isOpen, onClose }) {
                               </span>
                             )}
                             {key === 'customerName' && (item.customerName || '-')}
+                            {key === 'orderBookerName' && (item.orderBookerName || '-')}
                             {key === 'saleQuantity' && (item.saleQuantity ? (Number(item.saleQuantity) % 1 === 0 ? item.saleQuantity : Number(item.saleQuantity).toFixed(2)) : '-')}
                             {key === 'saleUnitPrice' && (item.saleUnitPrice ? formatPakistaniCurrency(item.saleUnitPrice) : '-')}
                             {key === 'totalSalePrice' && (item.totalSalePrice ? formatPakistaniCurrency(item.totalSalePrice) : '-')}

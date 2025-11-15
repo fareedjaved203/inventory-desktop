@@ -104,8 +104,8 @@ export function setupSalesRoutes(app, prisma) {
           // Create sale using raw SQL
           const saleId = crypto.randomUUID();
           await prisma.$executeRaw`
-            INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "employeeId", "carNumber", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
-            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
+            INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "orderBookerId", "employeeId", "carNumber", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
+            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.orderBookerId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create sale items
@@ -126,7 +126,8 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true
+              contact: true,
+              orderBooker: true
             }
           });
 
@@ -503,7 +504,7 @@ export function setupSalesRoutes(app, prisma) {
               }
             });
           } else {
-            // If date parsing failed, search by bill number and contact name
+            // If date parsing failed, search by bill number, contact name, and order booker name
             conditions.push({
               OR: [
                 {
@@ -519,13 +520,21 @@ export function setupSalesRoutes(app, prisma) {
                       mode: 'insensitive'
                     }
                   }
+                },
+                {
+                  orderBooker: {
+                    name: {
+                      contains: search,
+                      mode: 'insensitive'
+                    }
+                  }
                 }
               ]
             });
-            console.log('Added bill/contact search for:', search);
+            console.log('Added bill/contact/order booker search for:', search);
           }
         } else {
-          // Always search by bill number and contact name when not a date format or when date param exists
+          // Always search by bill number, contact name, and order booker name when not a date format or when date param exists
           conditions.push({
             OR: [
               {
@@ -541,10 +550,18 @@ export function setupSalesRoutes(app, prisma) {
                     mode: 'insensitive'
                   }
                 }
+              },
+              {
+                orderBooker: {
+                  name: {
+                    contains: search,
+                    mode: 'insensitive'
+                  }
+                }
               }
             ]
           });
-          console.log('Added bill/contact search for:', search);
+          console.log('Added bill/contact/order booker search for:', search);
         }
       }
 
@@ -570,6 +587,7 @@ export function setupSalesRoutes(app, prisma) {
               },
             },
             contact: true,
+            orderBooker: true,
             returns: {
               include: {
                 items: {
@@ -643,7 +661,7 @@ export function setupSalesRoutes(app, prisma) {
             },
           },
           contact: true,
-          
+          orderBooker: true,
           returns: {
             include: {
               items: {
@@ -755,6 +773,7 @@ export function setupSalesRoutes(app, prisma) {
                 discount = ${req.body.discount || 0}::decimal,
                 "paidAmount" = ${req.body.paidAmount || 0}::decimal,
                 "contactId" = ${req.body.contactId},
+                "orderBookerId" = ${req.body.orderBookerId},
                 "employeeId" = ${req.body.employeeId},
                 "carNumber" = ${req.body.carNumber},
                 "transportCost" = ${req.body.transportCost},
@@ -783,7 +802,8 @@ export function setupSalesRoutes(app, prisma) {
                   product: true
                 }
               },
-              contact: true
+              contact: true,
+              orderBooker: true
             }
           });
 

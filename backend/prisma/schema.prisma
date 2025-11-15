@@ -55,6 +55,7 @@ model Sale {
   saleDate            DateTime     @default(now())
   contactId           String?
   employeeId          String?
+  orderBookerId       String?
   carNumber           String?
   loadingDate         DateTime?
   arrivalDate         DateTime?
@@ -63,8 +64,9 @@ model Sale {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   userId              String
-  contact             Contact?     @relation(fields: [contactId], references: [id])
+  contact             Contact?     @relation("SaleCustomer", fields: [contactId], references: [id])
   employee            Employee?    @relation(fields: [employeeId], references: [id])
+  orderBooker         Contact?     @relation("SaleOrderBooker", fields: [orderBookerId], references: [id])
   items               SaleItem[]
   returns             SaleReturn[]
   auditTrail          AuditTrail[]
@@ -74,6 +76,7 @@ model Sale {
   @@index([userId, createdAt])
   @@index([contactId])
   @@index([employeeId])
+  @@index([orderBookerId])
 }
 
 model SaleItem {
@@ -102,7 +105,8 @@ model Contact {
   purchases        BulkPurchase[]
   expenses         Expense[]
   loanTransactions LoanTransaction[]
-  sales            Sale[]
+  sales            Sale[]            @relation("SaleCustomer")
+  bookedSales      Sale[]            @relation("SaleOrderBooker")
 
   @@index([userId])
   @@index([userId, name])

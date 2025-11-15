@@ -609,7 +609,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   // Day Book Report
   app.get('/api/dashboard/day-book', authenticateToken, async (req, res) => {
     try {
-      const { startDate, endDate, productId, category } = req.query;
+      const { startDate, endDate, productId, category, orderBookerId } = req.query;
       
       if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start date and end date are required' });
@@ -627,6 +627,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         userId: req.userId,
         saleDate: { gte: reportStartDate, lt: reportEndDate }
       };
+      
+      // Add order booker filtering if provided
+      if (orderBookerId) {
+        saleWhere.orderBookerId = orderBookerId;
+      }
       
       const purchaseWhere = {
         userId: req.userId,
@@ -698,7 +703,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                 }
               }
             },
-            contact: true
+            contact: true,
+            orderBooker: true
           }
         }),
         prisma.bulkPurchase.findMany({
@@ -854,6 +860,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             paymentDifference: 0,
             remainingAmount: Math.max(0, Number(sale.totalAmount || 0) - displayPaidAmount),
             customerName: sale.contact?.name || 'Walk-in Customer',
+            orderBookerName: sale.orderBooker?.name || '',
             saleQuantity: quantity,
             saleUnitPrice: salePrice,
             totalSalePrice: salePrice * quantity,
