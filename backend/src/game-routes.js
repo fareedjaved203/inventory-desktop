@@ -22,7 +22,8 @@ router.get('/tables', authenticateToken, async (req, res) => {
           }, 
           orderBy: { checkInTime: 'desc' } 
         } 
-      }
+      },
+      orderBy: { id: 'asc' }
     });
     res.json(tables);
   } catch (error) {
@@ -46,10 +47,16 @@ router.post('/tables', authenticateToken, async (req, res) => {
 // Update table
 router.put('/tables/:id', authenticateToken, async (req, res) => {
   try {
-    const { name, tableType } = req.body;
+    const { name, tableType, isAvailable } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (tableType !== undefined) updateData.tableType = tableType;
+    if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+    
     const table = await prisma.gameTable.update({
       where: { id: req.params.id },
-      data: { name, tableType }
+      data: updateData,
+      include: { bookings: { where: { checkOutTime: null }, include: { playerBills: { where: { isPaid: false } } } } }
     });
     res.json(table);
   } catch (error) {
@@ -682,6 +689,55 @@ router.get('/bookings', authenticateToken, async (req, res) => {
       })
     ]);
     res.json({ items: bookings, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get game revenue stats
+router.get('/revenue-stats', authenticateToken, async (req, res) => {
+  try {
+    // Use Pakistan timezone (UTC+5)
+    const pakistanTime = new Date(Date.now() + (5 * 60 * 60 * 1000));
+    const today = pakistanTime.toISOString().split('T')[0];
+    const last7Days = new Date(pakistanTime.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const last30Days = new Date(pakistanTime.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const last365Days = new Date(pakistanTime.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const getRevenueForPeriod = async (startDate, endDate) => {
+      const start = new Date(startDate);
+      const end = new Date(new Date(endDate + 'T23:59:59').getTime() + (5 * 60 * 60 * 1000));
+      
+      const bookings = await prisma.gameBooking.findMany({
+        where: {
+          userId: req.userId,
+          checkOutTime: {
+            gte: start,
+            lte: end
+          }
+        },
+        include: { playerBills: true }
+      });
+      
+      return bookings.reduce((total, booking) => {
+        const gameRevenue = booking.playerBills.reduce((sum, bill) => sum + parseFloat(bill.totalAmount || 0), 0) || parseFloat(booking.totalAmount || 0);
+        return total + gameRevenue;
+      }, 0);
+    };
+    
+    const [todayRevenue, last7DaysRevenue, last30DaysRevenue, last365DaysRevenue] = await Promise.all([
+      getRevenueForPeriod(today, today),
+      getRevenueForPeriod(last7Days, today),
+      getRevenueForPeriod(last30Days, today),
+      getRevenueForPeriod(last365Days, today)
+    ]);
+    
+    res.json({
+      today: todayRevenue,
+      last7Days: last7DaysRevenue,
+      last30Days: last30DaysRevenue,
+      last365Days: last365DaysRevenue
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

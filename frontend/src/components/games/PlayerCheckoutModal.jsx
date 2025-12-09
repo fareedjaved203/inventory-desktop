@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from '../../utils/axios';
 
-export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
+export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdate }) {
   const [playerBills, setPlayerBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -38,7 +38,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
     if (booking.lastPayerId) {
       setLastPayerId(booking.lastPayerId);
     }
-  }, [booking.lastPayerId]);
+  }, [booking.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -133,13 +133,14 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
       const activeBookings = data
         .filter(t => t.bookings[0]?.id !== booking.id)
         .map(t => {
-          if (!t.isAvailable && t.bookings[0]) {
+          const unpaidCount = t.bookings[0]?.playerBills?.filter(b => !b.isPaid).length || 0;
+          if (!t.isAvailable && unpaidCount > 0) {
             return {
               ...t.bookings[0],
               tableId: t.id,
               tableName: t.name,
-              activePlayers: t.bookings[0].playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs ') || 
-                            (t.bookings[0].player1Name + (t.bookings[0].player2Name ? ` vs ${t.bookings[0].player2Name}` : ''))
+              activePlayers: t.bookings[0].playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs') || 
+'Empty table'
             };
           } else {
             // Available table with no booking
@@ -174,13 +175,17 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
   };
 
   const renewMatch = async () => {
-    // Reset lastPayerId to start fresh match, keeping history intact
     try {
       await axios.put(`/api/games/bookings/${booking.id}`, { lastPayerId: null });
       setLastPayerId(null);
-      onUpdate();
       await fetchPlayerBills();
-      onClose();
+      await fetchGameHistory();
+      if (tableId) {
+        const { data: tableData } = await axios.put(`/api/games/tables/${tableId}`, { isAvailable: false });
+        onUpdate(tableData);
+      } else {
+        onUpdate();
+      }
     } catch (error) {
       console.error('Error renewing match:', error);
     }
@@ -194,26 +199,32 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
           bill2Id: selectedPlayerToSwap
         });
       } else {
-        // Check if target is an empty table
         const targetBooking = availableBookings.find(b => b.id === targetBookingIdOrTable || b.tableId === targetBookingIdOrTable);
         if (targetBooking?.isEmpty) {
-          // Create a new booking for the empty table first
           const { data: newBooking } = await axios.post('/api/games/bookings/transfer-to-empty', {
             tableId: targetBooking.tableId,
             playerBillId: transferringBill
           });
           await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId: newBooking.id });
+          await axios.put(`/api/games/tables/${targetBooking.tableId}`, { isAvailable: false }); onUpdate();
         } else {
           await axios.put(`/api/games/player-bills/${transferringBill}/transfer`, { newBookingId: targetBookingIdOrTable });
         }
       }
-      setShowTransferModal(false);
-      setTransferringBill(null);
-      setTransferMode('move');
-      setSelectedPlayerToSwap(null);
-      onUpdate();
-      await fetchPlayerBills();
-      await fetchAvailableBookings();
+      const { data: updatedBills } = await axios.get(`/api/games/bookings/${booking.id}/player-bills`);
+      const remainingPlayers = updatedBills.filter(b => !b.isPaid);
+      if (remainingPlayers.length === 0 && tableId) {
+        await axios.put(`/api/games/tables/${tableId}`, { isAvailable: true });
+        onUpdate();
+        onClose();
+      } else {
+        setPlayerBills(updatedBills);
+        setShowTransferModal(false);
+        setTransferringBill(null);
+        setTransferMode('move');
+        setSelectedPlayerToSwap(null);
+        await fetchAvailableBookings();
+      }
     } catch (error) {
       console.error('Error transferring player:', error);
       alert(error.response?.data?.error || 'Error transferring player');
@@ -399,7 +410,7 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
           <div className="flex gap-2">
-            {lastPayerId && playerBills.some(b => !b.isPaid && b.gamesPlayed > 0) && (
+            {lastPayerId && playerBills.some(b => !b.isPaid) && (
               <>
                 <button
                   onClick={renewMatch}
@@ -495,12 +506,16 @@ export default function PlayerCheckoutModal({ booking, onClose, onUpdate }) {
                   if (!payerBill) return;
                   
                   try {
-                    // Add game charge to payer's bill
                     const { data } = await axios.post(`/api/games/player-bills/${payerBill.id}/add-game`);
                     setLastPayerId(payerBill.id);
                     setShowWinnerSelection(false);
                     setSelectedWinner(null);
-                    onUpdate();
+                    if (tableId) {
+                      const { data: tableData } = await axios.put(`/api/games/tables/${tableId}`, { isAvailable: true });
+                      onUpdate(tableData);
+                    } else {
+                      onUpdate();
+                    }
                     await fetchPlayerBills();
                     await fetchGameHistory();
                   } catch (error) {

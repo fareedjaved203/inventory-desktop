@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import API from '../utils/api';
+import axios from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
 import ErrorBoundary from '../components/ErrorBoundary';
 import DashboardCard from '../components/DashboardCard';
@@ -8,7 +9,7 @@ import SalesChart from '../components/SalesChart';
 import SalesTrendChart from '../components/SalesTrendChart';
 import BranchEmployeeSalesChart from '../components/BranchEmployeeSalesChart';
 import AWSSpinner from '../components/AWSSpinner';
-import { FaBox, FaWarehouse, FaExclamationTriangle, FaCalendarDay, FaCalendarWeek, FaCalendarAlt, FaCalendar, FaSync } from 'react-icons/fa';
+import { FaBox, FaWarehouse, FaExclamationTriangle, FaCalendarDay, FaCalendarWeek, FaCalendarAlt, FaCalendar, FaSync, FaGamepad } from 'react-icons/fa';
 import { RiMoneyDollarCircleFill } from "react-icons/ri";
 import { MdOutlinePayments } from "react-icons/md";
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
@@ -29,6 +30,16 @@ function Dashboard() {
     const result = await API.getDashboardStats();
     console.log('Dashboard: Stats result:', result);
     return result;
+  }, {
+    retry: false,
+    staleTime: 0,
+    cacheTime: 0
+  });
+
+  // Fetch game revenue stats from backend
+  const { data: gameStats } = useQuery(['game-revenue-stats'], async () => {
+    const { data } = await axios.get('/api/games/revenue-stats');
+    return data;
   }, {
     retry: false,
     staleTime: 0,
@@ -158,6 +169,41 @@ function Dashboard() {
             color="sky"
             isLoading={isLoadingStats}
             error={statsError}
+          />
+        </div>
+      </ErrorBoundary>
+
+      {/* Game Revenue Stats */}
+      <ErrorBoundary>
+        <h2 className="text-xl font-semibold mb-4 text-primary-700">Game Revenue</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <DashboardCard
+            title="Games Today"
+            value={formatPakistaniCurrency(gameStats?.today || 0)}
+            icon={<FaGamepad className="text-xl" />}
+            color="green"
+            isLoading={!gameStats}
+          />
+          <DashboardCard
+            title="Last 7 Days"
+            value={formatPakistaniCurrency(gameStats?.last7Days || 0)}
+            icon={<FaGamepad className="text-xl" />}
+            color="green"
+            isLoading={!gameStats}
+          />
+          <DashboardCard
+            title="Last 30 Days"
+            value={formatPakistaniCurrency(gameStats?.last30Days || 0)}
+            icon={<FaGamepad className="text-xl" />}
+            color="green"
+            isLoading={!gameStats}
+          />
+          <DashboardCard
+            title="Last 365 Days"
+            value={formatPakistaniCurrency(gameStats?.last365Days || 0)}
+            icon={<FaGamepad className="text-xl" />}
+            color="green"
+            isLoading={!gameStats}
           />
         </div>
       </ErrorBoundary>

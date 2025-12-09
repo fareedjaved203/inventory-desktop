@@ -44,7 +44,7 @@ export default function Games() {
     setLoading(true);
     try {
       const { data } = await axios.get('/api/games/tables');
-      setTables(data);
+      setTables(data.sort((a, b) => a.id.localeCompare(b.id)));
     } catch (error) {
       console.error('Error fetching tables:', error);
     } finally {
@@ -70,13 +70,14 @@ export default function Games() {
     try {
       if (selectedTable) {
         await axios.put(`/api/games/tables/${selectedTable.id}`, tableForm);
+        setTables(tables.map(t => t.id === selectedTable.id ? { ...t, ...tableForm } : t));
       } else {
-        await axios.post('/api/games/tables', tableForm);
+        const { data } = await axios.post('/api/games/tables', tableForm);
+        setTables([...tables, data]);
       }
       setShowTableModal(false);
       setTableForm({ name: '', tableType: 'snooker' });
       setSelectedTable(null);
-      fetchTables();
     } catch (error) {
       console.error('Error saving table:', error);
     }
@@ -85,11 +86,11 @@ export default function Games() {
   const handleCheckin = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
+      const { data } = await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
+      setTables(tables.map(t => t.id === selectedTable.id ? data : t));
       setShowCheckinModal(false);
       setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' });
       setSelectedTable(null);
-      fetchTables();
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Error checking in';
       setErrorMessage(errorMsg);
@@ -101,11 +102,11 @@ export default function Games() {
   const handleCheckout = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`/api/games/bookings/${selectedBooking.id}/checkout`, checkoutForm);
+      const { data } = await axios.post(`/api/games/bookings/${selectedBooking.id}/checkout`, checkoutForm);
+      setTables(tables.map(t => t.id === selectedTable.id ? data : t));
       setShowCheckoutModal(false);
       setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' });
       setSelectedBooking(null);
-      fetchTables();
     } catch (error) {
       console.error('Error checking out:', error);
     }
@@ -114,10 +115,10 @@ export default function Games() {
   const handleUpdateBooking = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`/api/games/bookings/${editingBooking.id}`, editBookingForm);
+      const { data } = await axios.put(`/api/games/bookings/${editingBooking.id}`, editBookingForm);
+      setTables(tables.map(t => t.currentBooking?.id === editingBooking.id ? { ...t, currentBooking: data } : t));
       setShowEditBookingModal(false);
       setEditingBooking(null);
-      fetchTables();
     } catch (error) {
       console.error('Error updating booking:', error);
     }
@@ -159,11 +160,15 @@ export default function Games() {
 
   const handleTransfer = async (newTableId) => {
     try {
-      await axios.put(`/api/games/bookings/${selectedBooking.id}/transfer`, { newTableId });
+      const { data } = await axios.put(`/api/games/bookings/${selectedBooking.id}/transfer`, { newTableId });
+      setTables(tables.map(t => {
+        if (t.id === selectedTable.id) return { ...t, currentBooking: null, isAvailable: true };
+        if (t.id === newTableId) return data;
+        return t;
+      }));
       setShowTransferModal(false);
       setSelectedTable(null);
       setSelectedBooking(null);
-      fetchTables();
     } catch (error) {
       console.error('Error transferring table:', error);
     }
@@ -261,9 +266,9 @@ export default function Games() {
           </div>
         </div>
       )}
-      {showDeleteModal && deletingTable && <DeleteModal table={deletingTable} onDelete={async () => { try { await axios.delete(`/api/games/tables/${deletingTable.id}`); setShowDeleteModal(false); setDeletingTable(null); fetchTables(); } catch (error) { console.error('Error deleting table:', error); } }} onCancel={() => { setShowDeleteModal(false); setDeletingTable(null); }} />}
+      {showDeleteModal && deletingTable && <DeleteModal table={deletingTable} onDelete={async () => { try { await axios.delete(`/api/games/tables/${deletingTable.id}`); setTables(tables.filter(t => t.id !== deletingTable.id)); setShowDeleteModal(false); setDeletingTable(null); } catch (error) { console.error('Error deleting table:', error); } }} onCancel={() => { setShowDeleteModal(false); setDeletingTable(null); }} />}
       {showTransferModal && selectedBooking && <TransferModal booking={selectedBooking} availableTables={tables.filter(t => t.isAvailable)} onTransfer={handleTransfer} onCancel={() => { setShowTransferModal(false); setSelectedTable(null); setSelectedBooking(null); }} />}
-      {showPlayerCheckoutModal && selectedBooking && <PlayerCheckoutModal booking={selectedBooking} onClose={() => { setShowPlayerCheckoutModal(false); setSelectedTable(null); setSelectedBooking(null); }} onUpdate={fetchTables} />}
+      {showPlayerCheckoutModal && selectedBooking && <PlayerCheckoutModal booking={selectedBooking} tableId={selectedTable?.id} onClose={() => { setShowPlayerCheckoutModal(false); setSelectedTable(null); setSelectedBooking(null); }} onUpdate={(updatedTable) => { if (updatedTable) setTables(tables.map(t => t.id === updatedTable.id ? updatedTable : t)); else fetchTables(); }} />}
     </div>
   );
 }

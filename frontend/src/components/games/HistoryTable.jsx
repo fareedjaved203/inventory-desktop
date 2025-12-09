@@ -1,6 +1,9 @@
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { useState } from 'react';
+import { FaChevronLeft, FaChevronRight, FaChartLine } from 'react-icons/fa';
+import GameRevenueModal from './GameRevenueModal';
 
 export default function HistoryTable({ history, page, totalPages, setPage, formatDuration, loading }) {
+  const [showRevenueModal, setShowRevenueModal] = useState(false);
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -16,6 +19,15 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
 
   return (
     <>
+      <div className="flex justify-between items-center mb-4 m-4">
+        <h3 className="text-lg font-semibold text-gray-800">Booking History</h3>
+        <button
+          onClick={() => setShowRevenueModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <FaChartLine /> Revenue Report
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -78,6 +90,11 @@ export default function HistoryTable({ history, page, totalPages, setPage, forma
           </div>
         </div>
       )}
+      
+      <GameRevenueModal 
+        isOpen={showRevenueModal} 
+        onClose={() => setShowRevenueModal(false)} 
+      />
     </>
   );
 }

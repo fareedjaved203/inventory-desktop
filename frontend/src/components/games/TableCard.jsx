@@ -3,7 +3,7 @@ import { FaEdit, FaTrash, FaPlay, FaClock, FaPencilAlt, FaCoffee, FaMoneyBillWav
 
 export default function TableCard({ table, onEdit, onDelete, onCheckin, onPlayerCheckout, onEditBooking, onRefreshments, formatDuration }) {
   const [isFlipped, setIsFlipped] = useState(false);
-  const activeBooking = table.bookings[0];
+  const activeBooking = table.bookings?.[0];
   const activePlayers = activeBooking?.playerBills?.filter(b => !b.isPaid).map(b => b.playerName).join(' vs ') || 
                         (activeBooking?.player1Name + (activeBooking?.player2Name ? ` vs ${activeBooking.player2Name}` : ''));
 
