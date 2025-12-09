@@ -5,6 +5,7 @@ import ShopSettingsForm from '../components/ShopSettingsForm';
 import UpdateButton from '../components/UpdateButton';
 import LicenseSettingsForm from '../components/LicenseSettingsForm';
 import OfflineToggle from '../components/OfflineToggle';
+import ThemeToggle from '../components/ThemeToggle';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -17,6 +18,9 @@ function Settings() {
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-8">{t('settings')}</h1>
       
       <div className="space-y-6">
+        {/* Theme Settings */}
+        <ThemeToggle />
+        
         {/* Priority 1: License Management */}
         <LicenseSettingsForm />
         

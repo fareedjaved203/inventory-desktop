@@ -5,6 +5,7 @@ import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { SidebarProvider } from './contexts/SidebarContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Sidebar from './components/Sidebar';
 import HamburgerMenu from './components/HamburgerMenu';
 import NetworkStatus from './components/NetworkStatus';
@@ -33,6 +34,7 @@ import AuthModal from './components/AuthModal';
 import LicenseModal from './components/LicenseModal';
 import LoadingSpinner from './components/LoadingSpinner';
 import { useLicense } from './hooks/useLicense';
+import API from './utils/api';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +66,10 @@ function AppContent() {
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { data: shopSettings } = useQuery(['shop-settings'], async () => {
+    const result = await API.getShopSettings();
+    return result.items?.[0] || {};
+  }, { staleTime: 10 * 60 * 1000, cacheTime: 30 * 60 * 1000, refetchOnWindowFocus: false });
   
   // Initialize auth state from localStorage
   const [authState, setAuthState] = useState(() => {
@@ -247,7 +253,13 @@ function AppContent() {
             </div>
           </div> */}
           
-          <div className="flex-1 p-4 md:p-8">
+          <div className="flex-1 p-4 md:p-8 relative">
+            {shopSettings?.logo && (
+              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none z-0">
+                <img src={shopSettings.logo} alt="watermark" className="max-w-xl max-h-xl" />
+              </div>
+            )}
+            <div className="relative z-10">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/pos" element={<POS />} />
@@ -270,6 +282,7 @@ function AppContent() {
               <Route path="/super-admin" element={<SuperAdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </div>
           </div>
           <footer className="text-center py-2 text-xs text-gray-400 border-t bg-white">
             v{appVersion}
@@ -301,15 +314,17 @@ function AppContent() {
 
 function App() {
   return (
-    <LanguageProvider>
-      <SidebarProvider>
-        <QueryClientProvider client={queryClient}>
-          <Router>
-            <AppContent />
-          </Router>
-        </QueryClientProvider>
-      </SidebarProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <SidebarProvider>
+          <QueryClientProvider client={queryClient}>
+            <Router>
+              <AppContent />
+            </Router>
+          </QueryClientProvider>
+        </SidebarProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 

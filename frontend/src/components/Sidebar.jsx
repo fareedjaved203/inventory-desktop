@@ -6,6 +6,7 @@ import { FaChevronLeft, FaChevronRight, FaChartLine, FaBoxOpen, FaMoneyBillWave,
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';
 
 function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileOpen, setIsMobileOpen }) {
@@ -16,6 +17,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
   const { language } = useLanguage();
   const t = useTranslation(language);
   const { isItemHidden, toggleItemVisibility } = useSidebar();
+  const { isDarkTheme } = useTheme();
 
   // Check if screen is mobile
   useEffect(() => {
@@ -117,10 +119,10 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
             }` 
           : `${collapsed ? 'w-14' : 'w-52'} transition-all duration-300`
         } 
-        bg-gradient-to-b from-primary-700 to-primary-900 text-white shadow-xl h-full flex flex-col 
+        ${isDarkTheme ? 'bg-black' : 'bg-gradient-to-b from-primary-700 to-primary-900'} text-white shadow-xl h-full flex flex-col 
         ${language === 'ur' ? 'font-urdu' : ''}
       `}>
-      <div className={`p-4 flex ${collapsed && !isMobile ? 'justify-center' : 'justify-between'} items-center border-b border-primary-600`}>
+      <div className={`p-4 flex ${collapsed && !isMobile ? 'justify-center' : 'justify-between'} items-center ${isDarkTheme ? 'border-b border-gray-700' : 'border-b border-primary-600'}`}>
         {/* Mobile Close Button */}
         {isMobile && (
           <button 
@@ -182,8 +184,10 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-4'} py-3 text-white hover:bg-primary-600 active:bg-primary-500 transition-colors ${
-              location.pathname === item.path ? 'bg-primary-600 border-l-4 border-accent-400' : ''
+            className={`flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-4'} py-3 text-white transition-colors ${
+              location.pathname === item.path 
+                ? isDarkTheme ? 'bg-green-700 border-l-4 border-green-400' : 'bg-primary-600 border-l-4 border-accent-400'
+                : isDarkTheme ? 'hover:bg-gray-800' : 'hover:bg-primary-600'
             } ${isMobile ? 'min-h-[48px]' : ''}`}
             title={collapsed && !isMobile ? item.label : ''}
           >
@@ -194,7 +198,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
       </nav>
       
       {/* Logout Button */}
-      <div className="p-3 border-t border-primary-600">
+      <div className={`p-3 ${isDarkTheme ? 'border-t border-gray-700' : 'border-t border-primary-600'}`}>
         <button
           onClick={onLogout}
           className={`w-full flex items-center ${collapsed && !isMobile ? 'justify-center' : 'px-2'} py-2 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 rounded-lg transition-colors ${isMobile ? 'min-h-[48px]' : ''}`}
@@ -207,7 +211,7 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
         </button>
       </div>
       
-      <div className="p-2 text-center text-xs text-primary-300">
+      <div className={`p-2 text-center text-xs ${isDarkTheme ? 'text-gray-400' : 'text-primary-300'}`}>
         {(!collapsed || isMobile) && <p className="text-xs">Hisab Ghar</p>}
       </div>
       </div>
