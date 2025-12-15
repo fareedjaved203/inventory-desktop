@@ -13,16 +13,19 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayerForm, setNewPlayerForm] = useState({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
   const [members, setMembers] = useState([]);
+  const [players, setPlayers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const searchRef = useRef(null);
+  const debounceTimer = useRef(null);
   const [showWinnerSelection, setShowWinnerSelection] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [showBillModal, setShowBillModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [lastPayerId, setLastPayerId] = useState(null);
   const [gameHistory, setGameHistory] = useState([]);
+  const [addingPlayer, setAddingPlayer] = useState(false);
 
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
     const { data } = await axios.get('/api/shop-settings');
@@ -34,21 +37,22 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
     fetchAvailableBookings();
     fetchGameHistory();
     fetchMembers();
-    // Set lastPayerId from booking
+    fetchPlayers();
     if (booking.lastPayerId) {
       setLastPayerId(booking.lastPayerId);
     }
   }, [booking.id]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const filtered = getFilteredMembers();
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      const filtered = getFilteredResults();
       if (memberSearch && filtered.length > 0) {
         setShowMemberDropdown(true);
       }
     }, 300);
-    return () => clearTimeout(timer);
-  }, [memberSearch, members]);
+    return () => clearTimeout(debounceTimer.current);
+  }, [memberSearch, members, players]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -80,29 +84,50 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
 
   const fetchMembers = async () => {
     try {
-      const { data } = await axios.get('/api/members/active');
+      const { data } = await axios.get('/api/games/members/active');
       setMembers(data);
     } catch (error) {
       console.error('Error fetching members:', error);
     }
   };
 
-  const getFilteredMembers = () => {
-    return memberSearch.trim()
-      ? members.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.phone.includes(memberSearch))
-      : [];
+  const fetchPlayers = async () => {
+    try {
+      const { data } = await axios.get('/api/players/search', { params: { q: '' } });
+      setPlayers(data || []);
+    } catch (error) {
+      console.error('Error fetching players:', error);
+    }
   };
 
-  const handleMemberSelect = (member) => {
+  const getFilteredResults = () => {
+    if (!memberSearch.trim()) return [];
+    const query = memberSearch.toLowerCase();
+    const memberResults = members
+      .filter(m => m.name.toLowerCase().includes(query) || (m.phone && m.phone.includes(memberSearch)))
+      .map(m => ({ ...m, type: 'member' }));
+    const playerResults = players
+      .filter(p => p.name.toLowerCase().includes(query) || (p.phone && p.phone.includes(memberSearch)))
+      .map(p => ({ ...p, type: 'player' }));
+    const allResults = [...memberResults, ...playerResults];
+    return allResults.filter((item, index, self) => 
+      index === self.findIndex((t) => 
+        t.name.toLowerCase() === item.name.toLowerCase() && 
+        (t.phone || '') === (item.phone || '')
+      )
+    );
+  };
+
+  const handleMemberSelect = (item) => {
     setShowMemberDropdown(false);
     setHighlightedIndex(-1);
-    if (member) {
-      setMemberSearch(member.name);
+    if (item) {
+      setMemberSearch(item.name);
       setNewPlayerForm({
-        memberId: member.id,
-        playerName: member.name,
-        playerPhone: member.phone,
-        chargePerGame: member.perFrameCharge === 0 && member.remainingGames > 0 ? '0' : '120'
+        memberId: item.type === 'member' ? item.id : null,
+        playerName: item.name,
+        playerPhone: item.phone || '',
+        chargePerGame: item.type === 'member' && item.perFrameCharge === 0 && item.remainingGames > 0 ? '0' : '120'
       });
     } else {
       setMemberSearch('');
@@ -111,19 +136,37 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
   };
 
   const handleKeyDown = (e) => {
-    const filteredMembers = getFilteredMembers();
-    if (!showMemberDropdown || filteredMembers.length === 0) return;
+    const filteredResults = getFilteredResults();
+    if (!showMemberDropdown || filteredResults.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex(prev => (prev < filteredMembers.length - 1 ? prev + 1 : prev));
+      setHighlightedIndex(prev => (prev < filteredResults.length - 1 ? prev + 1 : prev));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlightedIndex(prev => (prev > -1 ? prev - 1 : -1));
     } else if (e.key === 'Enter' && highlightedIndex >= 0) {
       e.preventDefault();
-      handleMemberSelect(filteredMembers[highlightedIndex]);
+      handleMemberSelect(filteredResults[highlightedIndex]);
     } else if (e.key === 'Escape') {
       setShowMemberDropdown(false);
+    }
+  };
+
+  const handleAddPlayer = async () => {
+    if (!newPlayerForm.playerName.trim()) return alert('Player name is required');
+    setAddingPlayer(true);
+    try {
+      await axios.post('/api/players', {
+        name: newPlayerForm.playerName.trim(),
+        phone: newPlayerForm.playerPhone || null
+      });
+      await fetchPlayers();
+      setMemberSearch('');
+      setNewPlayerForm({ memberId: null, playerName: '', playerPhone: '', chargePerGame: '120' });
+    } catch (error) {
+      alert(error.response?.data?.error || 'Error adding player');
+    } finally {
+      setAddingPlayer(false);
     }
   };
 
@@ -164,13 +207,35 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
     try {
       const bill = playerBills.find(b => b.id === billId);
       const updatedTotal = bill.editableTotal !== undefined ? bill.editableTotal : bill.totalAmount;
-      await axios.post(`/api/games/player-bills/${billId}/checkout`, { paymentMethod, totalAmount: updatedTotal });
+      const checkoutData = { paymentMethod: paymentMethod || 'cash', totalAmount: updatedTotal };
+      
+      if (paymentMethod && paymentMethod !== 'none') {
+        checkoutData.paymentTotalAmount = parseFloat(bill.paymentTotalAmount);
+        checkoutData.paymentReceivedAmount = parseFloat(bill.paymentReceivedAmount);
+      }
+      
+      await axios.post(`/api/games/player-bills/${billId}/checkout`, checkoutData);
       onUpdate();
       await fetchPlayerBills();
       await fetchAvailableBookings();
     } catch (error) {
       console.error('Error checking out player:', error);
       alert(error.response?.data?.error || 'Error checking out player');
+    }
+  };
+
+  const checkoutAllRemaining = async () => {
+    try {
+      const unpaidBills = playerBills.filter(b => !b.isPaid);
+      for (const bill of unpaidBills) {
+        await axios.post(`/api/games/player-bills/${bill.id}/checkout`, { paymentMethod: 'none', totalAmount: 0 });
+      }
+      onUpdate();
+      await fetchPlayerBills();
+      await fetchAvailableBookings();
+    } catch (error) {
+      console.error('Error checking out remaining players:', error);
+      alert(error.response?.data?.error || 'Error checking out players');
     }
   };
 
@@ -234,8 +299,9 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800">Player Checkout</h2>
+          {booking.team1 && booking.team2 && <div className="text-sm text-gray-600"><span className="font-semibold">Teams:</span> {booking.team1.join(' & ')} vs {booking.team2.join(' & ')}</div>}
         </div>
         <div className="p-6 overflow-y-auto flex-1">
           {loading ? (
@@ -251,17 +317,37 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                         <tr className="border-b border-gray-300">
                           <th className="text-left py-2 px-2">Frame</th>
                           <th className="text-left py-2 px-2">Paid By</th>
+                          <th className="text-left py-2 px-2">Type</th>
                           <th className="text-right py-2 px-2">Amount</th>
+                          <th className="text-right py-2 px-2">Credit</th>
                         </tr>
                       </thead>
                       <tbody>
                         {gameHistory.map((history) => {
                           const payerBill = playerBills.find(b => b.id === history.payerBillId);
+                          const getPaymentColor = (method) => {
+                            if (method === 'credit') return 'bg-amber-100 text-amber-700';
+                            if (method === 'cash') return 'bg-green-100 text-green-700';
+                            if (method === 'easypaisa') return 'bg-purple-100 text-purple-700';
+                            if (method === 'jazzcash') return 'bg-pink-100 text-pink-700';
+                            if (method === 'bank') return 'bg-blue-100 text-blue-700';
+                            return 'bg-gray-100 text-gray-700';
+                          };
+                          const paymentMethod = history.paymentMethod || 'cash';
+                          const creditAmount = paymentMethod === 'credit' && history.creditTotalAmount 
+                            ? (parseFloat(history.creditTotalAmount) - parseFloat(history.creditReceivedAmount)).toFixed(2)
+                            : null;
                           return (
                             <tr key={history.id} className="border-b border-gray-200">
                               <td className="py-2 px-2">Frame {history.frameNumber}</td>
                               <td className="py-2 px-2 font-medium">{payerBill?.playerName || 'Unknown'}</td>
+                              <td className="py-2 px-2">
+                                <span className={`text-xs px-2 py-1 rounded font-medium ${getPaymentColor(paymentMethod)}`}>
+                                  {paymentMethod === 'credit' ? 'Credit' : paymentMethod?.charAt(0).toUpperCase() + paymentMethod?.slice(1)}
+                                </span>
+                              </td>
                               <td className="py-2 px-2 text-right">Rs. {parseFloat(history.amount).toFixed(2)}</td>
+                              <td className="py-2 px-2 text-right">{creditAmount ? `Rs. ${creditAmount}` : '-'}</td>
                             </tr>
                           );
                         })}
@@ -288,7 +374,7 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                         </button>
                       </div>
                       <div className="text-sm text-gray-600">{bill.playerPhone}</div>
-                      {bill.member && (
+                      {bill.member && bill.memberId && (
                         <div className="text-xs text-blue-600 mt-1">
                           {bill.member.totalGames > 0 ? `${bill.member.remainingGames} games left` : `Rs. ${bill.member.perFrameCharge}/frame`}
                         </div>
@@ -312,7 +398,7 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                     </div>
                   )}
                   
-                  {!bill.isPaid && lastPayerId && bill.gamesPlayed > 0 && (
+                  {!bill.isPaid && lastPayerId && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setTransferringBill(bill.id); setShowTransferModal(true); }}
@@ -366,17 +452,55 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                         <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                         <select
                           value={bill.paymentMethod || ''}
-                          onChange={(e) => setPlayerBills(prev => prev.map(b => b.id === bill.id ? {...b, paymentMethod: e.target.value} : b))}
+                          onChange={(e) => {
+                            const defaultAmount = (parseFloat(bill.totalAmount) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2);
+                            setPlayerBills(prev => prev.map(b => b.id === bill.id ? {...b, paymentMethod: e.target.value, paymentTotalAmount: e.target.value && e.target.value !== 'none' ? defaultAmount : undefined} : b));
+                          }}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select payment method</option>
                           <option value="none">None (Free)</option>
                           <option value="cash">Cash</option>
+                          <option value="credit">Credit</option>
                           <option value="easypaisa">Easypaisa</option>
                           <option value="jazzcash">JazzCash</option>
                           <option value="bank">Bank Account</option>
                         </select>
                       </div>
+                      
+                      {bill.paymentMethod && bill.paymentMethod !== 'none' && (
+                        <div className={`space-y-3 p-3 rounded-lg ${bill.paymentMethod === 'credit' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={bill.paymentTotalAmount !== undefined ? bill.paymentTotalAmount : (parseFloat(bill.totalAmount) + (bill.refreshments?.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) || 0)).toFixed(2)}
+                              onChange={(e) => setPlayerBills(prev => prev.map(b => b.id === bill.id ? {...b, paymentTotalAmount: e.target.value} : b))}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Received Amount</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={bill.paymentReceivedAmount || ''}
+                              onChange={(e) => setPlayerBills(prev => prev.map(b => b.id === bill.id ? {...b, paymentReceivedAmount: e.target.value} : b))}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              placeholder="Amount received"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          {bill.paymentTotalAmount && bill.paymentReceivedAmount && bill.paymentMethod === 'credit' && (
+                            <div className="text-sm font-medium text-amber-800 bg-white p-2 rounded">
+                              Credit: Rs. {(parseFloat(bill.paymentTotalAmount) - parseFloat(bill.paymentReceivedAmount)).toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="flex gap-2">
                         <button
@@ -386,8 +510,14 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                           Cancel
                         </button>
                         <button
-                          onClick={() => checkoutPlayer(bill.id, bill.paymentMethod || 'cash')}
-                          disabled={!bill.paymentMethod}
+                          onClick={() => {
+                            if (bill.paymentMethod && bill.paymentMethod !== 'none' && (!bill.paymentTotalAmount || !bill.paymentReceivedAmount)) {
+                              alert('Please fill in total and received amounts');
+                              return;
+                            }
+                            checkoutPlayer(bill.id, bill.paymentMethod || 'cash');
+                          }}
+                          disabled={!bill.paymentMethod || (bill.paymentMethod !== 'none' && !bill.paymentReceivedAmount)}
                           className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
                         >
                           Confirm Payment
@@ -410,6 +540,9 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
           <div className="flex gap-2">
+            {lastPayerId && playerBills.some(b => !b.isPaid && b.id !== lastPayerId) && (
+              <button onClick={checkoutAllRemaining} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">Checkout All (Free)</button>
+            )}
             {lastPayerId && playerBills.some(b => !b.isPaid) && (
               <>
                 <button
@@ -510,12 +643,7 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                     setLastPayerId(payerBill.id);
                     setShowWinnerSelection(false);
                     setSelectedWinner(null);
-                    if (tableId) {
-                      const { data: tableData } = await axios.put(`/api/games/tables/${tableId}`, { isAvailable: true });
-                      onUpdate(tableData);
-                    } else {
-                      onUpdate();
-                    }
+                    onUpdate();
                     await fetchPlayerBills();
                     await fetchGameHistory();
                   } catch (error) {
@@ -549,22 +677,27 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                   placeholder="Search by name or phone"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                {showMemberDropdown && getFilteredMembers().length > 0 && (
+                {showMemberDropdown && getFilteredResults().length > 0 && (
                   <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {getFilteredMembers().map((m, idx) => (
+                    {getFilteredResults().map((item, idx) => (
                       <div
-                        key={m.id}
-                        onMouseDown={(e) => { e.preventDefault(); handleMemberSelect(m); }}
+                        key={`${item.type}-${item.id}`}
+                        onMouseDown={(e) => { e.preventDefault(); handleMemberSelect(item); }}
                         className={`px-4 py-3 cursor-pointer border-b last:border-b-0 ${highlightedIndex === idx ? 'bg-blue-500 text-white' : 'hover:bg-gray-50'}`}
                       >
                         <div className="flex justify-between items-start">
-                          <div>
-                            <div className={`font-semibold ${highlightedIndex === idx ? 'text-white' : 'text-gray-800'}`}>{m.name}</div>
-                            <div className={`text-sm ${highlightedIndex === idx ? 'text-blue-100' : 'text-gray-500'}`}>{m.phone}</div>
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-lg">{item.type === 'member' ? '👤' : '🎱'}</span>
+                            <div>
+                              <div className={`font-semibold ${highlightedIndex === idx ? 'text-white' : 'text-gray-800'}`}>{item.name}</div>
+                              <div className={`text-sm ${highlightedIndex === idx ? 'text-blue-100' : 'text-gray-500'}`}>{item.phone}</div>
+                            </div>
                           </div>
-                          <div className={`text-sm ${highlightedIndex === idx ? 'text-blue-100' : 'text-gray-600'}`}>
-                            {m.totalGames > 0 ? `${m.remainingGames} games left` : `Rs. ${m.perFrameCharge}/frame`}
-                          </div>
+                          {item.type === 'member' && item.totalGames > 0 && (
+                            <div className={`text-xs font-semibold ml-2 whitespace-nowrap ${highlightedIndex === idx ? 'text-blue-100' : 'text-green-700'}`}>
+                              {item.remainingGames} games
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -577,7 +710,6 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                     <label className="block text-sm font-medium text-gray-700 mb-1">Player Name *</label>
                     <input
                       type="text"
-                      required
                       value={newPlayerForm.playerName}
                       onChange={(e) => setNewPlayerForm({...newPlayerForm, playerName: e.target.value})}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -632,8 +764,11 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
               <button
                 onClick={async () => {
                   if (!newPlayerForm.playerName) return alert('Player name is required');
+                  if (!newPlayerForm.memberId) {
+                    await handleAddPlayer();
+                  }
                   try {
-                    await axios.post('/api/games/player-bills', {
+                    await axios.post(`/api/games/bookings/${booking.id}/player-bills`, {
                       bookingId: booking.id,
                       memberId: newPlayerForm.memberId,
                       playerName: newPlayerForm.playerName,
@@ -650,9 +785,10 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                     alert(error.response?.data?.error || 'Error adding player');
                   }
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={addingPlayer}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                Add Player
+                {addingPlayer ? 'Adding...' : 'Add Player'}
               </button>
             </div>
           </div>
@@ -759,6 +895,14 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                   const gameCharges = parseFloat(selectedBill.chargePerGame) * selectedBill.gamesPlayed;
                   const total = gameCharges + refreshmentsTotal;
                   
+                  let paymentStatus = `PAID - Method: ${selectedBill.paymentMethod}`;
+                  if (selectedBill.paymentMethod && selectedBill.paymentMethod !== 'none' && selectedBill.paymentTotalAmount) {
+                    const credit = selectedBill.paymentMethod === 'credit' 
+                      ? `, Credit: Rs. ${(parseFloat(selectedBill.paymentTotalAmount) - parseFloat(selectedBill.paymentReceivedAmount)).toFixed(2)}`
+                      : '';
+                    paymentStatus = `PAID - Total: Rs. ${parseFloat(selectedBill.paymentTotalAmount).toFixed(2)}, Received: Rs. ${parseFloat(selectedBill.paymentReceivedAmount).toFixed(2)}${credit}`;
+                  }
+                  
                   printWindow.document.write(`
                     <html>
                       <head>
@@ -804,6 +948,8 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                         <div class="total">
                           <div class="item"><span>TOTAL:</span><span>Rs. ${total.toFixed(2)}</span></div>
                         </div>
+                        <div class="divider"></div>
+                        <div class="item"><span><strong>Status:</strong></span><span><strong>${paymentStatus}</strong></span></div>
                         <div class="footer">Thank you!</div>
                       </body>
                     </html>
@@ -871,9 +1017,40 @@ export default function PlayerCheckoutModal({ booking, tableId, onClose, onUpdat
                 </div>
                 
                 {selectedBill.isPaid && (
-                  <div className="bg-green-50 border border-green-200 rounded p-2 mt-3">
-                    <div className="text-sm text-green-800 font-medium">✓ PAID</div>
-                    <div className="text-xs text-green-700">Method: {selectedBill.paymentMethod}</div>
+                  <div className={`rounded p-2 mt-3 ${
+                    selectedBill.paymentMethod === 'credit'
+                      ? 'bg-amber-50 border border-amber-200'
+                      : 'bg-green-50 border border-green-200'
+                  }`}>
+                    <div className={`text-sm font-medium ${
+                      selectedBill.paymentMethod === 'credit'
+                        ? 'text-amber-800'
+                        : 'text-green-800'
+                    }`}>
+                      {selectedBill.paymentMethod === 'credit' ? '💳 CREDITED' : '✓ PAID'}
+                    </div>
+                    <div className={`text-xs ${
+                      selectedBill.paymentMethod === 'credit'
+                        ? 'text-amber-700'
+                        : 'text-green-700'
+                    }`}>
+                      Method: {selectedBill.paymentMethod}
+                    </div>
+                    {selectedBill.paymentMethod && selectedBill.paymentMethod !== 'none' && selectedBill.paymentTotalAmount && (
+                      <>
+                        <div className={`text-xs mt-1 ${selectedBill.paymentMethod === 'credit' ? 'text-amber-700' : 'text-green-700'}`}>
+                          Total: Rs. {parseFloat(selectedBill.paymentTotalAmount).toFixed(2)}
+                        </div>
+                        <div className={`text-xs ${selectedBill.paymentMethod === 'credit' ? 'text-amber-700' : 'text-green-700'}`}>
+                          Received: Rs. {parseFloat(selectedBill.paymentReceivedAmount).toFixed(2)}
+                        </div>
+                        {selectedBill.paymentMethod === 'credit' && (
+                          <div className={`text-xs font-medium ${selectedBill.paymentMethod === 'credit' ? 'text-amber-800' : 'text-green-800'}`}>
+                            Credit: Rs. {(parseFloat(selectedBill.paymentTotalAmount) - parseFloat(selectedBill.paymentReceivedAmount)).toFixed(2)}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>

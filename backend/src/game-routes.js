@@ -79,21 +79,32 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
   try {
     const { tableId, memberId, member2Id, member3Id, member4Id, player1Name, player1Phone, player2Name, player2Phone, player3Name, player3Phone, player4Name, player4Phone, chargeType, charges, expectedDuration, totalPlayers } = req.body;
     
-    const framesToDeduct = totalPlayers || 1;
-    let player1Charge = charges; // Default to walk-in rate
-    let player2Charge = charges; // Default to walk-in rate
+    // Save walk-in players to database
+    if (!memberId && player1Name) {
+      await prisma.player.create({ data: { name: player1Name, phone: player1Phone, userId: req.userId } });
+    }
+    if (!member2Id && player2Name) {
+      await prisma.player.create({ data: { name: player2Name, phone: player2Phone, userId: req.userId } });
+    }
+    if (!member3Id && player3Name) {
+      await prisma.player.create({ data: { name: player3Name, phone: player3Phone, userId: req.userId } });
+    }
+    if (!member4Id && player4Name) {
+      await prisma.player.create({ data: { name: player4Name, phone: player4Phone, userId: req.userId } });
+    }
     
-    // Validate members at check-in and set charges
+    const framesToDeduct = totalPlayers || 1;
+    let player1Charge = charges;
+    let player2Charge = charges;
+    
     if (memberId) {
       const member = await prisma.member.findUnique({ where: { id: memberId } });
       if (!member) return res.status(404).json({ error: 'Player 1 member not found' });
       if (member.expiryDate < new Date()) return res.status(400).json({ error: 'Player 1 membership expired. Please renew.' });
       
-      // Only premium members (perFrameCharge=0) with remaining games get free games
       if (member.perFrameCharge === 0 && member.remainingGames > 0) {
         player1Charge = 0;
       }
-      // All other active members pay 120
       else if (member.expiryDate >= new Date()) {
         player1Charge = 120;
       }
@@ -104,11 +115,9 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       if (!member2) return res.status(404).json({ error: 'Player 2 member not found' });
       if (member2.expiryDate < new Date()) return res.status(400).json({ error: 'Player 2 membership expired. Please renew.' });
       
-      // Only premium members (perFrameCharge=0) with remaining games get free games
       if (member2.perFrameCharge === 0 && member2.remainingGames > 0) {
         player2Charge = 0;
       }
-      // All other active members pay 120
       else if (member2.expiryDate >= new Date()) {
         player2Charge = 120;
       }
@@ -119,7 +128,6 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
       include: { refreshments: true, member: true, member2: true }
     });
     
-    // Create player bills for all players
     const players = [
       { memberId, name: player1Name, phone: player1Phone, charge: player1Charge },
       { memberId: member2Id, name: player2Name, phone: player2Phone, charge: player2Charge },
@@ -129,14 +137,13 @@ router.post('/bookings/checkin', authenticateToken, async (req, res) => {
     
     for (const player of players) {
       if (player.name) {
-        // Check member charge if applicable
         let playerCharge = player.charge;
         if (player.memberId) {
           const member = await prisma.member.findUnique({ where: { id: player.memberId } });
           if (member && member.perFrameCharge === 0 && member.remainingGames > 0) {
             playerCharge = 0;
           } else if (member && member.expiryDate >= new Date()) {
-            playerCharge = 120;
+            playerCharge = member.perFrameCharge || charges;
           }
         }
         
@@ -254,10 +261,7 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
     });
 
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
-    
-    // Note: Games are already deducted when selecting payer in PlayerCheckoutModal
 
-    // Create sale for refreshments if any
     if (booking.refreshments.length > 0) {
       const lastSale = await prisma.sale.findFirst({
         where: { userId: req.userId },
@@ -277,13 +281,11 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
       const saleId = crypto.randomUUID();
       const description = `Refreshments - ${booking.table.name} (${booking.player1Name}${booking.player2Name ? ` vs ${booking.player2Name}` : ''})`;
       
-      // Create sale using raw SQL
       await prisma.$executeRaw`
         INSERT INTO "Sale" (id, "billNumber", "totalAmount", discount, "paidAmount", "saleDate", "userId", description, "createdAt", "updatedAt")
         VALUES (${saleId}, ${newBillNumber}, ${refreshmentsTotal}::decimal, ${0}::decimal, ${refreshmentsTotal}::decimal, NOW(), ${req.userId}, ${description}, NOW(), NOW())
       `;
       
-      // Create sale items
       for (const r of booking.refreshments) {
         const itemId = crypto.randomUUID();
         const qty = Number(r.quantity);
@@ -308,90 +310,63 @@ router.post('/bookings/:id/checkout', authenticateToken, async (req, res) => {
   }
 });
 
-// Create booking for transfer to empty table
-router.post('/bookings/transfer-to-empty', authenticateToken, async (req, res) => {
+// Get bookings
+router.get('/bookings', authenticateToken, async (req, res) => {
   try {
-    const { tableId, playerBillId } = req.body;
+    const { page = 1, limit = 10, playerName = '' } = req.query;
+    const whereClause = { userId: req.userId };
     
-    // Get player bill info
-    const playerBill = await prisma.playerBill.findUnique({ where: { id: playerBillId } });
-    if (!playerBill) return res.status(404).json({ error: 'Player bill not found' });
-    
-    // Create new booking
-    const booking = await prisma.gameBooking.create({
-      data: {
-        tableId,
-        player1Name: playerBill.playerName,
-        player1Phone: playerBill.playerPhone,
-        chargeType: playerBill.chargeType,
-        charges: playerBill.chargePerGame,
-        userId: req.userId
-      }
-    });
-    
-    await prisma.gameTable.update({ where: { id: tableId }, data: { isAvailable: false } });
-    res.json(booking);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Transfer booking to another table
-router.put('/bookings/:id/transfer', authenticateToken, async (req, res) => {
-  try {
-    const { newTableId } = req.body;
-    const booking = await prisma.gameBooking.findUnique({ where: { id: req.params.id } });
-    if (!booking) return res.status(404).json({ error: 'Booking not found' });
-    
-    const newTable = await prisma.gameTable.findUnique({ where: { id: newTableId } });
-    if (!newTable || !newTable.isAvailable) return res.status(400).json({ error: 'Table not available' });
-    
-    await prisma.gameTable.update({ where: { id: booking.tableId }, data: { isAvailable: true } });
-    await prisma.gameTable.update({ where: { id: newTableId }, data: { isAvailable: false } });
-    
-    const updatedBooking = await prisma.gameBooking.update({
-      where: { id: req.params.id },
-      data: { tableId: newTableId },
-      include: { refreshments: true, member: true, member2: true }
-    });
-    
-    res.json(updatedBooking);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Add new player to existing booking
-router.post('/player-bills', authenticateToken, async (req, res) => {
-  try {
-    const { bookingId, memberId, playerName, playerPhone, chargePerGame, chargeType } = req.body;
-    
-    // Check current player count
-    const existingBills = await prisma.playerBill.count({ where: { bookingId } });
-    if (existingBills >= 4) {
-      return res.status(400).json({ error: 'Maximum 4 players allowed per table' });
+    if (playerName) {
+      whereClause.OR = [
+        { player1Name: { contains: playerName, mode: 'insensitive' } },
+        { player2Name: { contains: playerName, mode: 'insensitive' } },
+        { playerBills: { some: { playerName: { contains: playerName, mode: 'insensitive' } } } }
+      ];
     }
     
-    const newBill = await prisma.playerBill.create({
-      data: {
-        bookingId,
-        memberId,
-        playerName,
-        playerPhone,
-        chargeType: chargeType || 'per_game',
-        chargePerGame: chargePerGame || 0,
-        userId: req.userId
-      },
-      include: { member: true, refreshments: true }
-    });
-    
-    res.json(newBill);
+    const [total, bookings] = await Promise.all([
+      prisma.gameBooking.count({ where: whereClause }),
+      prisma.gameBooking.findMany({
+        where: whereClause,
+        include: { table: true, refreshments: true, member: true, member2: true, playerBills: true },
+        skip: (page - 1) * limit,
+        take: parseInt(limit),
+        orderBy: { checkInTime: 'desc' }
+      })
+    ]);
+    res.json({ items: bookings, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get player bills for a booking
+// Get active members
+router.get('/members/active', authenticateToken, async (req, res) => {
+  try {
+    const members = await prisma.member.findMany({
+      where: { userId: req.userId, isActive: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(members);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get game history for booking
+router.get('/bookings/:id/game-history', authenticateToken, async (req, res) => {
+  try {
+    const history = await prisma.gameHistory.findMany({
+      where: { bookingId: req.params.id },
+      orderBy: { frameNumber: 'asc' }
+    });
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get player bills for booking
 router.get('/bookings/:id/player-bills', authenticateToken, async (req, res) => {
   try {
     const bills = await prisma.playerBill.findMany({
@@ -405,86 +380,26 @@ router.get('/bookings/:id/player-bills', authenticateToken, async (req, res) => 
   }
 });
 
-// Get game history for a booking
-router.get('/bookings/:id/game-history', authenticateToken, async (req, res) => {
-  try {
-    const history = await prisma.gameHistory.findMany({
-      where: { bookingId: req.params.id },
-      orderBy: { frameNumber: 'asc' }
-    });
-    res.json(history);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-
-// Checkout individual player (1 game)
+// Checkout player bill
 router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) => {
   try {
-    const { paymentMethod, totalAmount } = req.body;
-    const bill = await prisma.playerBill.findUnique({
-      where: { id: req.params.id },
-      include: { member: true, refreshments: true, booking: { include: { table: true } } }
-    });
-    
+    const { paymentMethod, totalAmount, paymentTotalAmount, paymentReceivedAmount } = req.body;
+    const bill = await prisma.playerBill.findUnique({ where: { id: req.params.id } });
     if (!bill) return res.status(404).json({ error: 'Player bill not found' });
-    if (bill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
     
-    const gamesPlayed = bill.gamesPlayed; // Use existing games played
-    const finalTotalAmount = totalAmount !== undefined ? Number(totalAmount) : Number(bill.totalAmount); // Use edited total if provided
-    
-    // Note: Games are already deducted when selecting payer, no need to deduct again
-    
-    // Create sale for refreshments if any
-    if (bill.refreshments.length > 0) {
-      const lastSale = await prisma.sale.findFirst({
-        where: { userId: req.userId },
-        orderBy: { createdAt: 'desc' }
-      });
-      
-      let newBillNumber;
-      if (lastSale?.billNumber) {
-        const match = lastSale.billNumber.match(/\d+/);
-        const lastNum = match ? parseInt(match[0]) : 0;
-        newBillNumber = (lastNum + 1).toString();
-      } else {
-        newBillNumber = '1000000';
-      }
-      
-      const refreshmentsTotal = bill.refreshments.reduce((sum, r) => sum + Number(r.totalAmount), 0);
-      const saleId = crypto.randomUUID();
-      const description = `Refreshments - ${bill.booking.table.name} (${bill.playerName})`;
-      
-      await prisma.$executeRaw`
-        INSERT INTO "Sale" (id, "billNumber", "totalAmount", discount, "paidAmount", "saleDate", "userId", description, "createdAt", "updatedAt")
-        VALUES (${saleId}, ${newBillNumber}, ${refreshmentsTotal}::decimal, ${0}::decimal, ${refreshmentsTotal}::decimal, NOW(), ${req.userId}, ${description}, NOW(), NOW())
-      `;
-      
-      for (const r of bill.refreshments) {
-        const itemId = crypto.randomUUID();
-        const qty = Number(r.quantity);
-        const price = Number(r.price);
-        await prisma.$executeRaw`
-          INSERT INTO "SaleItem" (id, quantity, price, "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
-          VALUES (${itemId}, ${qty}::decimal, ${price}::decimal, ${0}::decimal, ${saleId}, ${r.productId}, NOW(), NOW())
-        `;
-      }
-    }
+    const updateData = { isPaid: true, paymentMethod, totalAmount };
+    if (paymentTotalAmount !== undefined) updateData.paymentTotalAmount = paymentTotalAmount;
+    if (paymentReceivedAmount !== undefined) updateData.paymentReceivedAmount = paymentReceivedAmount;
     
     const updatedBill = await prisma.playerBill.update({
       where: { id: req.params.id },
-      data: { isPaid: true, gamesPlayed, totalAmount: finalTotalAmount, checkoutTime: new Date(), paymentMethod: paymentMethod || 'cash' },
-      include: { member: true, refreshments: true }
+      data: updateData
     });
     
-    // Check if all players checked out, then free the table
-    const allBills = await prisma.playerBill.findMany({ where: { bookingId: bill.bookingId } });
-    const allPaid = allBills.every(b => b.isPaid);
+    const booking = await prisma.gameBooking.findUnique({ where: { id: bill.bookingId }, include: { playerBills: true } });
+    const allPaid = booking.playerBills.every(b => b.id === req.params.id || b.isPaid);
     if (allPaid) {
-      await prisma.gameTable.update({ where: { id: bill.booking.tableId }, data: { isAvailable: true } });
-      await prisma.gameBooking.update({ where: { id: bill.bookingId }, data: { checkOutTime: new Date() } });
+      await prisma.gameTable.update({ where: { id: booking.tableId }, data: { isAvailable: true } });
     }
     
     res.json(updatedBill);
@@ -493,251 +408,112 @@ router.post('/player-bills/:id/checkout', authenticateToken, async (req, res) =>
   }
 });
 
-// Transfer player to another booking/table
+// Transfer player bill to empty table
+router.post('/bookings/transfer-to-empty', authenticateToken, async (req, res) => {
+  try {
+    const { tableId, playerBillId } = req.body;
+    const bill = await prisma.playerBill.findUnique({ where: { id: playerBillId } });
+    if (!bill) return res.status(404).json({ error: 'Player bill not found' });
+    
+    const booking = await prisma.gameBooking.create({
+      data: {
+        tableId,
+        player1Name: bill.playerName,
+        player1Phone: bill.playerPhone,
+        chargeType: bill.chargeType,
+        charges: bill.chargePerGame,
+        userId: req.userId
+      }
+    });
+    
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Transfer player bill to another booking
 router.put('/player-bills/:id/transfer', authenticateToken, async (req, res) => {
   try {
     const { newBookingId } = req.body;
-    const bill = await prisma.playerBill.findUnique({ 
+    const bill = await prisma.playerBill.update({
       where: { id: req.params.id },
-      include: { refreshments: true }
+      data: { bookingId: newBookingId }
     });
-    
-    if (!bill) return res.status(404).json({ error: 'Player bill not found' });
-    if (bill.isPaid) return res.status(400).json({ error: 'Cannot transfer paid bill' });
-    
-    // Check if target table has space (max 4 players)
-    const targetPlayerCount = await prisma.playerBill.count({ where: { bookingId: newBookingId } });
-    if (targetPlayerCount >= 4) {
-      return res.status(400).json({ error: 'Target table is full (max 4 players)' });
-    }
-    
-    // Update player bill
-    const updatedBill = await prisma.playerBill.update({
-      where: { id: req.params.id },
-      data: { bookingId: newBookingId },
-      include: { member: true, refreshments: true }
-    });
-    
-    // Transfer refreshments to new booking
-    if (bill.refreshments.length > 0) {
-      await prisma.bookingRefreshment.updateMany({
-        where: { playerBillId: req.params.id },
-        data: { bookingId: newBookingId }
-      });
-    }
-    
-    res.json(updatedBill);
+    res.json(bill);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Switch players between tables
+// Switch player bills between bookings
 router.put('/player-bills/switch', authenticateToken, async (req, res) => {
   try {
     const { bill1Id, bill2Id } = req.body;
+    const bill1 = await prisma.playerBill.findUnique({ where: { id: bill1Id } });
+    const bill2 = await prisma.playerBill.findUnique({ where: { id: bill2Id } });
     
-    const [bill1, bill2] = await Promise.all([
-      prisma.playerBill.findUnique({ where: { id: bill1Id }, include: { refreshments: true } }),
-      prisma.playerBill.findUnique({ where: { id: bill2Id }, include: { refreshments: true } })
-    ]);
+    if (!bill1 || !bill2) return res.status(404).json({ error: 'One or both bills not found' });
     
-    if (!bill1 || !bill2) return res.status(404).json({ error: 'Player bill not found' });
-    if (bill1.isPaid || bill2.isPaid) return res.status(400).json({ error: 'Cannot switch paid bills' });
-    
-    const tempBookingId = bill1.bookingId;
-    
-    // Swap bookings
     await prisma.playerBill.update({ where: { id: bill1Id }, data: { bookingId: bill2.bookingId } });
-    await prisma.playerBill.update({ where: { id: bill2Id }, data: { bookingId: tempBookingId } });
+    await prisma.playerBill.update({ where: { id: bill2Id }, data: { bookingId: bill1.bookingId } });
     
-    // Swap refreshments
-    if (bill1.refreshments.length > 0) {
-      await prisma.bookingRefreshment.updateMany({
-        where: { playerBillId: bill1Id },
-        data: { bookingId: bill2.bookingId }
-      });
-    }
-    if (bill2.refreshments.length > 0) {
-      await prisma.bookingRefreshment.updateMany({
-        where: { playerBillId: bill2Id },
-        data: { bookingId: tempBookingId }
-      });
-    }
-    
-    res.json({ message: 'Players switched successfully' });
+    res.json({ message: 'Bills switched' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Add game charge to player bill (payer pays)
-router.post('/player-bills/:id/add-game', authenticateToken, async (req, res) => {
+// Create player bill for booking
+router.post('/bookings/:id/player-bills', authenticateToken, async (req, res) => {
   try {
-    const payerBill = await prisma.playerBill.findUnique({
-      where: { id: req.params.id },
-      include: { member: true }
-    });
+    const { memberId, playerName, playerPhone, chargePerGame, chargeType } = req.body;
+    const booking = await prisma.gameBooking.findUnique({ where: { id: req.params.id } });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
     
-    if (!payerBill) return res.status(404).json({ error: 'Player bill not found' });
-    if (payerBill.isPaid) return res.status(400).json({ error: 'Bill already paid' });
-    
-    // Get all active player bills for this booking
-    const allBills = await prisma.playerBill.findMany({
-      where: { bookingId: payerBill.bookingId, isPaid: false },
-      include: { member: true }
-    });
-    
-    // Increment gamesPlayed for all active players, but only add charge to payer
-    const newFrameNumber = payerBill.gamesPlayed + 1;
-    
-    for (const bill of allBills) {
-      const newGamesPlayed = bill.gamesPlayed + 1;
-      const isPayerBill = bill.id === req.params.id;
-      // Only payer gets the charge added to their total
-      const newTotalAmount = isPayerBill ? Number(bill.totalAmount) + Number(bill.chargePerGame) : Number(bill.totalAmount);
-      
-      // Deduct 1 game from member if applicable
-      if (bill.memberId && bill.member && bill.member.totalGames > 0) {
-        const newRemaining = Math.max(0, bill.member.remainingGames - 1);
-        await prisma.member.update({
-          where: { id: bill.memberId },
-          data: { remainingGames: newRemaining }
-        });
-      }
-      
-      await prisma.playerBill.update({
-        where: { id: bill.id },
-        data: { 
-          gamesPlayed: newGamesPlayed, 
-          totalAmount: newTotalAmount 
-        }
-      });
-    }
-    
-    // Update booking with lastPayerId
-    await prisma.gameBooking.update({
-      where: { id: payerBill.bookingId },
-      data: { lastPayerId: req.params.id }
-    });
-    
-    // Record in game history
-    await prisma.gameHistory.create({
+    const bill = await prisma.playerBill.create({
       data: {
-        bookingId: payerBill.bookingId,
-        payerBillId: req.params.id,
-        frameNumber: newFrameNumber,
-        amount: Number(payerBill.chargePerGame)
-      }
-    });
-    
-    // Return updated payer bill
-    const updatedPayerBill = await prisma.playerBill.findUnique({
-      where: { id: req.params.id },
-      include: { member: true, refreshments: true }
-    });
-    
-    res.json(updatedPayerBill);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Continue playing (create new bill for same player)
-router.post('/player-bills/:id/continue', authenticateToken, async (req, res) => {
-  try {
-    const oldBill = await prisma.playerBill.findUnique({
-      where: { id: req.params.id },
-      include: { booking: true }
-    });
-    
-    if (!oldBill) return res.status(404).json({ error: 'Player bill not found' });
-    if (!oldBill.isPaid) return res.status(400).json({ error: 'Bill not paid yet' });
-    
-    // Create new bill for continued play
-    const newBill = await prisma.playerBill.create({
-      data: {
-        bookingId: oldBill.bookingId,
-        memberId: oldBill.memberId,
-        playerName: oldBill.playerName,
-        playerPhone: oldBill.playerPhone,
-        chargeType: oldBill.chargeType,
-        chargePerGame: oldBill.chargePerGame,
+        bookingId: req.params.id,
+        memberId,
+        playerName,
+        playerPhone,
+        chargeType,
+        chargePerGame,
         userId: req.userId
       },
-      include: { member: true, refreshments: true }
+      include: { member: true }
     });
-    
-    res.json(newBill);
+    res.json(bill);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get bookings
-router.get('/bookings', authenticateToken, async (req, res) => {
+// Add game to player bill
+router.post('/player-bills/:id/add-game', authenticateToken, async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const [total, bookings] = await Promise.all([
-      prisma.gameBooking.count({ where: { userId: req.userId } }),
-      prisma.gameBooking.findMany({
-        where: { userId: req.userId },
-        include: { table: true, refreshments: true, member: true, member2: true, playerBills: true },
-        skip: (page - 1) * limit,
-        take: parseInt(limit),
-        orderBy: { checkInTime: 'desc' }
-      })
-    ]);
-    res.json({ items: bookings, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get game revenue stats
-router.get('/revenue-stats', authenticateToken, async (req, res) => {
-  try {
-    // Use Pakistan timezone (UTC+5)
-    const pakistanTime = new Date(Date.now() + (5 * 60 * 60 * 1000));
-    const today = pakistanTime.toISOString().split('T')[0];
-    const last7Days = new Date(pakistanTime.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const last30Days = new Date(pakistanTime.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const last365Days = new Date(pakistanTime.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const bill = await prisma.playerBill.findUnique({ where: { id: req.params.id } });
+    if (!bill) return res.status(404).json({ error: 'Player bill not found' });
     
-    const getRevenueForPeriod = async (startDate, endDate) => {
-      const start = new Date(startDate);
-      const end = new Date(new Date(endDate + 'T23:59:59').getTime() + (5 * 60 * 60 * 1000));
-      
-      const bookings = await prisma.gameBooking.findMany({
-        where: {
-          userId: req.userId,
-          checkOutTime: {
-            gte: start,
-            lte: end
-          }
-        },
-        include: { playerBills: true }
-      });
-      
-      return bookings.reduce((total, booking) => {
-        const gameRevenue = booking.playerBills.reduce((sum, bill) => sum + parseFloat(bill.totalAmount || 0), 0) || parseFloat(booking.totalAmount || 0);
-        return total + gameRevenue;
-      }, 0);
-    };
+    const booking = await prisma.gameBooking.findUnique({ where: { id: bill.bookingId } });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
     
-    const [todayRevenue, last7DaysRevenue, last30DaysRevenue, last365DaysRevenue] = await Promise.all([
-      getRevenueForPeriod(today, today),
-      getRevenueForPeriod(last7Days, today),
-      getRevenueForPeriod(last30Days, today),
-      getRevenueForPeriod(last365Days, today)
-    ]);
-    
-    res.json({
-      today: todayRevenue,
-      last7Days: last7DaysRevenue,
-      last30Days: last30DaysRevenue,
-      last365Days: last365DaysRevenue
+    const updatedBill = await prisma.playerBill.update({
+      where: { id: req.params.id },
+      data: { gamesPlayed: { increment: 1 }, totalAmount: { increment: bill.chargePerGame } }
     });
+    
+    await prisma.gameHistory.create({
+      data: {
+        bookingId: bill.bookingId,
+        payerBillId: req.params.id,
+        frameNumber: (await prisma.gameHistory.count({ where: { bookingId: bill.bookingId } })) + 1,
+        amount: bill.chargePerGame,
+        paymentMethod: 'cash'
+      }
+    });
+    
+    res.json(updatedBill);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

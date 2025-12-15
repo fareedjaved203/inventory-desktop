@@ -211,6 +211,10 @@ app.use('/api/backup', backupRoutes);
 import memberRoutes from './member-routes.js';
 app.use('/api/members', memberRoutes);
 
+// Player routes
+import createPlayerRoutes from './player-routes.js';
+app.use('/api/players', createPlayerRoutes(prisma));
+
 // Game routes
 import gameRoutes from './game-routes.js';
 app.use('/api/games', gameRoutes);

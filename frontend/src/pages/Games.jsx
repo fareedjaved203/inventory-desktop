@@ -17,6 +17,7 @@ export default function Games() {
   const [history, setHistory] = useState([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showTableModal, setShowTableModal] = useState(false);
   const [showCheckinModal, setShowCheckinModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -35,10 +36,10 @@ export default function Games() {
   const [loading, setLoading] = useState(false);
   const [tableForm, setTableForm] = useState({ name: '', tableType: 'snooker' });
   const [checkinForm, setCheckinForm] = useState({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' });
-  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' });
+  const [checkoutForm, setCheckoutForm] = useState({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '', paymentTotalAmount: 0, paymentReceivedAmount: 0 });
 
   useEffect(() => { fetchTables(); }, []);
-  useEffect(() => { if (activeTab === 'history') fetchHistory(); }, [activeTab, historyPage]);
+  useEffect(() => { if (activeTab === 'history') fetchHistory(searchQuery); }, [activeTab, historyPage]);
 
   const fetchTables = async () => {
     setLoading(true);
@@ -52,17 +53,23 @@ export default function Games() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (query = searchQuery) => {
     setLoading(true);
     try {
-      const { data } = await axios.get('/api/games/bookings', { params: { page: historyPage, limit: 10 } });
+      const { data } = await axios.get('/api/games/bookings', { params: { page: 1, limit: 10, playerName: query } });
       setHistory(data.items);
       setHistoryTotalPages(data.totalPages);
+      setHistoryPage(1);
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    fetchHistory(query);
   };
 
   const handleTableSubmit = async (e) => {
@@ -86,8 +93,8 @@ export default function Games() {
   const handleCheckin = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
-      setTables(tables.map(t => t.id === selectedTable.id ? data : t));
+      await axios.post('/api/games/bookings/checkin', { ...checkinForm, tableId: selectedTable.id, totalPlayers: 1 });
+      await fetchTables();
       setShowCheckinModal(false);
       setCheckinForm({ memberId: null, member2Id: null, player1Name: '', player1Phone: '', player2Name: '', player2Phone: '', chargeType: 'per_game', charges: '0', expectedDuration: '' });
       setSelectedTable(null);
@@ -105,7 +112,7 @@ export default function Games() {
       const { data } = await axios.post(`/api/games/bookings/${selectedBooking.id}/checkout`, checkoutForm);
       setTables(tables.map(t => t.id === selectedTable.id ? data : t));
       setShowCheckoutModal(false);
-      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' });
+      setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '', paymentTotalAmount: 0, paymentReceivedAmount: 0 });
       setSelectedBooking(null);
     } catch (error) {
       console.error('Error checking out:', error);
@@ -218,7 +225,7 @@ export default function Games() {
         )
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <HistoryTable history={history} page={historyPage} totalPages={historyTotalPages} setPage={setHistoryPage} formatDuration={formatDuration} loading={loading} />
+          <HistoryTable history={history} page={historyPage} totalPages={historyTotalPages} setPage={setHistoryPage} formatDuration={formatDuration} loading={loading} onSearch={handleSearch} />
         </div>
       )}
 
@@ -241,7 +248,7 @@ export default function Games() {
           </div>
         </div>
       )}
-      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '' }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
+      {showCheckoutModal && selectedBooking && <CheckoutForm table={selectedTable} booking={selectedBooking} formData={checkoutForm} setFormData={setCheckoutForm} onSubmit={handleCheckout} onCancel={() => { setShowCheckoutModal(false); setCheckoutForm({ gamesPlayed: 0, totalAmount: 0, paymentMethod: 'cash', payer: '', paymentTotalAmount: 0, paymentReceivedAmount: 0 }); setSelectedBooking(null); }} formatDuration={formatDuration} />}
       {showRefreshmentsModal && selectedBooking && <RefreshmentsModal booking={selectedBooking} onClose={() => { setShowRefreshmentsModal(false); setSelectedBooking(null); }} onUpdate={fetchTables} />}
       {showEditBookingModal && editingBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -273,3 +273,27 @@ ALTER TABLE "Sale" ADD CONSTRAINT "Sale_orderBookerId_fkey"
 -- Create index for better query performance
 CREATE INDEX "Sale_orderBookerId_idx" ON "Sale"("orderBookerId");
 
+# 5.10.10:
+
+-- Add payment fields to PlayerBill table
+ALTER TABLE "PlayerBill" ADD COLUMN "paymentTotalAmount" DECIMAL;
+ALTER TABLE "PlayerBill" ADD COLUMN "paymentReceivedAmount" DECIMAL;
+
+-- Add payment fields to GameHistory table
+ALTER TABLE "GameHistory" ADD COLUMN "paymentMethod" VARCHAR DEFAULT 'cash';
+ALTER TABLE "GameHistory" ADD COLUMN "creditTotalAmount" DECIMAL;
+ALTER TABLE "GameHistory" ADD COLUMN "creditReceivedAmount" DECIMAL;
+
+CREATE TABLE "Player" (
+  "id" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "phone" TEXT,
+  "userId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "Player_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "Player_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE INDEX "Player_userId_idx" ON "Player"("userId");
+CREATE INDEX "Player_userId_name_idx" ON "Player"("userId", "name");

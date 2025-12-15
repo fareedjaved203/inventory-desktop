@@ -141,22 +141,4 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get active members for dropdown
-router.get('/active', authenticateToken, async (req, res) => {
-  try {
-    const members = await prisma.member.findMany({
-      where: { 
-        userId: req.userId,
-        expiryDate: { gte: new Date() },
-        isActive: true
-      },
-      select: { id: true, name: true, phone: true, totalGames: true, remainingGames: true, membershipType: true, perFrameCharge: true },
-      orderBy: { name: 'asc' }
-    });
-    res.json(members);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 export default router;
