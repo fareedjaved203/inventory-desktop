@@ -86,7 +86,7 @@ export function setupSalesRoutes(app, prisma) {
           const saleId = crypto.randomUUID();
           await prisma.$executeRaw`
             INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "orderBookerId", "employeeId", "carNumber", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
-            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}, ${req.body.contactId}, ${req.body.orderBookerId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
+            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}::decimal, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal, ${req.body.discount || 0}::decimal, ${req.body.paidAmount || 0}::decimal, ${saleDate}::timestamp, ${req.body.contactId}, ${req.body.orderBookerId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? new Date(req.body.loadingDate) : null}, ${req.body.arrivalDate ? new Date(req.body.arrivalDate) : null}, ${req.body.description}, ${req.userId}, NOW(), NOW())
           `;
           
           // Create sale items
