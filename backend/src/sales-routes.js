@@ -4,28 +4,9 @@ import crypto from 'crypto';
 import { saleSchema, querySchema } from './schemas.js';
 import { withTransaction, safeQuery } from './db-utils.js';
 import { logAuditChange } from './audit-utils.js';
+import { createDateWithCurrentTime } from './timezone-helper.js';
 
-// Helper function to create date - subtract 5 hours for Pakistan time
-function createDateWithCurrentTime(dateString) {
-  const now = new Date();
-  now.setHours(now.getHours() - 5);
-  
-  if (!dateString) {
-    return now;
-  }
-  
-  const [year, month, day] = dateString.split('-');
-  const date = new Date(
-    parseInt(year),
-    parseInt(month) - 1,
-    parseInt(day),
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds()
-  );
-  
-  return date;
-}
+
 
 // Helper function to adjust date for display (no adjustment needed now)
 function adjustDateForDisplay(date) {

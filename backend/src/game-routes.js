@@ -489,6 +489,53 @@ router.post('/bookings/:id/player-bills', authenticateToken, async (req, res) =>
   }
 });
 
+// Get game revenue stats
+router.get('/revenue-stats', authenticateToken, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const last7Days = new Date(today);
+    last7Days.setDate(last7Days.getDate() - 7);
+    
+    const last30Days = new Date(today);
+    last30Days.setDate(last30Days.getDate() - 30);
+    
+    const last365Days = new Date(today);
+    last365Days.setFullYear(last365Days.getFullYear() - 1);
+    
+    const [todayStats, last7Stats, last30Stats, last365Stats] = await Promise.all([
+      prisma.gameBooking.aggregate({
+        where: { userId: req.userId, checkOutTime: { gte: today, lt: tomorrow } },
+        _sum: { totalAmount: true }
+      }),
+      prisma.gameBooking.aggregate({
+        where: { userId: req.userId, checkOutTime: { gte: last7Days, lt: tomorrow } },
+        _sum: { totalAmount: true }
+      }),
+      prisma.gameBooking.aggregate({
+        where: { userId: req.userId, checkOutTime: { gte: last30Days, lt: tomorrow } },
+        _sum: { totalAmount: true }
+      }),
+      prisma.gameBooking.aggregate({
+        where: { userId: req.userId, checkOutTime: { gte: last365Days, lt: tomorrow } },
+        _sum: { totalAmount: true }
+      })
+    ]);
+    
+    res.json({
+      today: Number(todayStats._sum.totalAmount || 0),
+      last7Days: Number(last7Stats._sum.totalAmount || 0),
+      last30Days: Number(last30Stats._sum.totalAmount || 0),
+      last365Days: Number(last365Stats._sum.totalAmount || 0)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add game to player bill
 router.post('/player-bills/:id/add-game', authenticateToken, async (req, res) => {
   try {

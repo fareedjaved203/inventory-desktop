@@ -185,11 +185,6 @@ function Sales() {
     []
   );
 
-  const handleTransportSearchChange = (value) => {
-    setTransportSearchTerm(value);
-    debouncedTransportSearch(value);
-  };
-
   // Fetch products for dropdown with search
   const { data: products, isLoading: productsLoading } = useQuery(
     ["products", debouncedProductSearchTerm],
@@ -224,19 +219,6 @@ function Sales() {
         contactType: 'order_booker'
       });
       return result.items;
-    }
-  );
-
-  // Fetch transport for dropdown with search
-  const { data: transport, isLoading: transportLoading } = useQuery(
-    ["transport", debouncedTransportSearchTerm],
-    async () => {
-      if (!debouncedTransportSearchTerm) return [];
-      const result = await API.getTransport({ limit: 100 });
-      return result.items?.filter(t => 
-        t.carNumber?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase()) ||
-        t.driverName?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase())
-      ) || [];
     }
   );
 
@@ -590,7 +572,11 @@ function Sales() {
     setSelectedContact(sale.contact || null);
     setSelectedOrderBooker(sale.orderBooker || null);
     setOrderBookerSearchTerm(sale.orderBooker?.name || '');
-    setSaleDate(new Date(sale.saleDate).toISOString().split("T")[0]);
+    const saleDateObj = new Date(sale.saleDate);
+    const year = saleDateObj.getUTCFullYear();
+    const month = String(saleDateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(saleDateObj.getUTCDate()).padStart(2, '0');
+    setSaleDate(`${year}-${month}-${day}`);
     setDescription(sale.description || '');
     setTransportSearchTerm(sale.carNumber || '');
     setTransportCost(sale.transportCost || '');
@@ -662,7 +648,7 @@ function Sales() {
       paidAmount: Number(parsedPaidAmount),
       ...(contactId && { contactId }),
       ...(selectedOrderBooker?.id && { orderBookerId: selectedOrderBooker.id }),
-      ...(saleDate && { saleDate }),
+      ...(saleDate && { saleDate: saleDate }),
       description: description || null,
       carNumber: transportSearchTerm || null,
       transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
