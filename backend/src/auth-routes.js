@@ -146,10 +146,14 @@ function createAuthRoutes(prismaInstance) {
         });
 
         if (employee && await bcrypt.compare(password, employee.password)) {
-          // Check if admin's license is expired for employee login
+          // Check if admin's license is valid for employee login
           const adminUser = await prisma.user.findUnique({ where: { id: employee.userId } });
-          if (adminUser && adminUser.trialEndDate && new Date() > adminUser.trialEndDate) {
-            return res.status(403).json({ error: 'License expired. Please contact administrator to renew license.' });
+          if (adminUser) {
+            const licenseManager = (await import('../utils/licenseManager.js')).default;
+            const isLicenseValid = await licenseManager.isLicenseValid(employee.userId);
+            if (!isLicenseValid) {
+              return res.status(403).json({ error: 'License expired. Please contact administrator to renew license.' });
+            }
           }
           
           const token = jwt.sign({ userId: employee.userId }, JWT_SECRET, { expiresIn: '24h' });

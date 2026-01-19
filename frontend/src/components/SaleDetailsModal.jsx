@@ -42,16 +42,30 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
   const [pdfPreferences, setPdfPreferences] = useState({});
   const queryClient = useQueryClient();
   
-  // Fetch audit trail for this sale
-  const { data: auditTrail } = useQuery(
+  // Fetch the latest sale data
+  const { data: latestSale, refetch: refetchSale } = useQuery(
+    ['sale', sale?.id],
+    async () => {
+      if (!sale?.id) return sale;
+      try {
+        const response = await API.get(`/sales/${sale.id}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching sale:', error);
+        return sale;
+      }
+    },
+    { enabled: Boolean(sale?.id && isOpen), refetchInterval: 2000 }
+  );
+
+  // Fetch audit trail for the sale
+  const { data: auditTrail = [] } = useQuery(
     ['sale-audit-trail', sale?.id],
     async () => {
       if (!sale?.id) return [];
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audit-trail/Sale/${sale.id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
-        });
-        return await response.json();
+        const response = await API.get(`/audit-trail/sale/${sale.id}`);
+        return response.data || [];
       } catch (error) {
         console.error('Error fetching audit trail:', error);
         return [];
@@ -60,9 +74,11 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
     { enabled: Boolean(sale?.id && isOpen) }
   );
   
+  const currentSale = latestSale || sale;
+  
   // Reset state when modal opens with a new sale
   useEffect(() => {
-    if (isOpen && sale) {
+    if (isOpen && currentSale) {
       setCreditPayment({});
       setSuccessMessage('');
       // Load PDF preferences
@@ -71,7 +87,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
         setPdfPreferences(JSON.parse(saved));
       }
     }
-  }, [isOpen, sale?.id]);
+  }, [isOpen, currentSale?.id]);
   
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
     const response = await API.get('/shop-settings');
@@ -172,7 +188,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
     payCredit.mutate({ returnId, amount: 0 });
   };
 
-  if (!isOpen || !sale) return null;
+  if (!isOpen || !currentSale) return null;
 
   // Debug: Check sale object structure
   console.log('Sale object:', sale);
@@ -197,7 +213,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
               onClick={() => {
                 onClose();
                 if (window.openReturnModal) {
-                  window.openReturnModal(sale, 'partial');
+                  window.openReturnModal(currentSale, 'partial');
                 }
               }}
               disabled={!sale.items.some(item => (item.remainingQuantity || item.quantity) > 0)}
@@ -219,9 +235,9 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                   window.openReturnModal(sale, 'full');
                 }
               }}
-              disabled={!sale.items.some(item => (item.remainingQuantity || item.quantity) > 0)}
+              disabled={!currentSale.items.some(item => (item.remainingQuantity || item.quantity) > 0)}
               className={`px-3 py-2 rounded-lg shadow-sm flex items-center gap-2 text-sm ${
-                !sale.items.some(item => (item.remainingQuantity || item.quantity) > 0)
+                !currentSale.items.some(item => (item.remainingQuantity || item.quantity) > 0)
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                   : 'bg-gradient-to-r from-orange-600 to-orange-700 text-white hover:from-orange-700 hover:to-orange-800'
               }`}
@@ -249,7 +265,7 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
             <button
               onClick={() => {
                 import('@react-pdf/renderer').then(({ pdf }) => {
-                  pdf(<SaleInvoicePDF sale={sale} shopSettings={shopSettings} preferences={pdfPreferences} />)
+                  pdf(<SaleInvoicePDF sale={currentSale} shopSettings={shopSettings} preferences={pdfPreferences} />)
                     .toBlob()
                     .then(blob => {
                       const url = URL.createObjectURL(blob);
@@ -296,18 +312,18 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
           )}
           <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-medium mb-2">#{sale.billNumber}</h3>
+            <h3 className="text-lg font-medium mb-2">#{currentSale.billNumber}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-gray-600">Date</p>
-                <p className="font-medium">{new Date(sale.saleDate).toLocaleDateString()}</p>
+                <p className="font-medium">{new Date(currentSale.saleDate).toLocaleDateString()}</p>
               </div>
               <div>
                 <p className="text-gray-600">Contact</p>
                 <p className="font-medium">
-                  {sale.contact ? (
+                  {currentSale.contact ? (
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
-                      {sale.contact.name}
+                      {currentSale.contact.name}
                     </span>
                   ) : (
                     <span className="text-gray-400">Not specified</span>
@@ -317,9 +333,9 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
               <div>
                 <p className="text-gray-600">Order Booker</p>
                 <p className="font-medium">
-                  {sale.orderBooker ? (
+                  {currentSale.orderBooker ? (
                     <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm">
-                      {sale.orderBooker.name}
+                      {currentSale.orderBooker.name}
                     </span>
                   ) : (
                     <span className="text-gray-400">Not specified</span>
@@ -328,29 +344,29 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
               </div>
               <div>
                 <p className="text-gray-600">Car Number</p>
-                <p className="font-medium">{sale.carNumber || <span className="text-gray-400">Not specified</span>}</p>
+                <p className="font-medium">{currentSale.carNumber || <span className="text-gray-400">Not specified</span>}</p>
               </div>
               <div>
                 <p className="text-gray-600">Transport Cost</p>
-                <p className="font-medium">{sale.transportCost ? formatPakistaniCurrency(sale.transportCost) : <span className="text-gray-400">Not specified</span>}</p>
+                <p className="font-medium">{currentSale.transportCost ? formatPakistaniCurrency(currentSale.transportCost) : <span className="text-gray-400">Not specified</span>}</p>
               </div>
             </div>
-            {(sale.loadingDate || sale.arrivalDate) && (
+            {(currentSale.loadingDate || currentSale.arrivalDate) && (
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <p className="text-gray-600">Loading Date</p>
-                  <p className="font-medium">{sale.loadingDate ? new Date(sale.loadingDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
+                  <p className="font-medium">{currentSale.loadingDate ? new Date(currentSale.loadingDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
                 </div>
                 <div>
                   <p className="text-gray-600">Arrival Date</p>
-                  <p className="font-medium">{sale.arrivalDate ? new Date(sale.arrivalDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
+                  <p className="font-medium">{currentSale.arrivalDate ? new Date(currentSale.arrivalDate).toLocaleDateString() : <span className="text-gray-400">Not specified</span>}</p>
                 </div>
               </div>
             )}
-            {sale.description && (
+            {currentSale.description && (
               <div className="mt-4">
                 <p className="text-gray-600">Description</p>
-                <p className="font-medium">{sale.description}</p>
+                <p className="font-medium">{currentSale.description}</p>
               </div>
             )}
           </div>

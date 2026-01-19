@@ -509,6 +509,7 @@ function Products() {
                             <th class="number">Current Stock</th>
                             <th>Unit</th>
                             <th class="number">Retail Price</th>
+                            <th class="number">Inventory Value</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -520,8 +521,9 @@ function Products() {
                               <td class="number"><strong>${product.quantity}</strong></td>
                               <td>${product.unit || 'pcs'}</td>
                               <td class="number">${product.retailPrice ? formatPakistaniCurrency(product.retailPrice) : (product.price ? formatPakistaniCurrency(product.price) : '-')}</td>
+                              <td class="number">${product.purchasePrice && product.quantity ? formatPakistaniCurrency(product.purchasePrice * product.quantity) : '-'}</td>
                             </tr>
-                          `).join('') || '<tr><td colspan="6" style="text-align: center;">No products found</td></tr>'}
+                          `).join('') || '<tr><td colspan="7" style="text-align: center;">No products found</td></tr>'}
                         </tbody>
                       </table>
                       <div class="footer">
@@ -596,6 +598,7 @@ function Products() {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">{language === 'ur' ? 'خریداری کی قیمت' : 'Purchase Price'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden xl:table-cell">Per Unit Cost</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden sm:table-cell">{t('quantity')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider hidden lg:table-cell">Inventory Value</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
             </tr>
           </thead>
@@ -668,6 +671,12 @@ function Products() {
                     } px-2 py-1 rounded-full text-xs font-medium`}>
                       {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell font-medium text-slate-800">
+                    {product.unit === 'pcs' && product.purchasePrice && product.quantity
+                      ? formatPakistaniCurrency(product.purchasePrice * product.quantity)
+                      : '-'
+                    }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">

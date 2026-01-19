@@ -746,13 +746,15 @@ export function setupSalesRoutes(app, prisma) {
             )
           );
 
-          // Update sale using raw SQL - keep saleDate unchanged
+          // Update sale using raw SQL - update saleDate if provided
+          const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : existingSale.saleDate;
           await prisma.$executeRaw`
             UPDATE "Sale" 
             SET "totalAmount" = ${req.body.totalAmount}::decimal,
                 "originalTotalAmount" = ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}::decimal,
                 discount = ${req.body.discount || 0}::decimal,
                 "paidAmount" = ${req.body.paidAmount || 0}::decimal,
+                "saleDate" = ${saleDate}::timestamp,
                 "contactId" = ${req.body.contactId},
                 "orderBookerId" = ${req.body.orderBookerId},
                 "employeeId" = ${req.body.employeeId},

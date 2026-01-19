@@ -4,19 +4,19 @@ export function createDateWithCurrentTime(dateString) {
     return new Date();
   }
   
-  // Parse YYYY-MM-DD or ISO format and treat as Pakistan local date
-  const dateObj = new Date(dateString);
-  if (isNaN(dateObj.getTime())) {
+  // Parse YYYY-MM-DD format
+  const parts = dateString.split('T')[0].split('-');
+  if (parts.length !== 3) {
     return new Date();
   }
   
-  // Get the date components in UTC
-  const year = dateObj.getUTCFullYear();
-  const month = dateObj.getUTCMonth();
-  const day = dateObj.getUTCDate();
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
   
-  // Create a date treating these components as Pakistan local time
+  // Create date in Pakistan timezone (UTC+5)
+  // Treat input as Pakistan local time and convert to UTC
   const pakistaniDate = new Date(year, month, day, 0, 0, 0, 0);
-  // Convert to UTC: subtract Pakistan offset (5 hours) and add browser offset
-  return new Date(pakistaniDate.getTime() - (5 * 60 * 60 * 1000) + (pakistaniDate.getTimezoneOffset() * 60 * 1000));
+  const utcDate = new Date(pakistaniDate.getTime() - (pakistaniDate.getTimezoneOffset() * 60 * 1000) - (5 * 60 * 60 * 1000));
+  return utcDate;
 }

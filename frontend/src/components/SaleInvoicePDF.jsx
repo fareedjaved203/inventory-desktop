@@ -32,6 +32,7 @@ function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
 const styles = StyleSheet.create({
   page: {
     padding: 20,
+    paddingBottom: 20,
     fontSize: 10,
     fontFamily: "Helvetica",
     color: "#000",
@@ -93,11 +94,15 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#000",
-    color: "#fff",
-    fontWeight: "bold",
+    backgroundColor: "#fff",
+    color: "#000",
     fontSize: 9,
     padding: 5,
+    borderBottom: "2px solid #000",
+  },
+  headerText: {
+    fontWeight: "bold",
+    fontFamily: "Helvetica-Bold",
   },
   tableRow: {
     flexDirection: "row",
@@ -169,7 +174,7 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 45,
     left: 20,
     right: 20,
     textAlign: "left",
@@ -178,15 +183,25 @@ const styles = StyleSheet.create({
   },
   shopDescriptionFooter: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 18,
     left: 0,
     right: 0,
-    backgroundColor: '#000',
-    color: '#fff',
+    backgroundColor: '#fff',
+    color: '#000',
     textAlign: 'center',
     fontSize: 8,
     padding: 5,
     margin: 0,
+    borderTop: '2px solid #000',
+  },
+  contactFooter: {
+    position: 'absolute',
+    bottom: 5,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 7,
+    padding: 5,
   },
   returnsSection: {
     marginTop: 10,
@@ -198,6 +213,9 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     backgroundColor: "#f0f0f0",
     padding: 3,
+  },
+  emptyTableRow: {
+    minHeight: 20,
   },
 });
 
@@ -272,19 +290,21 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
             <Text style={styles.customerInfo}>CONTACT #: {sale.contact.phoneNumber}</Text>
           )}
           {sale.contact?.address && preferences.showContactAddress !== false && (
-            <Text style={styles.customerInfo}>ADDRESS: {sale.contact.address}</Text>
+            <View style={{ border: "1px solid #000", padding: 5, marginTop: 5 }}>
+              <Text style={styles.customerInfo}>ADDRESS: {sale.contact.address}</Text>
+            </View>
           )}
         </View>
 
         {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.colSr}>SR.</Text>
-            <Text style={styles.colDescription}>ITEM DESCRIPTION</Text>
-            <Text style={styles.colUom}>UOM</Text>
-            <Text style={styles.colQty}>QTY</Text>
-            <Text style={styles.colPrice}>UNIT PRICE</Text>
-            <Text style={styles.colAmount}>AMOUNT</Text>
+            <Text style={[styles.colSr, styles.headerText]}>SR.</Text>
+            <Text style={[styles.colDescription, styles.headerText]}>ITEM DESCRIPTION</Text>
+            <Text style={[styles.colUom, styles.headerText]}>UOM</Text>
+            <Text style={[styles.colQty, styles.headerText]}>QTY</Text>
+            <Text style={[styles.colPrice, styles.headerText]}>UNIT PRICE</Text>
+            <Text style={[styles.colAmount, styles.headerText]}>AMOUNT</Text>
           </View>
 
           {sale.items.map((item, i) => (
@@ -297,20 +317,10 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
               <Text style={styles.colAmount}>{formatPakistaniCurrencyPDF(item.price * item.quantity, false)}</Text>
             </View>
           ))}
-          
           {/* Empty rows to fill space */}
           {Array.from({ length: Math.max(0, 20 - sale.items.length) }).map((_, i) => (
-            <View style={styles.tableRow} key={`empty-${i}`}>
-              <Text style={styles.colSr}>{sale.items.length + i + 1}</Text>
-              <Text style={styles.colDescription}></Text>
-              <Text style={styles.colUom}></Text>
-              <Text style={styles.colQty}></Text>
-              <Text style={styles.colPrice}></Text>
-              <Text style={styles.colAmount}></Text>
-            </View>
+            <View style={styles.emptyTableRow} key={`empty-${i}`} />
           ))}
-          
-          {/* TOTAL Row in table */}
           <View style={[styles.tableRow, { backgroundColor: "#fff", fontWeight: "bold", borderTop: "2px solid #000" }]}>
             <Text style={styles.colSr}></Text>
             <Text style={[styles.colDescription, { fontWeight: "bold" }]}>TOTAL</Text>
@@ -324,10 +334,20 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
         {/* Summary Section */}
         <View style={styles.summarySection}>
           <View style={styles.summaryLeft}>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>TOTAL AMOUNT</Text>
+              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.totalAmount, false)}</Text>
+            </View>
             {Number(sale.discount) > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={{ fontWeight: "bold", fontSize: 9 }}>DISCOUNT</Text>
                 <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.discount || 0, false)}</Text>
+              </View>
+            )}
+            {Number(sale.discount) > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>DISCOUNTED AMOUNT</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.totalAmount - (sale.discount || 0), false)}</Text>
               </View>
             )}
             {sale.returns && sale.returns.length > 0 && (
@@ -336,18 +356,22 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
                 <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.returns.reduce((sum, ret) => sum + ret.totalAmount, 0), false)}</Text>
               </View>
             )}
-            <View style={styles.summaryRow}>
-              <Text style={{ fontWeight: "bold", fontSize: 9 }}>BALANCE</Text>
-              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance > 0 ? balance : 0, false)}</Text>
-            </View>
+            {balance > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>BALANCE</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance, false)}</Text>
+              </View>
+            )}
             <View style={styles.summaryRow}>
               <Text style={{ fontWeight: "bold", fontSize: 9 }}>CASH PAID</Text>
               <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(sale.paidAmount, false)}</Text>
             </View>
-            <View style={styles.summaryRow}>
-              <Text style={{ fontWeight: "bold", fontSize: 9 }}>CREDIT</Text>
-              <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(balance < 0 ? Math.abs(balance) : 0, false)}</Text>
-            </View>
+            {balance < 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>CREDIT</Text>
+                <Text style={{ fontWeight: "bold", fontSize: 9 }}>{formatPakistaniCurrencyPDF(Math.abs(balance), false)}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.summaryRight}>
             <Text style={{ fontWeight: "bold", fontSize: 9 }}>WITH THE ORDER:</Text>
@@ -411,6 +435,10 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
             <Text>{shopSettings.shopDescription2}</Text>
           </View>
         )}
+
+        {/* Contact Footer */}
+        <Text style={styles.contactFooter}>NEED SYSTEM? CONTACT 03145292649</Text>
+          
       </Page>
     </Document>
   );
