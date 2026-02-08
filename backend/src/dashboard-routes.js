@@ -1,6 +1,7 @@
 import { validateRequest, authenticateToken } from './middleware.js';
 import { safeQuery } from './db-utils.js';
 import { getAuditChangesForPeriod } from './audit-utils.js';
+import { createDateWithCurrentTime } from './timezone-helper.js';
 
 export function setupDashboardRoutes(app, prisma) {
   // Get basic dashboard data
@@ -81,43 +82,28 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    // Get current local time
-    const now = new Date();
+    // Get current time in Pakistan timezone (same as sales API)
+    const todayLocalUTC = createDateWithCurrentTime();
+    const tomorrowStart = new Date(todayLocalUTC.getTime() + 24 * 60 * 60 * 1000);
     
-    // Create start of day in local timezone
-    const todayLocal = new Date(
-      now.getFullYear(), 
-      now.getMonth(), 
-      now.getDate(), 
-      0, 0, 0, 0
-    );
-    
-    // Use provided dates or default periods
     let reportStartDate, reportEndDate;
     if (startDate && endDate) {
-      // Parse dates and ensure they're in the correct format
-      reportStartDate = new Date(startDate);
-      reportEndDate = new Date(endDate);
+      reportStartDate = createDateWithCurrentTime(startDate);
+      reportEndDate = createDateWithCurrentTime(endDate);
       
-      // Ensure we have valid dates
       if (isNaN(reportStartDate.getTime()) || isNaN(reportEndDate.getTime())) {
         return res.status(400).json({ error: 'Invalid date format provided' });
       }
       
-      // Set to start and end of day
-      reportStartDate.setHours(0, 0, 0, 0);
-      // Add one day to end date and set to start of that day to include the full end date
-      reportEndDate.setDate(reportEndDate.getDate() + 1);
-      reportEndDate.setHours(0, 0, 0, 0);
+      reportEndDate = new Date(reportEndDate.getTime() + 24 * 60 * 60 * 1000);
     } else {
-      reportStartDate = todayLocal;
-      reportEndDate = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000 - 1);
+      reportStartDate = todayLocalUTC;
+      reportEndDate = tomorrowStart;
     }
     
-    const sevenDaysAgo = new Date(todayLocal.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(todayLocal.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const yearAgo = new Date(todayLocal.getTime() - 365 * 24 * 60 * 60 * 1000);
-    const tomorrowStart = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(todayLocalUTC.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(todayLocalUTC.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const yearAgo = new Date(todayLocalUTC.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     // Execute queries in smaller batches to avoid connection pool exhaustion
     const [salesToday, salesLast7Days, salesLast30Days, salesLast365Days] = await Promise.all([
@@ -127,7 +113,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           saleDate: {
-            gte: todayLocal,
+            gte: todayLocalUTC,
             lt: tomorrowStart
           }
         }
@@ -206,7 +192,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           date: {
-            gte: todayLocal,
+            gte: todayLocalUTC,
             lt: tomorrowStart
           }
         }
@@ -255,7 +241,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           purchaseDate: {
-            gte: todayLocal,
+            gte: todayLocalUTC,
             lt: tomorrowStart
           }
         },
@@ -615,17 +601,14 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Start date and end date are required' });
       }
       
-      const reportStartDate = new Date(startDate);
-      const reportEndDate = new Date(endDate);
-      reportStartDate.setHours(0, 0, 0, 0);
-      // Add one day to end date and set to start of that day to include the full end date
-      reportEndDate.setDate(reportEndDate.getDate() + 1);
-      reportEndDate.setHours(0, 0, 0, 0);
+      const reportStartDate = createDateWithCurrentTime(startDate);
+      const reportEndDate = createDateWithCurrentTime(endDate);
+      const reportEndDateAdjusted = new Date(reportEndDate.getTime() + 24 * 60 * 60 * 1000);
       
       // Build where conditions for product filtering
       const saleWhere = {
         userId: req.userId,
-        saleDate: { gte: reportStartDate, lt: reportEndDate }
+        saleDate: { gte: reportStartDate, lt: reportEndDateAdjusted }
       };
       
       // Add order booker filtering if provided
@@ -635,7 +618,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       const purchaseWhere = {
         userId: req.userId,
-        purchaseDate: { gte: reportStartDate, lt: reportEndDate }
+        purchaseDate: { gte: reportStartDate, lt: reportEndDateAdjusted }
       };
       
       // Add product filtering if productId is provided
