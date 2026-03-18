@@ -171,9 +171,10 @@ export function useContacts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['loan-transactions', selectedContact?.id]);
+        queryClient.invalidateQueries(['contacts']);
         setLoanAmount('');
         setLoanDescription('');
-        toast.success('Loan transaction added successfully');
+        toast.success('Ledger entry added successfully');
       },
       onError: (error) => toast.error('Failed to add transaction')
     }
@@ -184,7 +185,8 @@ export function useContacts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['loan-transactions', selectedContact?.id]);
-        toast.success('Transaction deleted');
+        queryClient.invalidateQueries(['contacts']);
+        toast.success('Entry deleted');
       },
       onError: (error) => toast.error('Failed to delete transaction')
     }
@@ -319,6 +321,18 @@ export function useContacts() {
           balance: 0
         };
       }),
+      ...auditChanges
+        .filter(audit => audit.tableName === 'Contact' && audit.recordId === contactId)
+        .map(audit => ({
+          type: 'LEDGER',
+          date: new Date(audit.createdAt),
+          sortDate: new Date(audit.createdAt),
+          description: `Contact Updated - ${audit.action}`,
+          debit: 0,
+          credit: 0,
+          reference: audit.id,
+          data: audit
+        })),
       ...filteredSales
         .filter(sale => {
           const firstAudit = auditChanges

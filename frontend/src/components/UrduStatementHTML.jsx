@@ -303,8 +303,9 @@ function generateUrduStatementHTML(statementData, shopSettings, startDate, endDa
             ${transactions.map((transaction, index) => {
               const getTransactionIcon = (type) => {
                 switch(type) {
-                  case 'sale': return '📄';
-                  case 'loan': return '💰';
+                  case 'SALE': return '📄';
+                  case 'LEDGER': return '💰';
+                  case 'LOAN': return '💰';
                   default: return '📋';
                 }
               };

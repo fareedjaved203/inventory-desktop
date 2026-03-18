@@ -166,6 +166,12 @@ export const translations = {
     restoreItems: 'Restore Items',
     markAsDamaged: 'Mark as Damaged',
 
+    // Contacts & Ledger
+    ledger: 'Ledger',
+    outstandingBalance: 'Outstanding Balance',
+    receivable: 'Receivable',
+    payable: 'Payable',
+
     // Manufacturing Page
     manufacturing: 'Manufacturing',
     recipes: 'Recipes',
@@ -340,22 +346,28 @@ export const translations = {
     date: 'تاریخ',
 
     // Products Page
-    noProducts: 'کوئی پروڈکٹس نہیں ملے',
-    addFirstProduct: 'پہلا پروڈکٹ شامل کریں',
+    noProducts: 'کوئی پروڈکٹ نہیں ملی',
+    addFirstProduct: 'اپنی پہلی پروڈکٹ شامل کریں',
     lowStock: 'کم اسٹاک',
     damaged: 'خراب شدہ',
     rawMaterials: 'خام مال',
     allCategories: 'تمام کیٹیگریز',
-    searchProducts: 'پروڈکٹس تلاش کریں...',
-    addBtn: 'پروڈکٹ شامل کریں',
+    searchProducts: 'تلاش کریں...',
+    addBtn: 'شامل کریں',
     available: 'دستیاب',
-    unitPriceAndPurchase: 'فی یونٹ قیمت خرید',
+    unitPriceAndPurchase: 'خریداری کی قیمت',
     sellingPrice: 'فروخت کی قیمت',
-    status: 'حالت',
-    inStock: 'اسٹاک میں ہے',
+    status: 'سٹیٹس',
+    inStock: 'اسٹاک میں',
     printLabel: 'لیبل پرنٹ کریں',
-    restoreItems: 'اشیاء بحال کریں',
+    restoreItems: 'آئٹمز بحال کریں',
     markAsDamaged: 'خراب شدہ کے طور پر نشان زد کریں',
+    
+    // Contacts & Ledger
+    ledger: 'لیجر',
+    outstandingBalance: 'بقایا جات / بیلنس',
+    receivable: 'قابل وصول',
+    payable: 'قابل ادائیگی',
 
     // Manufacturing Page
     manufacturing: 'مینوفیکچرنگ',

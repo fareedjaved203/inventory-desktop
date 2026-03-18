@@ -171,13 +171,15 @@ function Contacts() {
           loanAmount={loanAmount}
           setLoanAmount={setLoanAmount}
           loanDescription={loanDescription}
-          setLoanDescriptionState={setLoanDescription}
+          setLoanDescription={setLoanDescription}
           handleAddLoan={handleAddLoan}
           isCreatingLoan={isCreatingLoan}
           deleteLoanTransactionMutate={deleteLoanTransactionMutate}
           isDeletingLoan={isDeletingLoan}
           setShowLoanModal={setShowLoanModal}
           setSelectedContact={setSelectedContact}
+          handleGenerateStatement={handleGenerateStatement}
+          setShowStatementModal={setShowStatementModal}
         />
       )}
 

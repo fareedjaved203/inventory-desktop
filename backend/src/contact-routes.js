@@ -28,14 +28,65 @@ export function setupContactRoutes(app, prisma) {
           skip: (page - 1) * limit,
           take: limit,
           orderBy: { createdAt: 'desc' },
+          include: {
+            sales: { select: { totalAmount: true, paidAmount: true } },
+            purchases: { select: { totalAmount: true, paidAmount: true } },
+            loanTransactions: { select: { amount: true, type: true } },
+            // Need a raw query or separate aggregation for sale returns since they relate via Sale
+          }
         }),
       ]);
 
+      // Calculate outstanding balance for each contact
+      const itemsWithBalance = await Promise.all(items.map(async (contact) => {
+        let totalDebit = 0;
+        let totalCredit = 0;
+        
+        // Sales
+        contact.sales.forEach(s => {
+          totalDebit += Number(s.totalAmount);
+          totalCredit += Number(s.paidAmount);
+        });
+        
+        // Purchases (Supplier ledger: we owe them for totalAmount, we paid them for paidAmount)
+        // From our perspective (Contact's balance with us):
+        // Total Purchase increases our debt (Credit to contact)
+        // Paid Amount decreases our debt (Debit to contact)
+        contact.purchases.forEach(p => {
+          totalCredit += Number(p.totalAmount);
+          totalDebit += Number(p.paidAmount);
+        });
+        
+        // Manual Ledger Entries (Loan Transactions)
+        contact.loanTransactions.forEach(l => {
+          const amt = Number(l.amount);
+          if (l.type === 'GIVEN' || l.type === 'RETURNED_TO_CONTACT') {
+            totalDebit += amt;
+          } else if (l.type === 'TAKEN' || l.type === 'RETURNED_BY_CONTACT') {
+            totalCredit += amt;
+          }
+        });
+        
+        // Sale Returns (Credit to customer)
+        const returns = await prisma.saleReturn.findMany({
+          where: { sale: { contactId: contact.id, userId: req.userId }, refundPaid: true }
+        });
+        returns.forEach(r => totalCredit += Number(r.refundAmount || 0));
+
+        // Clean up the deeply nested relation data before sending to client
+        const { sales, purchases, loanTransactions, ...contactData } = contact;
+        
+        return {
+          ...contactData,
+          id: contactData.id.toString(),
+          totalDebit,
+          totalCredit,
+          outstandingBalance: totalDebit - totalCredit,
+        };
+      }));
+
       res.json({
-        items: items.map(item => ({
-          ...item,
-          id: item.id.toString(),
-        })),
+        items: itemsWithBalance,
         total,
         page,
         totalPages: Math.ceil(total / limit),
@@ -351,7 +402,7 @@ export function setupContactRoutes(app, prisma) {
         });
       });
       
-      // Add loan transactions
+      // Add ledger (formerly loan) transactions
       loanTransactions.forEach(loan => {
         const amount = Number(loan.amount);
         let debit = 0, credit = 0;
@@ -359,20 +410,20 @@ export function setupContactRoutes(app, prisma) {
         
         if (loan.type === 'GIVEN') {
           debit = amount;
-          description = `Loan Given${loan.description ? ` - ${loan.description}` : ''}`;
+          description = `Debit Charge${loan.description ? ` - ${loan.description}` : ''}`;
         } else if (loan.type === 'TAKEN') {
           credit = amount;
-          description = `Loan Taken${loan.description ? ` - ${loan.description}` : ''}`;
+          description = `Credit Deposit${loan.description ? ` - ${loan.description}` : ''}`;
         } else if (loan.type === 'RETURNED_BY_CONTACT') {
           credit = amount;
-          description = `Loan Returned by Customer${loan.description ? ` - ${loan.description}` : ''}`;
+          description = `Payment Received${loan.description ? ` - ${loan.description}` : ''}`;
         } else if (loan.type === 'RETURNED_TO_CONTACT') {
           debit = amount;
-          description = `Loan Returned to Customer${loan.description ? ` - ${loan.description}` : ''}`;
+          description = `Payment Made${loan.description ? ` - ${loan.description}` : ''}`;
         }
         
         allTransactions.push({
-          type: 'LOAN',
+          type: 'LEDGER',
           date: loan.date,
           sortDate: loan.createdAt || loan.date, // Use creation timestamp for sorting
           description,
