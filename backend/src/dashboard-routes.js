@@ -577,7 +577,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           return balance < 0 ? Math.abs(balance) : 0;
         })
         .reduce((sum, credit) => sum + credit, 0),
-      profitToday: await calculateProfit(todayLocal, tomorrowStart),
+      profitToday: await calculateProfit(todayLocalUTC, tomorrowStart),
       profitLast7Days: await calculateProfit(sevenDaysAgo, tomorrowStart),
       profitLast30Days: await calculateProfit(thirtyDaysAgo, tomorrowStart),
       profitLast365Days: await calculateProfit(yearAgo, tomorrowStart),
