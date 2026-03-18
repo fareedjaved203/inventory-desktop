@@ -76,8 +76,6 @@ function Sidebar({ onLogout, userPermissions = [], userType = 'admin', isMobileO
     { path: '/bulk', label: t('bulkPurchasing'), icon: <FaShoppingCart />, permission: 'bulk-purchases' },
     { path: '/returns', label: t('returns'), icon: <FaUndo />, permission: 'returns' },
     { path: '/expenses', label: t('expenses'), icon: <FaMoneyBillWave />, permission: 'expenses' },
-    { path: '/members', label: 'Members', icon: <FaIdCard />, permission: 'members' },
-    { path: '/games', label: 'Games', icon: <FaGamepad />, permission: 'games' },
     { path: '/branches', label: t('branches'), icon: <FaCodeBranch />, permission: 'branches' },
     { path: '/employees', label: t('employees'), icon: <FaUsers />, permission: 'employees' },
     { path: '/settings', label: t('settings'), icon: <FaCog />, permission: 'settings' },

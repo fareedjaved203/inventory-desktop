@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import DayBookReportModal from '../components/DayBookReportModal';
 import UrduDayBookReportModal from '../components/UrduDayBookReportModal';
-import GameRevenueModal from '../components/games/GameRevenueModal';
-import { FaBook, FaGamepad } from 'react-icons/fa';
+import { FaBook } from 'react-icons/fa';
 
 function Reports() {
   const [showDayBookModal, setShowDayBookModal] = useState(false);
   const [showUrduDayBookModal, setShowUrduDayBookModal] = useState(false);
-  const [showGameRevenueModal, setShowGameRevenueModal] = useState(false);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -43,21 +41,6 @@ function Reports() {
             </div>
           </div>
         </button>
-
-        <button
-          onClick={() => setShowGameRevenueModal(true)}
-          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border-2 border-green-200 hover:border-green-400"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-green-100 p-4 rounded-full">
-              <FaGamepad className="text-3xl text-green-600" />
-            </div>
-            <div className="text-left">
-              <h2 className="text-xl font-bold text-gray-800">Game Revenue</h2>
-              <p className="text-gray-600 text-sm">Gaming revenue report</p>
-            </div>
-          </div>
-        </button>
       </div>
 
       <DayBookReportModal 
@@ -68,11 +51,6 @@ function Reports() {
       <UrduDayBookReportModal 
         isOpen={showUrduDayBookModal} 
         onClose={() => setShowUrduDayBookModal(false)} 
-      />
-      
-      <GameRevenueModal 
-        isOpen={showGameRevenueModal} 
-        onClose={() => setShowGameRevenueModal(false)} 
       />
     </div>
   );
