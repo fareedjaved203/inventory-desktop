@@ -253,22 +253,80 @@ app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
 // Get all products with search and pagination
 app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', sku = '' } = req.query;
+    const { page = 1, limit = 10, search = '', sku = '', lowStock = false, categoryId = '', isRawMaterial } = req.query;
 
     let where = {
       userId: req.userId
     };
 
-    // If SKU is provided, search by exact SKU match
     if (sku) {
       where.sku = sku;
     } else if (search) {
-      // Regular search by name, description, or SKU (case-insensitive)
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { sku: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    if (isRawMaterial !== undefined) {
+      where.isRawMaterial = isRawMaterial === 'true';
+    }
+
+    // Include category and recipe in all fetches
+    const include = {
+      category: true,
+      recipe: {
+        include: {
+          ingredients: {
+            include: {
+              rawMaterial: true
+            }
+          }
+        }
+      }
+    };
+
+    if (lowStock === 'true' || lowStock === true) {
+      // For low stock, we need to fetch all and filter in JS because of dynamic threshold
+      const allItems = await prisma.product.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const filteredItems = allItems.filter(item => 
+        Number(item.quantity) <= Number(item.lowStockThreshold || 10)
+      );
+
+      const total = filteredItems.length;
+      const paginatedItems = filteredItems.slice((page - 1) * limit, page * limit);
+
+      return res.json({
+        items: paginatedItems.map(item => {
+          const isManufactured = !!item.recipe;
+          return {
+            ...item,
+            id: item.id.toString(),
+            price: item.price ? Number(item.price) : null,
+            retailPrice: item.retailPrice ? Number(item.retailPrice) : null,
+            wholesalePrice: item.wholesalePrice ? Number(item.wholesalePrice) : null,
+            purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
+            perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
+            unitValue: item.unitValue ? Number(item.unitValue) : null,
+            quantity: isManufactured ? null : Number(item.quantity),
+            isManufactured,
+            recipe: item.recipe || undefined
+          };
+        }),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      });
     }
 
     const [total, items] = await Promise.all([
@@ -278,17 +336,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          recipe: {
-            include: {
-              ingredients: {
-                include: {
-                  rawMaterial: true
-                }
-              }
-            }
-          }
-        }
+        include
       }),
     ]);
 
@@ -321,24 +369,26 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
 // Get low stock products
 app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 10, search = '', categoryId = '' } = req.query;
     
+    let where = { userId: req.userId };
+    if (categoryId) where.categoryId = categoryId;
+    if (search) {
+        where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { sku: { contains: search, mode: 'insensitive' } },
+        ];
+    }
+
     // Get all products and filter by dynamic threshold
     const allProducts = await prisma.product.findMany({
-      where: { userId: req.userId }
+      where,
+      include: { category: true }
     });
     let lowStockProducts = allProducts.filter(product => 
       Number(product.quantity) <= Number(product.lowStockThreshold || 10)
     );
-    
-    // Apply search filter
-    if (search) {
-      lowStockProducts = lowStockProducts.filter(product =>
-        product.name.toLowerCase().includes(search.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(search.toLowerCase())) ||
-        (product.sku && product.sku.toLowerCase().includes(search.toLowerCase()))
-      );
-    }
     
     // Apply pagination
     const total = lowStockProducts.length;
@@ -369,11 +419,12 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
 // Get raw material products
 app.get('/api/products/raw-materials', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 10, search = '', categoryId = '' } = req.query;
 
     const where = {
       userId: req.userId,
       isRawMaterial: true,
+      categoryId: categoryId || undefined,
       ...(search ? {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -390,6 +441,7 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: { category: true }
       }),
     ]);
 
@@ -416,7 +468,7 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
 // Get damaged products
 app.get('/api/products/damaged', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, categoryId = '', search = '' } = req.query;
     
     // Check if damagedQuantity column exists
     try {
@@ -425,7 +477,16 @@ app.get('/api/products/damaged', authenticateToken, validateRequest({ query: que
         damagedQuantity: {
           gt: 0,
         },
+        categoryId: categoryId || undefined,
       };
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+        ];
+      }
 
       const [total, items] = await Promise.all([
         prisma.product.count({ where }),
@@ -434,6 +495,7 @@ app.get('/api/products/damaged', authenticateToken, validateRequest({ query: que
           skip: (page - 1) * limit,
           take: limit,
           orderBy: { updatedAt: 'desc' },
+          include: { category: true }
         }),
       ]);
 
@@ -573,6 +635,18 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
         id: req.params.id,
         userId: req.userId
       },
+      include: {
+        category: true,
+        recipe: {
+          include: {
+            ingredients: {
+              include: {
+                rawMaterial: true
+              }
+            }
+          }
+        }
+      }
     });
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -617,6 +691,7 @@ app.post(
           ...req.body,
           userId: req.userId
         },
+        include: { category: true }
       });
       
       // Note: Automatic expense creation removed for compatibility
@@ -683,6 +758,7 @@ app.put(
           userId: req.userId
         },
         data: req.body,
+        include: { category: true }
       });
       
       // Note: Automatic expense creation removed for compatibility

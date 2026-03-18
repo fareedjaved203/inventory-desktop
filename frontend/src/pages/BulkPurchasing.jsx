@@ -1,637 +1,95 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import API from '../utils/api';
-import { z } from 'zod';
+import React from 'react';
 import DeleteModal from '../components/DeleteModal';
-import TableSkeleton from '../components/TableSkeleton';
-import LoadingSpinner from '../components/LoadingSpinner';
 import PurchaseDetailsModal from '../components/PurchaseDetailsModal';
-import { debounce } from 'lodash';
-import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
-const bulkPurchaseItemSchema = z.object({
-  productId: z.string().min(1, "Product is required"),
-  quantity: z.number().positive("Quantity must be positive"),
-  purchasePrice: z.number().positive("Purchase price must be positive"),
-  perUnitCost: z.number().positive().optional(),
-});
-
-const bulkPurchaseSchema = z.object({
-  contactId: z.string().min(1, "Contact is required"),
-  items: z.array(bulkPurchaseItemSchema).min(1, "At least one item is required"),
-  totalAmount: z.number().positive("Total amount must be positive"),
-  paidAmount: z.number().min(0, "Paid amount cannot be negative"),
-});
+import {
+  useBulkPurchasing,
+  BulkPurchasingHeader,
+  BulkPurchasingTable,
+  BulkPurchasingFormModal
+} from '../components/bulkPurchasing';
 
 function BulkPurchasing() {
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const searchInputRef = useRef(null);
   const { language } = useLanguage();
   const t = useTranslation(language);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [validationErrors, setValidationErrors] = useState({});
-  const [purchaseItems, setPurchaseItems] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [quantity, setQuantity] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingPurchase, setEditingPurchase] = useState(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [purchaseToDelete, setPurchaseToDelete] = useState(null);
-  const [productSelected, isProductSelected] = useState(false);
-  const [contactSelected, isContactSelected] = useState(false);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [selectedContact, setSelectedContact] = useState(null);
-  const [contactSearchTerm, setContactSearchTerm] = useState("");
-  const [debouncedContactSearchTerm, setDebouncedContactSearchTerm] = useState("");
-  const [createNewContact, setCreateNewContact] = useState(false);
-  const [newContactData, setNewContactData] = useState({ name: '', phoneNumber: '', address: '' });
-  const [creatingContact, setCreatingContact] = useState(false);
-  const [productSearchTerm, setProductSearchTerm] = useState("");
-  const [debouncedProductSearchTerm, setDebouncedProductSearchTerm] = useState("");
-  const [createNewProduct, setCreateNewProduct] = useState(false);
-  const [newProductData, setNewProductData] = useState({ name: '', isRawMaterial: false });
-  const [creatingProduct, setCreatingProduct] = useState(false);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [discount, setDiscount] = useState(0);
-  const [paidAmount, setPaidAmount] = useState(0);
-  const [showPendingPayments, setShowPendingPayments] = useState(location.state?.showPendingPayments || false);
-  const [priceInputMode, setPriceInputMode] = useState('perUnit'); // 'perUnit' or 'totalCost'
-  const [totalCost, setTotalCost] = useState('');
-  const [selectedTransport, setSelectedTransport] = useState(null);
-  const [transportSearchTerm, setTransportSearchTerm] = useState('');
-  const [debouncedTransportSearchTerm, setDebouncedTransportSearchTerm] = useState('');
-  const [transportCost, setTransportCost] = useState('');
-  const [loadingDate, setLoadingDate] = useState('');
-  const [arrivalDate, setArrivalDate] = useState('');
-  const [paymentDescription, setPaymentDescription] = useState('');
-  const [changeDate, setChangeDate] = useState('');
-  const [updatedAmount, setUpdatedAmount] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState('');
-  const [description, setDescription] = useState('');
 
-  // Debounced search
-  const debouncedSearch = useCallback(
-    debounce((term) => {
-      setDebouncedSearchTerm(term);
-    }, 300),
-    []
-  );
+  const {
+    state,
+    queries,
+    mutations,
+    handlers
+  } = useBulkPurchasing(language);
 
-  // Handle search by purchase ID or contact name
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    debouncedSearch(e.target.value);
-  };
+  // Unpack for rendering
+  const {
+    isModalOpen, setIsModalOpen,
+    searchTerm,
+    purchaseItems,
+    selectedProduct, setSelectedProduct,
+    quantity, setQuantity,
+    purchasePrice, setPurchasePrice,
+    isEditMode,
+    deleteModalOpen, setDeleteModalOpen,
+    purchaseToDelete,
+    contactSelected, isContactSelected,
+    debouncedSearchTerm,
+    selectedContact, setSelectedContact,
+    contactSearchTerm, setContactSearchTerm,
+    debouncedContactSearchTerm,
+    createNewContact, setCreateNewContact,
+    newContactData, setNewContactData,
+    creatingContact,
+    productSearchTerm, setProductSearchTerm,
+    debouncedProductSearchTerm,
+    createNewProduct, setCreateNewProduct,
+    newProductData, setNewProductData,
+    creatingProduct,
+    totalAmount, setTotalAmount,
+    discount, setDiscount,
+    paidAmount, setPaidAmount,
+    showPendingPayments, setShowPendingPayments,
+    priceInputMode, setPriceInputMode,
+    totalCost, setTotalCost,
+    transportSearchTerm, setTransportSearchTerm,
+    transportCost, setTransportCost,
+    loadingDate, setLoadingDate,
+    arrivalDate, setArrivalDate,
+    paymentDescription, setPaymentDescription,
+    changeDate, setChangeDate,
+    updatedAmount, setUpdatedAmount,
+    purchaseDate, setPurchaseDate,
+    description, setDescription,
+    deleteError,
+    detailsModalOpen, setDetailsModalOpen,
+    selectedPurchase, setSelectedPurchase,
+    validationErrors, setValidationErrors
+  } = state;
 
-  // Debounced contact search
-  const debouncedContactSearch = useCallback(
-    debounce((term) => {
-      setDebouncedContactSearchTerm(term);
-    }, 300),
-    []
-  );
+  const {
+    purchases, isLoading, isFetching,
+    auditTrails,
+    contacts, contactsLoading,
+    products, productsLoading,
+    lastBulkPurchase
+  } = queries;
 
-  const handleContactSearchChange = (value) => {
-    setContactSearchTerm(value);
-    debouncedContactSearch(value);
-  };
+  const {
+    handleSearchChange,
+    handleContactSearchChange,
+    handleProductSearchChange,
+    handleAddItem,
+    handleRemoveItem,
+    handleSubmit,
+    handleEdit,
+    handleDelete,
+    confirmDelete,
+    calculateSubtotal,
+    resetForm
+  } = handlers;
 
-  // Debounced product search
-  const debouncedProductSearch = useCallback(
-    debounce((term) => {
-      setDebouncedProductSearchTerm(term);
-    }, 300),
-    []
-  );
-
-  const handleProductSearchChange = (value) => {
-    setProductSearchTerm(value);
-    debouncedProductSearch(value);
-  };
-
-  // Debounced transport search
-  const debouncedTransportSearch = useCallback(
-    debounce((term) => {
-      setDebouncedTransportSearchTerm(term);
-    }, 300),
-    []
-  );
-
-  const handleTransportSearchChange = (value) => {
-    setTransportSearchTerm(value);
-    debouncedTransportSearch(value);
-  };
-
-  // Reset page when switching between all purchases and pending payments
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [showPendingPayments]);
-
-  // Fetch bulk purchases
-  const { data: purchases, isLoading, isFetching } = useQuery(
-    ['bulk-purchases', debouncedSearchTerm, currentPage, showPendingPayments],
-    async () => {
-      return await API.getBulkPurchases({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: debouncedSearchTerm,
-        pendingPayments: showPendingPayments
-      });
-    }
-  );
-
-  // Fetch audit trail for purchases that have been edited
-  const { data: auditTrails } = useQuery(
-    ['audit-trails', purchases?.items?.map(p => p.id)],
-    async () => {
-      if (!purchases?.items?.length) return {};
-      
-      const auditPromises = purchases.items
-        .filter(purchase => {
-          const created = new Date(purchase.createdAt);
-          const updated = new Date(purchase.updatedAt);
-          return Math.abs(updated - created) > 1000; // More than 1 second difference
-        })
-        .map(async (purchase) => {
-          try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/audit-trail/BulkPurchase/${purchase.id}`, {
-              headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
-            });
-            const auditData = await response.json();
-            return { purchaseId: purchase.id, auditData };
-          } catch (error) {
-            console.error('Error fetching audit trail:', error);
-            return { purchaseId: purchase.id, auditData: [] };
-          }
-        });
-      
-      const results = await Promise.all(auditPromises);
-      return results.reduce((acc, { purchaseId, auditData }) => {
-        acc[purchaseId] = auditData;
-        return acc;
-      }, {});
-    },
-    { enabled: Boolean(purchases?.items?.length) }
-  );
-
-  // Fetch contacts for dropdown with search
-  const { data: contacts, isLoading: contactsLoading } = useQuery(
-    ['contacts', debouncedContactSearchTerm],
-    async () => {
-      const result = await API.getContacts({
-        limit: 100,
-        search: debouncedContactSearchTerm
-      });
-      return result.items;
-    }
-  );
-
-  // Fetch products for dropdown with search
-  const { data: products, isLoading: productsLoading } = useQuery(
-    ['products', debouncedProductSearchTerm],
-    async () => {
-      const result = await API.getProducts({
-        limit: 100,
-        search: debouncedProductSearchTerm
-      });
-      return result.items;
-    }
-  );
-
-  // Fetch transport for dropdown with search
-  const { data: transport, isLoading: transportLoading } = useQuery(
-    ['transport', debouncedTransportSearchTerm],
-    async () => {
-      if (!debouncedTransportSearchTerm) return [];
-      const result = await API.getTransport({ limit: 100 });
-      return result.items?.filter(t => 
-        t.carNumber?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase()) ||
-        t.driverName?.toLowerCase().includes(debouncedTransportSearchTerm.toLowerCase())
-      ) || [];
-    }
-  );
-
-  // Fetch last bulk purchase for selected product
-  const { data: lastBulkPurchase } = useQuery(
-    ['last-bulk-purchase', selectedProduct?.id],
-    async () => {
-      if (!selectedProduct?.id) return null;
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/bulk-purchases?productId=${selectedProduct.id}&limit=1`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const result = await response.json();
-      return result.items?.[0] || null;
-    },
-    { enabled: Boolean(selectedProduct?.id) }
-  );
-
-
-
-  // Maintain search input focus
-  useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [purchases]);
-
-  // Listen for sync events to refresh data
-  useEffect(() => {
-    const handleSyncComplete = () => {
-      queryClient.invalidateQueries(['bulk-purchases']);
-    };
-
-    window.addEventListener('bulkPurchasesSyncComplete', handleSyncComplete);
-    return () => window.removeEventListener('bulkPurchasesSyncComplete', handleSyncComplete);
-  }, [queryClient]);
-
-  const calculateSubtotal = () => {
-    return purchaseItems.reduce((sum, item) => {
-      // For weighted items (isTotalCostItem), subtotal is the purchasePrice itself
-      // For regular items, subtotal is quantity * purchasePrice
-      const subtotal = item.isTotalCostItem ? item.purchasePrice : (item.quantity * item.purchasePrice);
-      return sum + subtotal;
-    }, 0);
-  };
-
-  // Update total amount when purchase items or discount change
-  useEffect(() => {
-    const subtotal = calculateSubtotal();
-    const discountPercentage = parseFloat(discount) || 0;
-    const discountAmount = (subtotal * discountPercentage) / 100;
-    setTotalAmount(subtotal - discountAmount);
-  }, [purchaseItems, discount]);
-
-  // Create bulk purchase mutation
-  const createPurchase = useMutation(
-    async (purchaseData) => {
-      console.log(purchaseData)
-      return await API.createBulkPurchase(purchaseData);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['bulk-purchases']);
-        queryClient.invalidateQueries(['audit-trails']);
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        setIsModalOpen(false);
-        resetForm();
-        toast.success('Purchase created successfully!');
-      },
-      onError: (error) => {
-        console.error('Create purchase error:', error);
-        toast.error(error.response?.data?.error || 'Failed to create purchase');
-      }
-    }
-  );
-
-  // Update bulk purchase mutation
-  const updatePurchase = useMutation(
-    async (updatedPurchase) => {
-      return await API.updateBulkPurchase(updatedPurchase.id, updatedPurchase);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['bulk-purchases']);
-        queryClient.invalidateQueries(['audit-trails']);
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        setIsModalOpen(false);
-        resetForm();
-        toast.success('Purchase updated successfully!');
-      },
-    }
-  );
-
-  // Delete bulk purchase mutation
-  const [deleteError, setDeleteError] = useState(null);
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [selectedPurchase, setSelectedPurchase] = useState(null);
-  const deletePurchase = useMutation(
-    async (purchaseId) => {
-      return await API.deleteBulkPurchase(purchaseId);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['bulk-purchases']);
-        queryClient.invalidateQueries(['audit-trails']);
-        setDeleteError(null);
-        setDeleteModalOpen(false);
-        setPurchaseToDelete(null);
-        toast.success('Purchase deleted successfully!');
-      },
-      onError: (error) => {
-        setDeleteError(error.response?.data?.error || 'An error occurred while deleting the purchase');
-      }
-    }
-  );
-
-  const resetForm = () => {
-    setPurchaseItems([]);
-    setSelectedContact(null);
-    setSelectedProduct(null);
-    setQuantity("");
-    setPurchasePrice("");
-    setTotalCost("");
-    setPriceInputMode('perUnit');
-    setContactSearchTerm("");
-    setProductSearchTerm("");
-    setTotalAmount(0);
-    setDiscount(0);
-    setPaidAmount(0);
-    setValidationErrors({});
-    isContactSelected(false);
-    isProductSelected(false);
-    setIsEditMode(false);
-    setEditingPurchase(null);
-    setCreateNewContact(false);
-    setNewContactData({ name: '', phoneNumber: '', address: '' });
-    setCreateNewProduct(false);
-    setNewProductData({ name: '', isRawMaterial: false });
-    setSelectedTransport(null);
-    setTransportSearchTerm('');
-    setTransportCost('');
-    setLoadingDate('');
-    setArrivalDate('');
-    setPaymentDescription('');
-    setChangeDate('');
-    setUpdatedAmount('');
-    setPurchaseDate('');
-    setDescription('');
-  };
-
-  const handleAddItem = async () => {
-    // Validate inputs first
-    const priceValue = priceInputMode === 'perUnit' ? purchasePrice : totalCost;
-    if (!quantity || !priceValue) {
-      setValidationErrors({
-        ...validationErrors,
-        quantity: !quantity ? t('quantityIsRequired') : undefined,
-        purchasePrice: !priceValue ? (priceInputMode === 'perUnit' ? t('purchasePriceIsRequired') : 'Total cost is required') : undefined
-      });
-      return;
-    }
-    
-    // Validate product selection or new product data
-    if (!createNewProduct && !selectedProduct) {
-      setValidationErrors({
-        ...validationErrors,
-        product: t('productIsRequired')
-      });
-      return;
-    }
-    
-    if (createNewProduct && !newProductData.name) {
-      setValidationErrors({
-        ...validationErrors,
-        product: 'Please fill all required product fields'
-      });
-      return;
-    }
-    
-    let productToAdd = selectedProduct;
-    
-    // Create new product if checkbox is checked
-    if (createNewProduct) {
-      try {
-        setCreatingProduct(true);
-        const productResponse = await API.post('/products', {
-          name: newProductData.name,
-          quantity: 0,
-          description: '',
-          isRawMaterial: newProductData.isRawMaterial
-        });
-        productToAdd = productResponse.data;
-      } catch (error) {
-        const errorMessage = error.response?.data?.error === 'Product name must be unique' 
-          ? 'This product is already added' 
-          : error.response?.data?.error || 'Failed to create product';
-        setValidationErrors({ product: errorMessage });
-        return;
-      } finally {
-        setCreatingProduct(false);
-      }
-    }
-    
-    // Check if user typed something but didn't select from dropdown
-    if (productSearchTerm && !selectedProduct && !createNewProduct) {
-      setValidationErrors({
-        ...validationErrors,
-        product: t('pleaseSelectValidProduct')
-      });
-      return;
-    }
-
-    const quantityNum = parseFloat(quantity);
-    let priceNum, subtotal, itemPurchasePrice;
-    
-    if (priceInputMode === 'perUnit') {
-      priceNum = parseFloat(purchasePrice);
-      subtotal = priceNum * quantityNum;
-      itemPurchasePrice = priceNum;
-    } else {
-      // Total cost mode - calculate per unit price
-      const totalCostNum = parseFloat(totalCost);
-      priceNum = totalCostNum / quantityNum;
-      subtotal = totalCostNum;
-      itemPurchasePrice = totalCostNum; // Use total cost as purchase price for weighted items
-    }
-    
-    const newItem = {
-      productId: productToAdd.id,
-      productName: productToAdd.name,
-      quantity: quantityNum,
-      purchasePrice: itemPurchasePrice,
-      subtotal: subtotal,
-      isTotalCostItem: priceInputMode === 'totalCost',
-      ...(priceInputMode === 'totalCost' && { perUnitCost: priceNum })
-    };
-    
-    console.log('Adding item with mode:', priceInputMode, 'isTotalCostItem:', priceInputMode === 'totalCost');
-
-
-
-    setPurchaseItems([...purchaseItems, newItem]);
-    setSelectedProduct(null);
-    setQuantity("");
-    setPurchasePrice("");
-    setTotalCost("");
-    setProductSearchTerm("");
-    setValidationErrors({});
-    isProductSelected(false);
-    if (createNewProduct) {
-      setNewProductData({ name: '', isRawMaterial: false });
-    }
-  };
-
-  const handleRemoveItem = (index) => {
-    setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    let contactId = selectedContact?.id;
-    
-    // Create new contact if checkbox is checked
-    if (createNewContact && newContactData.name && newContactData.phoneNumber) {
-      try {
-        setCreatingContact(true);
-        const contactResponse = await API.post('/contacts', {
-          ...newContactData,
-          contactType: 'supplier'
-        });
-        contactId = contactResponse.id;
-      } catch (error) {
-        console.error('Contact creation error:', error);
-        const errorMessage = error.response?.data?.error || 'Failed to create contact';
-        setValidationErrors({ contact: errorMessage });
-        return;
-      } finally {
-        setCreatingContact(false);
-      }
-    }
-    
-    if (!contactId && !createNewContact) {
-      setValidationErrors({
-        ...validationErrors,
-        contact: t('contactIsRequired')
-      });
-      return;
-    }
-    
-    // Validate contact if something is typed but not selected
-    if (contactSearchTerm && !selectedContact) {
-      setValidationErrors({
-        ...validationErrors,
-        contact: t('pleaseSelectValidContact')
-      });
-      return;
-    }
-
-    if (purchaseItems.length === 0) {
-      setValidationErrors({
-        ...validationErrors,
-        items: t('atLeastOneItemRequired')
-      });
-      return;
-    }
-
-    const parsedPaidAmount = parseFloat(paidAmount) || 0;
-
-    const discountPercentage = parseFloat(discount) || 0;
-    const discountAmount = (calculateSubtotal() * discountPercentage) / 100;
-    
-    const purchaseData = {
-      contactId: contactId,
-      items: purchaseItems.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        purchasePrice: item.purchasePrice,
-        ...(item.isTotalCostItem && { perUnitCost: item.perUnitCost })
-      })),
-      totalAmount: totalAmount,
-      discount: discountAmount,
-      paidAmount: parsedPaidAmount,
-      ...(purchaseDate && { purchaseDate }),
-      description: description || null,
-      carNumber: transportSearchTerm || null,
-      transportCost: transportCost ? Number(parseFloat(transportCost)) : null,
-      loadingDate: loadingDate || null,
-      arrivalDate: arrivalDate || null,
-      ...(paymentDescription && { paymentDescription }),
-      ...(changeDate && { changeDate })
-    };
-
-    // Debug logging
-    console.log('Purchase data being sent:', {
-      contactId,
-      itemsCount: purchaseItems.length,
-      totalAmount,
-      paidAmount: parsedPaidAmount,
-      purchaseData
-    });
-
-    try {
-      bulkPurchaseSchema.parse(purchaseData);
-      setValidationErrors({});
-
-      if (isEditMode) {
-        updatePurchase.mutate({ ...purchaseData, id: editingPurchase.id });
-      } else {
-        createPurchase.mutate(purchaseData);
-      }
-    } catch (error) {
-      console.error('Validation error:', error);
-      if (error instanceof z.ZodError) {
-        const errors = {};
-        error.errors.forEach((err) => {
-          errors[err.path.join('.')] = err.message;
-        });
-        setValidationErrors(errors);
-      }
-    }
-  };
-
-  const handleEdit = (purchase) => {
-    setEditingPurchase(purchase);
-    setSelectedContact(purchase.contact);
-    setContactSearchTerm(purchase.contact.name);
-    isContactSelected(true);
-    
-    setPurchaseItems(purchase.items.map(item => {
-      const quantity = Number(item.quantity) || 0;
-      const purchasePrice = Number(item.purchasePrice || item.unitPrice) || 0;
-      
-      // Check if it's a total cost item
-      const isTotalCostItem = item.isTotalCostItem;
-      const subtotal = isTotalCostItem ? purchasePrice : (purchasePrice * quantity);
-      
-      return {
-        productId: item.product?.id || item.productId,
-        productName: item.product?.name || 'Unknown Product',
-        quantity: quantity,
-        purchasePrice: purchasePrice,
-        subtotal: subtotal,
-        product: item.product, // Include product info for unit checking
-        isTotalCostItem: isTotalCostItem,
-        ...(isTotalCostItem && { perUnitCost: purchasePrice / quantity })
-      };
-    }));
-    
-    setTotalAmount(Number(purchase.totalAmount));
-    const subtotal = purchase.items?.reduce((sum, item) => sum + (Number(item.purchasePrice) * Number(item.quantity)), 0) || 0;
-    const discountPercentage = subtotal > 0 ? ((Number(purchase.discount) || 0) / subtotal) * 100 : 0;
-    setDiscount(discountPercentage.toFixed(1));
-    setPaidAmount(Number(purchase.paidAmount));
-    setTransportSearchTerm(purchase.carNumber || '');
-    setTransportCost(purchase.transportCost || '');
-    setLoadingDate(purchase.loadingDate?.split('T')[0] || '');
-    setArrivalDate(purchase.arrivalDate?.split('T')[0] || '');
-    setPurchaseDate(new Date(purchase.purchaseDate).toISOString().split('T')[0]);
-    setDescription(purchase.description || '');
-    setIsEditMode(true);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (purchase) => {
-    setPurchaseToDelete(purchase);
-    setDeleteModalOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (purchaseToDelete) {
-      deletePurchase.mutate(purchaseToDelete.id);
-    }
-  };
+  const searchInputRef = React.useRef(null);
 
   if (isLoading && !debouncedSearchTerm && !showPendingPayments) return (
     <div className="p-4">
@@ -642,1021 +100,115 @@ function BulkPurchasing() {
           <div className="h-10 bg-gray-300 rounded w-32 animate-pulse"></div>
         </div>
       </div>
-      <TableSkeleton rows={10} columns={5} />
     </div>
   );
 
   return (
-    <>
     <div className={`p-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-800">{t('bulkPurchasing')}</h1>
-          {showPendingPayments && (
-            <span className="bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full border border-yellow-200 shadow-sm">
-              Pending Payments
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <div className="relative">
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={language === 'ur' ? 'انوائس یا رابطے سے تلاش کریں...' : 'Search by invoice or contact...'}
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="w-full sm:w-48 md:w-64 pl-10 pr-3 py-2 text-sm border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-primary-400">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {showPendingPayments && (
-              <button
-                onClick={() => setShowPendingPayments(false)}
-                className="px-3 py-2 text-sm border border-primary-200 rounded-lg text-primary-700 hover:bg-primary-50 transition-colors"
-              >
-                {t('allPurchases')}
-              </button>
-            )}
-            {!showPendingPayments && (
-              <button
-                onClick={() => setShowPendingPayments(true)}
-                className="px-3 py-2 text-sm border border-yellow-200 rounded-lg text-yellow-700 hover:bg-yellow-50 transition-colors"
-              >
-                {t('pendingPayments')}
-              </button>
-            )}
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2 text-sm rounded-lg hover:from-primary-700 hover:to-primary-800 shadow-sm whitespace-nowrap w-full sm:w-auto"
-            >
-              {t('newPurchase')}
-            </button>
-          </div>
-        </div>
-      </div>
+      <BulkPurchasingHeader
+        language={language}
+        t={t}
+        showPendingPayments={showPendingPayments}
+        setShowPendingPayments={setShowPendingPayments}
+        searchTerm={searchTerm}
+        handleSearchChange={handleSearchChange}
+        searchInputRef={searchInputRef}
+        setIsModalOpen={setIsModalOpen}
+      />
 
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gradient-to-r from-primary-50 to-secondary-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('invoiceNumber')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('date')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('contact')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Items</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('totalAmount')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('paidAmount')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {isFetching && (debouncedSearchTerm || showPendingPayments) ? (
-              <tr>
-                <td colSpan="7" className="px-6 py-8 text-center">
-                  <div className="flex justify-center items-center">
-                    <LoadingSpinner size="w-6 h-6" />
-                    <span className="ml-2 text-gray-500">Searching...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              purchases?.items?.map((purchase) => (
-              <tr key={purchase.id} className={`hover:bg-primary-50 transition-colors ${purchase.totalAmount > purchase.paidAmount ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''} ${auditTrails?.[purchase.id]?.length > 0 ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
-                  {purchase.invoiceNumber || `#${purchase.id.slice(-6)}`}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                  {new Date(purchase.purchaseDate).toLocaleDateString('en-GB')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                  {purchase.contact.name}
-                </td>
-                <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
-                  <div className="space-y-1">
-                    {purchase.items && purchase.items.length > 0 ? (
-                      purchase.items.map((item, index) => (
-                        <div key={index} className="text-sm flex items-center gap-2 flex-wrap">
-                          <span className="whitespace-nowrap">
-                            {item.product?.name || "Unknown Product"} x {Number(item.quantity) % 1 === 0 ? item.quantity : Number(item.quantity).toFixed(2)} {item.product?.unit || ''}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-gray-400 text-sm">No items</span>
-                    )}
-                    {auditTrails?.[purchase.id]?.length > 0 && (
-                      <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                        <div className="text-xs text-blue-700 font-medium mb-1">Payment Updates:</div>
-                        {auditTrails[purchase.id]
-                          .filter(audit => audit.fieldName === 'paidAmount')
-                          .slice(0, 2)
-                          .map((audit, idx) => (
-                            <div key={idx} className="text-xs text-blue-600">
-                              {audit.description && (
-                                <div className="italic">{audit.description}</div>
-                              )}
-                              <div>
-                                {new Date(audit.changedAt).toLocaleDateString()} - 
-                                Rs.{audit.oldValue} → Rs.{audit.newValue}
-                              </div>
-                            </div>
-                          ))}
-                        {auditTrails[purchase.id].filter(audit => audit.fieldName === 'paidAmount').length > 2 && (
-                          <div className="text-xs text-blue-500 italic">+{auditTrails[purchase.id].filter(audit => audit.fieldName === 'paidAmount').length - 2} more updates</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
-                  {formatPakistaniCurrency(purchase.totalAmount)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    {purchase.totalAmount > purchase.paidAmount ? (
-                      <div className="flex items-center">
-                        <span className="text-yellow-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
-                        <span className="ml-2 px-2 py-1 text-xs bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 rounded-full border border-yellow-200 shadow-sm">
-                          {t('due')}: {formatPakistaniCurrency(purchase.totalAmount - purchase.paidAmount)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-green-600 font-medium">{formatPakistaniCurrency(purchase.paidAmount)}</span>
-                    )}
-                    {auditTrails?.[purchase.id]?.length > 0 && (
-                      <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                          Updated
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedPurchase(purchase);
-                        setDetailsModalOpen(true);
-                      }}
-                      className="text-gray-600 hover:text-gray-900 inline-flex items-center gap-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {t('view')}
-                    </button>
-                    <button
-                      onClick={() => handleEdit(purchase)}
-                      className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                      </svg>
-                      {t('edit')}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(purchase)}
-                      className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m6.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                      {t('delete')}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <BulkPurchasingTable
+        t={t}
+        isFetching={isFetching}
+        debouncedSearchTerm={debouncedSearchTerm}
+        showPendingPayments={showPendingPayments}
+        purchases={purchases}
+        auditTrails={auditTrails}
+        handleEdit={handleEdit}
+        setSelectedPurchase={setSelectedPurchase}
+        setDetailsModalOpen={setDetailsModalOpen}
+        handleDelete={handleDelete}
+      />
 
-      {/* Pagination */}
-      <div className="mt-4 flex justify-center">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
-          >
-            {t('previous')}
-          </button>
-          <span className="px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-primary-800">
-            {language === 'ur' ? `صفحہ ${currentPage} از ${Math.ceil((purchases?.total || 0) / itemsPerPage)}` : `Page ${currentPage} of ${Math.ceil((purchases?.total || 0) / itemsPerPage)}`}
-          </span>
-          <button
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-            disabled={currentPage >= Math.ceil((purchases?.total || 0) / itemsPerPage)}
-            className="px-4 py-2 border border-primary-200 rounded-lg disabled:opacity-50 text-primary-700 hover:bg-primary-50"
-          >
-            {t('next')}
-          </button>
-        </div>
-      </div>
-
-      {/* New Purchase Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-4xl h-[90vh] shadow-2xl border border-gray-200 flex flex-col">
-            <div className="flex-shrink-0 bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 rounded-t-xl">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {isEditMode ? t('editPurchase') : t('newPurchase')}
-              </h2>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <form id="purchase-form" onSubmit={handleSubmit} className="space-y-6">
-              <div>
-              {/* Purchase Details Section */}
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Purchase Details
-                </h3>
-                <div className="space-y-4">
-              {/* Purchase Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Purchase Date
-                </label>
-                <input
-                  type="date"
-                  value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                  </svg>
-                  Description <span className="text-gray-400 text-xs">(Optional)</span>
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Add notes or description..."
-                  rows="2"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
-                />
-              </div>
-              </div>
-              </div>
-
-              {/* Contact Section */}
-              <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-5 border border-green-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Supplier Contact
-                </h3>
-              {/* Contact Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    {t('contact')}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="createNewContactPurchase"
-                      checked={createNewContact}
-                      onChange={(e) => {
-                        setCreateNewContact(e.target.checked);
-                        if (e.target.checked) {
-                          setSelectedContact(null);
-                          setContactSearchTerm('');
-                          isContactSelected(false);
-                        } else {
-                          setNewContactData({ name: '', phoneNumber: '', address: '' });
-                        }
-                      }}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <label htmlFor="createNewContactPurchase" className="text-sm text-gray-600">
-                      Add New Contact
-                    </label>
-                  </div>
-                </div>
-                {createNewContact ? (
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={newContactData.name}
-                      onChange={(e) => setNewContactData({ ...newContactData, name: e.target.value })}
-                      placeholder="Contact name *"
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <input
-                      type="text"
-                      value={newContactData.phoneNumber}
-                      onChange={(e) => setNewContactData({ ...newContactData, phoneNumber: e.target.value })}
-                      placeholder="Phone number *"
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <input
-                      type="text"
-                      value={newContactData.address}
-                      onChange={(e) => setNewContactData({ ...newContactData, address: e.target.value })}
-                      placeholder="Address (optional)"
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={contactSearchTerm}
-                      onChange={(e) => {
-                        handleContactSearchChange(e.target.value);
-                        isContactSelected(false);
-                        setSelectedContact(null);
-                      }}
-                      placeholder={t('searchContacts')}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {!contactSelected && contactSearchTerm && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                        {contactsLoading ? (
-                          <div className="px-4 py-3 flex items-center justify-center">
-                            <LoadingSpinner size="w-4 h-4" />
-                            <span className="ml-2 text-gray-500 text-sm">Searching...</span>
-                          </div>
-                        ) : contacts?.length > 0 ? (
-                          contacts.map((contact) => (
-                            <div
-                              key={contact.id}
-                              onClick={() => {
-                                setSelectedContact(contact);
-                                setContactSearchTerm(contact.name);
-                                isContactSelected(true);
-                                setValidationErrors({
-                                  ...validationErrors,
-                                  contact: undefined
-                                });
-                              }}
-                              className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                            >
-                              <div className="font-medium">{contact.name}</div>
-                              {contact.address && <div className="text-sm text-gray-600">{contact.address}</div>}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-4 py-3 text-gray-500 text-sm">
-                            No contacts found
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {validationErrors.contact && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.contact}</p>
-                )}
-              </div>
-              </div>
-
-              {/* Product Selection Section */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  Add Products
-                </h3>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">{t('addProducts')}</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="createNewProductPurchase"
-                          checked={createNewProduct}
-                          onChange={(e) => {
-                            setCreateNewProduct(e.target.checked);
-                            if (e.target.checked) {
-                              setSelectedProduct(null);
-                              setProductSearchTerm('');
-                              isProductSelected(false);
-                            } else {
-                              setNewProductData({ name: '', isRawMaterial: false });
-                            }
-                          }}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label htmlFor="createNewProductPurchase" className="text-sm text-gray-600">
-                          Add New Product
-                        </label>
-                      </div>
-                    </div>
-                    {createNewProduct ? (
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={newProductData.name}
-                          onChange={(e) => setNewProductData({ ...newProductData, name: e.target.value })}
-                          placeholder="Product name *"
-                          className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="isRawMaterial"
-                            checked={newProductData.isRawMaterial || false}
-                            onChange={(e) => setNewProductData({ ...newProductData, isRawMaterial: e.target.checked })}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                          <label htmlFor="isRawMaterial" className="text-sm text-gray-600">
-                            Raw Material
-                          </label>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={productSearchTerm}
-                          onChange={(e) => {
-                            handleProductSearchChange(e.target.value);
-                            isProductSelected(false);
-                            setSelectedProduct(null);
-                          }}
-                          placeholder={t('searchProducts')}
-                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        {!productSelected && productSearchTerm && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {productsLoading ? (
-                              <div className="px-4 py-3 flex items-center justify-center">
-                                <LoadingSpinner size="w-4 h-4" />
-                                <span className="ml-2 text-gray-500 text-sm">Searching...</span>
-                              </div>
-                            ) : products?.length > 0 ? (
-                              products.map((product) => (
-                                <div
-                                  key={product.id}
-                                  onClick={() => {
-                                    setSelectedProduct(product);
-                                    setProductSearchTerm(product.name);
-                                    isProductSelected(true);
-                                    // Auto-switch to total cost mode for weight-based units
-                                    const weightUnits = ['g', 'kg', 'ltr', 'ml', 'ton', 'gram', 'liter', 'litre'];
-                                    if (weightUnits.includes(product.unit?.toLowerCase())) {
-                                      setPriceInputMode('totalCost');
-                                    }
-                                    setValidationErrors({
-                                      ...validationErrors,
-                                      product: undefined
-                                    });
-                                  }}
-                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
-                                >
-                                  <div>
-                                    <div className="font-medium">{product.name}</div>
-                                    <div className="text-sm text-gray-600">
-                                      Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(2)} {product.unit || ''}
-                                    </div>
-                                  </div>
-                                  <div className="text-blue-600 font-medium">Rs.{product.price}</div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-4 py-3 text-gray-500 text-sm">
-                                No products found
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {validationErrors.product && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.product}</p>
-                    )}
-                    {selectedProduct && lastBulkPurchase && lastBulkPurchase.items?.find(item => item.productId === selectedProduct.id) && (
-                      <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                        <div className="text-xs font-medium text-blue-700 mb-1">Last Bulk Purchase:</div>
-                        <div className="text-xs text-blue-600">
-                          {(() => {
-                            const purchaseItem = lastBulkPurchase.items.find(item => item.productId === selectedProduct.id);
-                            const quantity = Number(purchaseItem.quantity);
-                            const purchasePrice = Number(purchaseItem.purchasePrice);
-                            const unit = selectedProduct.unit || 'unit';
-                            
-                            if (purchaseItem.isTotalCostItem) {
-                              const perUnitCost = purchasePrice / quantity;
-                              return `Rs.${perUnitCost.toFixed(2)} per ${unit} (${quantity} ${unit} for Rs.${purchasePrice.toFixed(2)})`;
-                            } else {
-                              const totalCost = purchasePrice * quantity;
-                              return `Rs.${purchasePrice.toFixed(2)} per ${unit} (${quantity} ${unit} for Rs.${totalCost.toFixed(2)})`;
-                            }
-                          })()
-                          }
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          From: {lastBulkPurchase.contact?.name} on {new Date(lastBulkPurchase.purchaseDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {priceInputMode === 'totalCost' ? 'Weight' : t('quantity')} {selectedProduct && <span className="text-blue-600 font-semibold">({selectedProduct.unit || 'units'})</span>}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={quantity}
-                          onChange={(e) => {
-                            const value = parseFloat(e.target.value);
-                            if (value <= 0) {
-                              setValidationErrors({...validationErrors, quantity: t('quantityMustBePositive')});
-                            } else {
-                              setValidationErrors({...validationErrors, quantity: undefined});
-                            }
-                            setQuantity(e.target.value);
-                          }}
-                          onWheel={(e) => e.target.blur()}
-                          placeholder="0.00"
-                          className="w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        {selectedProduct && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 pointer-events-none">
-                            {selectedProduct.unit || 'units'}
-                          </div>
-                        )}
-                      </div>
-                      {validationErrors.quantity && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.quantity}</p>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {priceInputMode === 'perUnit' ? (language === 'ur' ? 'فی یونٹ قیمت *' : 'Per Unit Price *') : (language === 'ur' ? 'کل لاگت *' : 'Total Cost *')}
-                        </label>
-                        <div className="relative group">
-                          <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                          </svg>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                            {priceInputMode === 'perUnit' 
-                              ? 'Mode A: Enter price per unit (e.g., 0.1 per gram)' 
-                              : 'Mode B: Enter total amount paid (e.g., 500 for 5000 grams)'}
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={priceInputMode === 'perUnit' ? purchasePrice : totalCost}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value);
-                              if (value <= 0) {
-                                setValidationErrors({...validationErrors, purchasePrice: t('priceMustBePositive')});
-                              } else {
-                                setValidationErrors({...validationErrors, purchasePrice: undefined});
-                              }
-                              if (priceInputMode === 'perUnit') {
-                                setPurchasePrice(e.target.value);
-                              } else {
-                                setTotalCost(e.target.value);
-                                // Auto-calculate per unit price
-                                if (quantity && e.target.value) {
-                                  const perUnit = parseFloat(e.target.value) / parseFloat(quantity);
-                                  setPurchasePrice(perUnit.toFixed(4));
-                                }
-                              }
-                            }}
-                            onWheel={(e) => e.target.blur()}
-                            placeholder={priceInputMode === 'perUnit' ? t('price') : 'Total cost'}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPriceInputMode(priceInputMode === 'perUnit' ? 'totalCost' : 'perUnit');
-                            setPurchasePrice('');
-                            setTotalCost('');
-                          }}
-                          className="px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 text-xs whitespace-nowrap"
-                          title={priceInputMode === 'perUnit' ? 'Switch to total cost mode' : 'Switch to per-unit mode'}
-                        >
-                          {priceInputMode === 'perUnit' ? '⇄ Total' : '⇄ Unit'}
-                        </button>
-                      </div>
-                      {priceInputMode === 'totalCost' && quantity && totalCost && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Per unit: Rs.{(parseFloat(totalCost) / parseFloat(quantity)).toFixed(4)}
-                        </p>
-                      )}
-                      {validationErrors.purchasePrice && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.purchasePrice}</p>
-                      )}
-                    </div>
-                    <div className="self-end">
-                      <button
-                        type="button"
-                        onClick={handleAddItem}
-                        disabled={creatingProduct}
-                        className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {creatingProduct && <LoadingSpinner size="w-4 h-4" />}
-                        {t('add')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-              </div>
-
-              {/* Purchase Items List */}
-              <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b border-gray-200 rounded-t-xl">
-                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    {t('purchaseItems')} <span className="text-sm text-gray-500">({purchaseItems.length})</span>
-                  </h3>
-                </div>
-                <div className="p-5">
-                {purchaseItems.length === 0 ? (
-                  <div className="text-center py-8">
-                    <svg className="w-16 h-16 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                    <p className="text-gray-400 font-medium">{t('noItemsAdded')}</p>
-                    <p className="text-gray-400 text-sm mt-1">Add products to create a purchase</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                  {purchaseItems.map((item, index) => (
-                    <div key={index} className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">
-                            #{index + 1}
-                          </span>
-                          <span className="font-semibold text-gray-800">{item.productName}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                          title="Remove item"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-600">
-                          {(() => {
-                            const quantity = item.quantity;
-                            const purchasePrice = Number(item.purchasePrice || 0);
-                            
-                            // Check if it's a total cost item (for weighted products)
-                            if (item.isTotalCostItem) {
-                              const perUnit = purchasePrice / quantity;
-                              return `${quantity} x Rs.${perUnit.toFixed(2)} = `;
-                            }
-                            
-                            // Otherwise show purchase price directly (per-unit items)
-                            return `${quantity} x Rs.${purchasePrice.toFixed(2)} = `;
-                          })()}
-                          <span className="text-primary-800 font-medium">Rs.{(() => {
-                            // For weighted items, subtotal is the total cost (purchasePrice)
-                            // For regular items, subtotal is quantity * purchasePrice
-                            return item.isTotalCostItem ? Number(item.purchasePrice || 0).toFixed(2) : Number(item.subtotal || 0).toFixed(2);
-                          })()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  </div>
-                )}
-                {validationErrors.items && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.items}</p>
-                )}
-                </div>
-              </div>
-
-              {/* Transport Section */}
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                  </svg>
-                  Transport Details
-                </h3>
-                <div className="space-y-4">
-              {/* Car Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Car Number <span className="text-gray-400 text-xs">({t('optional')})</span>
-                </label>
-                <input
-                  type="text"
-                  value={transportSearchTerm}
-                  onChange={(e) => setTransportSearchTerm(e.target.value)}
-                  placeholder="Enter car number..."
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
-              </div>
-
-              {/* Transport Details */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Transport Cost <span className="text-gray-400 text-xs">({t('optional')})</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={transportCost}
-                    onChange={(e) => setTransportCost(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Loading Date <span className="text-gray-400 text-xs">({t('optional')})</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={loadingDate}
-                    onChange={(e) => setLoadingDate(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Arrival Date <span className="text-gray-400 text-xs">({t('optional')})</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={arrivalDate}
-                    onChange={(e) => setArrivalDate(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
-                </div>
-              </div>
-              </div>
-              </div>
-
-              {/* Payment Section */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Payment Details
-                </h3>
-                <div className="space-y-4">
-              {/* Subtotal and Discount */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('subtotal')}
-                  </label>
-                  <input
-                    type="text"
-                    value={`Rs.${calculateSubtotal().toFixed(2)}`}
-                    disabled
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 font-bold text-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('discount')} (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={discount}
-                    onChange={(e) => {
-                      const percentage = parseFloat(e.target.value) || 0;
-                      if (percentage <= 100) {
-                        setDiscount(e.target.value);
-                        const discountAmount = (calculateSubtotal() * percentage) / 100;
-                        setTotalAmount(calculateSubtotal() - discountAmount);
-                      }
-                    }}
-                    onWheel={(e) => e.target.blur()}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              {/* Total and Paid Amount */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('totalAmount')}
-                  </label>
-                  <input
-                    type="text"
-                    value={`Rs.${Number(totalAmount).toFixed(2)}`}
-                    disabled
-                    className="w-full px-4 py-2.5 border-2 border-green-300 rounded-lg bg-gradient-to-r from-green-100 to-emerald-100 text-green-900 font-bold text-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('paidAmount')}</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={paidAmount}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      setPaidAmount(e.target.value);
-                      setUpdatedAmount(''); // Clear updated amount when paid amount is directly changed
-
-                      // Clear validation error if paid amount is now valid
-                      if (
-                        value <= totalAmount &&
-                        validationErrors.paidAmount
-                      ) {
-                        setValidationErrors({
-                          ...validationErrors,
-                          paidAmount: undefined,
-                        });
-                      }
-                    }}
-                    onWheel={(e) => e.target.blur()}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-semibold text-lg"
-                  />
-                  {validationErrors.paidAmount && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.paidAmount}</p>
-                  )}
-                  
-                  {/* Updated Amount Input */}
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Updated Amount ({t('optional')})
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={updatedAmount}
-                      onChange={(e) => {
-                        const newUpdatedAmount = parseFloat(e.target.value) || 0;
-                        const oldUpdatedAmount = parseFloat(updatedAmount) || 0;
-                        const currentPaid = parseFloat(paidAmount) || 0;
-                        
-                        const newPaidAmount = currentPaid - oldUpdatedAmount + newUpdatedAmount;
-                        setPaidAmount(newPaidAmount.toString());
-                        setUpdatedAmount(e.target.value);
-                      }}
-                      onWheel={(e) => e.target.blur()}
-                      placeholder="Enter additional payment amount"
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Enter additional payment to add to current paid amount
-                    </p>
-                  </div>
-                </div>
-              </div>
-              </div>
-              </div>
-
-              {/* Payment Description and Change Date */}
-              {isEditMode && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Payment Update Reason ({t('optional')})
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentDescription}
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      placeholder="e.g., Bank transfer to supplier, Cash payment..."
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Change Date ({t('optional')})
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={changeDate}
-                      onChange={(e) => setChangeDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Leave empty to use current date/time
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              </form>
-            </div>
-            <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
-              <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-                className="px-6 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {t('cancel')}
-              </button>
-              <button
-                type="submit"
-                form="purchase-form"
-                disabled={createPurchase.isLoading || updatePurchase.isLoading || creatingContact || creatingProduct}
-                className="px-6 py-2.5 text-white rounded-lg shadow-lg flex items-center gap-2 font-semibold transition-all bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {(createPurchase.isLoading || updatePurchase.isLoading || creatingContact || creatingProduct) ? (
-                  <LoadingSpinner size="w-5 h-5" />
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-                {isEditMode ? t('updatePurchase') : t('createPurchase')}
-              </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <BulkPurchasingFormModal
+          language={language}
+          t={t}
+          isEditMode={isEditMode}
+          purchaseDate={purchaseDate} setPurchaseDate={setPurchaseDate}
+          description={description} setDescription={setDescription}
+          createNewContact={createNewContact} setCreateNewContact={setCreateNewContact}
+          selectedContact={selectedContact} setSelectedContact={setSelectedContact}
+          contactSearchTerm={contactSearchTerm} setContactSearchTerm={setContactSearchTerm}
+          isContactSelected={contactSelected} isContactSetSelected={isContactSelected}
+          newContactData={newContactData} setNewContactData={setNewContactData}
+          contactsLoading={contactsLoading} contacts={contacts}
+          validationErrors={validationErrors} setValidationErrors={setValidationErrors}
+          handleContactSearchChange={handleContactSearchChange}
+          
+          createNewProduct={createNewProduct} setCreateNewProduct={setCreateNewProduct}
+          selectedProduct={selectedProduct} setSelectedProduct={setSelectedProduct}
+          productSearchTerm={productSearchTerm} setProductSearchTerm={setProductSearchTerm}
+          isProductSelected={selectedProduct !== null} isProductSetSelected={(v) => {}}
+          newProductData={newProductData} setNewProductData={setNewProductData}
+          productsLoading={productsLoading} products={products}
+          handleProductSearchChange={handleProductSearchChange}
+          lastBulkPurchase={lastBulkPurchase}
+          
+          priceInputMode={priceInputMode} setPriceInputMode={setPriceInputMode}
+          quantity={quantity} setQuantity={setQuantity}
+          purchasePrice={purchasePrice} setPurchasePrice={setPurchasePrice}
+          totalCost={totalCost} setTotalCost={setTotalCost}
+          
+          handleAddItem={handleAddItem} creatingProduct={creatingProduct}
+          purchaseItems={purchaseItems} handleRemoveItem={handleRemoveItem}
+          
+          transportSearchTerm={transportSearchTerm} setTransportSearchTerm={setTransportSearchTerm}
+          transportCost={transportCost} setTransportCost={setTransportCost}
+          loadingDate={loadingDate} setLoadingDate={setLoadingDate}
+          arrivalDate={arrivalDate} setArrivalDate={setArrivalDate}
+          
+          calculateSubtotal={calculateSubtotal}
+          discount={discount} setDiscount={setDiscount}
+          totalAmount={totalAmount} setTotalAmount={setTotalAmount}
+          paidAmount={paidAmount} setPaidAmount={setPaidAmount}
+          updatedAmount={updatedAmount} setUpdatedAmount={setUpdatedAmount}
+          
+          paymentDescription={paymentDescription} setPaymentDescription={setPaymentDescription}
+          changeDate={changeDate} setChangeDate={setChangeDate}
+          
+          handleSubmit={handleSubmit}
+          setIsModalOpen={setIsModalOpen} resetForm={resetForm}
+          createPurchaseLoading={mutations.createPurchase.isLoading} 
+          updatePurchaseLoading={mutations.updatePurchase.isLoading}
+        />
       )}
 
-      {/* Delete Confirmation Modal */}
-      <DeleteModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setPurchaseToDelete(null);
-          setDeleteError(null);
-        }}
-        onConfirm={confirmDelete}
-        itemName={purchaseToDelete ? `purchase from ${new Date(purchaseToDelete.purchaseDate).toLocaleDateString()}` : ''}
-        error={deleteError}
-      />
+      {detailsModalOpen && selectedPurchase && (
+        <PurchaseDetailsModal
+          purchase={selectedPurchase}
+          onClose={() => {
+            setDetailsModalOpen(false);
+            setSelectedPurchase(null);
+          }}
+          language={language}
+          t={t}
+          auditTrails={auditTrails}
+        />
+      )}
 
-      {/* Purchase Details Modal */}
-      <PurchaseDetailsModal
-        isOpen={detailsModalOpen}
-        onClose={() => {
-          setDetailsModalOpen(false);
-          setSelectedPurchase(null);
-        }}
-        purchase={selectedPurchase}
-      />
+      {deleteModalOpen && purchaseToDelete && (
+        <DeleteModal
+          isOpen={deleteModalOpen}
+          itemName={purchaseToDelete.invoiceNumber || `Purchase #${purchaseToDelete.id.slice(-6)}`}
+          onConfirm={confirmDelete}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setPurchaseToDelete(null);
+          }}
+          error={deleteError}
+        />
+      )}
     </div>
-    </>
   );
 }
 

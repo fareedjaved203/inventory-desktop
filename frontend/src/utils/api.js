@@ -25,6 +25,10 @@ class API {
     return DataStorageManager.getNextBarcode();
   }
 
+  async getCategories(params = {}) {
+    return DataStorageManager.read(STORES.categories, params);
+  }
+
   async getLowStockProducts(params = {}) {
     return DataStorageManager.getLowStockProducts(params);
   }

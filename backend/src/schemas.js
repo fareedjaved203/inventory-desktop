@@ -3,9 +3,9 @@ import { z } from 'zod';
 export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string(),
-  price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores").nullable().optional(),
-  retailPrice: z.number().positive("Retail price must be positive").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
-  wholesalePrice: z.number().positive("Wholesale price must be positive").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
+  price: z.number().min(0, "Price must be non-negative").max(100000000, "Price cannot exceed Rs.10 Crores").nullable().optional(),
+  retailPrice: z.number().min(0, "Retail price must be non-negative").max(100000000, "Retail price cannot exceed Rs.10 Crores").nullable().optional(),
+  wholesalePrice: z.number().min(0, "Wholesale price must be non-negative").max(100000000, "Wholesale price cannot exceed Rs.10 Crores").nullable().optional(),
   purchasePrice: z.number().min(0, "Purchase price must be non-negative").max(100000000, "Purchase price cannot exceed Rs.10 Crores").nullable().optional(),
   perUnitPurchasePrice: z.number().min(0, "Per unit cost must be non-negative").nullable().optional(),
   sku: z.string().optional(),
@@ -97,4 +97,7 @@ export const querySchema = z.object({
   endDate: z.string().regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "End date must be in DD/MM/YYYY format").optional(),
   vendorId: z.string().optional(),
   contactType: z.enum(["customer", "supplier", "both", "order_booker"]).optional(),
+  categoryId: z.string().optional(),
+  lowStock: z.union([z.string(), z.boolean()]).optional(),
+  isRawMaterial: z.union([z.string(), z.boolean()]).optional(),
 });
