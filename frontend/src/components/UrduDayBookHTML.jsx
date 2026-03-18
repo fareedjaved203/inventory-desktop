@@ -50,10 +50,10 @@ function UrduDayBookHTML({ dayBookData, dateRange, shopSettings, visibleColumns 
     switch (key) {
       case 'date': {
         const date = new Date(item.date);
-        return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+        return `${date.toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' })} ${date.toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', minute:'2-digit', hour12: true })}`;
       }
-      case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
-      case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
+      case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' }) : '-';
+      case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' }) : '-';
       case 'carNumber': return item.carNumber || '-';
       case 'barcode': return item.barcode || '-';
       case 'productName': return item.productName || '-';

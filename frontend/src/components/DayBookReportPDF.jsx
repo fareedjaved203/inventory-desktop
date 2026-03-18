@@ -136,7 +136,10 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
           {data.map((item, index) => {
             const getCellValue = (key) => {
               switch (key) {
-                case 'date': return new Date(item.date).toLocaleDateString();
+                case 'date': {
+                  const d = new Date(item.date);
+                  return `${d.toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' })} ${d.toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', minute:'2-digit', hour12: true })}`;
+                }
                 case 'customerName': return item.customerName || '-';
                 case 'orderBookerName': return item.orderBookerName || '-';
                 case 'supplierName': return item.supplierName || '-';
@@ -152,8 +155,8 @@ function DayBookReportPDF({ dayBookData, dateRange, shopSettings, visibleColumns
                 case 'remainingAmount': return item.remainingAmount ? formatPakistaniCurrency(item.remainingAmount) : '-';
                 case 'profitLoss': return item.profitLoss ? formatPakistaniCurrency(item.profitLoss) : '-';
                 case 'carNumber': return item.carNumber || '-';
-                case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-';
-                case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-';
+                case 'loadingDate': return item.loadingDate ? new Date(item.loadingDate).toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' }) : '-';
+                case 'arrivalDate': return item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' }) : '-';
                 default: return '-';
               }
             };

@@ -2,6 +2,7 @@ import { validateRequest, authenticateToken } from './middleware.js';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { withTransaction } from './db-utils.js';
+import { createDateWithCurrentTime } from './timezone-helper.js';
 
 const recipeItemSchema = z.object({
   rawMaterialId: z.string().min(1, "Raw material is required"),
@@ -400,11 +401,11 @@ export function setupManufacturingRoutes(app, prisma) {
 
         // Create manufacturing record using raw SQL
         const manufacturingId = crypto.randomUUID();
-        const productionDate = req.body.productionDate ? new Date(req.body.productionDate) : new Date();
+        const productionDate = req.body.productionDate ? createDateWithCurrentTime(req.body.productionDate) : createDateWithCurrentTime();
         
         await prisma.$executeRaw`
           INSERT INTO "Manufacturing" (id, "recipeId", "quantityProduced", "manufacturingCost", "productionDate", notes, "userId", "createdAt", "updatedAt")
-          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}::decimal, ${Number(Math.round(manufacturingCost))}::decimal, ${productionDate}, ${req.body.notes || null}, ${req.userId}, NOW(), NOW())
+          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}::decimal, ${Number(Math.round(manufacturingCost))}::decimal, ${productionDate.toISOString()}::timestamp, ${req.body.notes || null}, ${req.userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
         `;
         
         const manufacturing = await prisma.manufacturing.findUnique({

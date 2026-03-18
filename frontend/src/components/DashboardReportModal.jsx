@@ -97,14 +97,16 @@ function DashboardReportModal({ isOpen, onClose }) {
           totalExpenses: Number(backendStats.totalExpenses || 0),
           totalTransactions: Number(backendStats.totalTransactions || 0),
           averageSaleValue: Number(backendStats.averageSaleValue || 0),
-          totalSalesDueAmount: Number(backendStats.totalSalesDueAmount || 0)
+          totalSalesDueAmount: Number(backendStats.totalSalesDueAmount || 0),
+          totalProfit: Number(backendStats.totalProfit || 0)
         } : {
           totalSales,
           totalPurchases,
           totalExpenses,
           totalTransactions,
           averageSaleValue: Math.round(averageSaleValue * 100) / 100,
-          totalSalesDueAmount
+          totalSalesDueAmount,
+          totalProfit: 0 // Will rely on backend for actual profit
         },
         salesData: filteredSales,
         purchaseData: filteredPurchases,
@@ -133,7 +135,7 @@ function DashboardReportModal({ isOpen, onClose }) {
   const totalExpenses = Number(reportData?.salesStats?.totalExpenses || 0);
   const totalTransactions = Number(reportData?.salesStats?.totalTransactions || 0);
   const averageSaleValue = Number(reportData?.salesStats?.averageSaleValue || 0);
-  const grossProfit = totalSales - totalPurchases;
+  const grossProfit = Number(reportData?.salesStats?.totalProfit || 0);
   const netProfit = grossProfit - totalExpenses;
 
   return (
@@ -203,6 +205,12 @@ function DashboardReportModal({ isOpen, onClose }) {
                     <p className="text-lg font-bold text-blue-600 break-words">{formatPakistaniCurrency(totalPurchases)}</p>
                   </div>
                   <div className="text-center bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2">Gross Profit (from Sales)</p>
+                    <p className={`text-lg font-bold break-words ${grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {grossProfit >= 0 ? formatPakistaniCurrency(grossProfit) : `(${formatPakistaniCurrency(Math.abs(grossProfit))})`}
+                    </p>
+                  </div>
+                  <div className="text-center bg-white p-4 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-600 mb-2">Total Expenses</p>
                     <p className="text-lg font-bold text-red-600 break-words">{formatPakistaniCurrency(totalExpenses)}</p>
                   </div>
@@ -218,7 +226,7 @@ function DashboardReportModal({ isOpen, onClose }) {
                 </div>
                 <div className="mt-4 pt-4 border-t border-blue-200">
                   <p className="text-sm text-blue-700 text-center">
-                    <span className="font-semibold">Calculation:</span> Sales ({formatPakistaniCurrency(totalSales)}) - Purchases ({formatPakistaniCurrency(totalPurchases)}) - Expenses ({formatPakistaniCurrency(totalExpenses)}) = Net Profit ({netProfit >= 0 ? formatPakistaniCurrency(netProfit) : `(${formatPakistaniCurrency(Math.abs(netProfit))})`})
+                    <span className="font-semibold">Calculation:</span> Gross Profit ({formatPakistaniCurrency(grossProfit)}) - Expenses ({formatPakistaniCurrency(totalExpenses)}) = Net Profit ({netProfit >= 0 ? formatPakistaniCurrency(netProfit) : `(${formatPakistaniCurrency(Math.abs(netProfit))})`})
                   </p>
                 </div>
               </div>

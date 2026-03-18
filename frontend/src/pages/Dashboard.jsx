@@ -15,15 +15,12 @@ import { MdOutlinePayments } from "react-icons/md";
 import { formatPakistaniCurrency } from '../utils/formatCurrency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
-import DashboardReportModal from '../components/DashboardReportModal';
 
 function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { language } = useLanguage();
   const t = useTranslation(language);
-  const [showReportModal, setShowReportModal] = useState(false);
-  
   // Fetch dashboard stats
   const { data: salesStats, isLoading, error } = useQuery(['dashboard-stats'], async () => {
     console.log('Dashboard: Fetching stats...');
@@ -67,15 +64,6 @@ function Dashboard() {
       <div className={`flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4 ${language === 'ur' ? 'font-urdu' : ''}`}>
         <h1 className="text-3xl font-bold text-primary-800">{t('dashboard')}</h1>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <button
-            onClick={() => setShowReportModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v14a4 4 0 01-4 4z" />
-            </svg>
-            Generate Report
-          </button>
           <button
             onClick={handleRefresh}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
@@ -204,7 +192,7 @@ function Dashboard() {
 
       {/* Expense Overview */}
       <ErrorBoundary>
-        <h2 className="text-xl font-semibold mb-4 text-primary-700">Expense Overview</h2>
+        <h2 className="text-xl font-semibold mb-4 text-primary-700">{language === 'ur' ? 'اخراجات کا جائزہ' : 'Expense Overview'}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <DashboardCard
             title="Expenses Today"
@@ -261,7 +249,7 @@ function Dashboard() {
             isLoading={isLoadingStats}
             error={statsError}
             onClick={handlePendingPurchasePaymentsClick}
-            subtitle="Click to view"
+            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
           />
           <DashboardCard
             title="Sales Due"
@@ -271,7 +259,7 @@ function Dashboard() {
             isLoading={isLoadingStats}
             error={statsError}
             onClick={handlePendingSalePaymentsClick}
-            subtitle="Click to view"
+            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
           />
           <DashboardCard
             title="Due Credits"
@@ -281,11 +269,12 @@ function Dashboard() {
             isLoading={isLoadingStats}
             error={statsError}
             onClick={handleDueCreditsClick}
-            subtitle="Click to view"
+            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
           />
         </div>
       </ErrorBoundary>
 
+      {/* Sales Trend Chart */}
       <ErrorBoundary>
         <div className="mb-8">
           <SalesTrendChart />
@@ -303,11 +292,6 @@ function Dashboard() {
           <BranchEmployeeSalesChart />
         </div>
       </ErrorBoundary>
-      
-      <DashboardReportModal 
-        isOpen={showReportModal} 
-        onClose={() => setShowReportModal(false)} 
-      />
     </div>
   );
 }

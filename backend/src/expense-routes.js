@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken } from './middleware.js';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { createDateWithCurrentTime } from './timezone-helper.js';
 
 let prisma;
 
@@ -91,7 +92,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const expenseId = crypto.randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "Expense" (id, amount, date, category, description, "paymentMethod", "receiptNumber", "contactId", "productId", "userId", "createdAt", "updatedAt")
-      VALUES (${expenseId}, ${validatedData.amount}::decimal, ${new Date(validatedData.date)}, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, NOW(), NOW())
+      VALUES (${expenseId}, ${validatedData.amount}::decimal, ${createDateWithCurrentTime(validatedData.date).toISOString()}::timestamp, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
     `;
     
     const expense = await prisma.expense.findUnique({
@@ -132,14 +133,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
     await prisma.$executeRaw`
       UPDATE "Expense" 
       SET amount = ${validatedData.amount}::decimal,
-          date = ${new Date(validatedData.date)},
+          date = ${createDateWithCurrentTime(validatedData.date).toISOString()}::timestamp,
           category = ${validatedData.category},
           description = ${validatedData.description},
           "paymentMethod" = ${validatedData.paymentMethod},
           "receiptNumber" = ${validatedData.receiptNumber},
           "contactId" = ${validatedData.contactId},
           "productId" = ${validatedData.productId},
-          "updatedAt" = NOW()
+          "updatedAt" = ${new Date().toISOString()}::timestamp
       WHERE id = ${id} AND "userId" = ${userId}
     `;
     

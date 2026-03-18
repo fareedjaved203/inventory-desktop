@@ -298,7 +298,7 @@ function UrduDayBookReportModal({ isOpen, onClose }) {
                           <td key={key} className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200 text-right font-urdu">
                             {key === 'date' && (() => {
                               const date = new Date(item.date);
-                              return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}`;
+                              return `${date.toLocaleDateString('en-US', { timeZone: 'Asia/Karachi' })} ${date.toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', minute:'2-digit', hour12: true })}`;
                             })()}
                             {key === 'loadingDate' && (item.loadingDate ? new Date(item.loadingDate).toLocaleDateString() : '-')}
                             {key === 'arrivalDate' && (item.arrivalDate ? new Date(item.arrivalDate).toLocaleDateString() : '-')}
