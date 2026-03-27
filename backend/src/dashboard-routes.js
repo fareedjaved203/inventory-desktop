@@ -82,8 +82,15 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    // Get current time in Pakistan timezone (same as sales API)
-    const todayLocalUTC = createDateWithCurrentTime();
+    // Get today's date boundaries using the same timezone logic as sales creation
+    // createDateWithCurrentTime() with no args = new Date() (current UTC instant)
+    // For "today" we need: start of today in PKT, end of today in PKT
+    const now = new Date();
+    // Get today's date string in PKT (YYYY-MM-DD)
+    const pktNow = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+    const todayStr = `${pktNow.getUTCFullYear()}-${String(pktNow.getUTCMonth() + 1).padStart(2, '0')}-${String(pktNow.getUTCDate()).padStart(2, '0')}`;
+    // Use the same function that sales use to convert dates
+    const todayLocalUTC = createDateWithCurrentTime(todayStr);
     const tomorrowStart = new Date(todayLocalUTC.getTime() + 24 * 60 * 60 * 1000);
     
     let reportStartDate, reportEndDate;
@@ -209,13 +216,14 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       })
     ]);
 
-    const [totalPurchaseDueAmount, totalSalesDueAmount, totalDueCredits] = await Promise.all([
+    const [totalPurchaseDueAmount, totalSalesDueAmount, totalDueCredits, allLedgerEntries] = await Promise.all([
       // Total Due Amount (Bulk Purchases) - Get all and filter in JS
       prisma.bulkPurchase.findMany({
         where: { userId: req.userId },
         select: {
           totalAmount: true,
-          paidAmount: true
+          paidAmount: true,
+          contactId: true
         }
       }),
       
@@ -233,8 +241,34 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         include: {
           returns: true
         }
-      }).catch(() => [])
+      }).catch(() => []),
+      
+      // All ledger entries to offset dues
+      prisma.loanTransaction.findMany({
+        where: { userId: req.userId },
+        select: { amount: true, type: true, contactId: true }
+      })
     ]);
+
+    // Calculate net ledger credits per contact (money received from contacts via ledger)
+    // These offset Sales Due
+    const ledgerCreditsByContact = {};
+    // Calculate net ledger debits per contact (money paid to contacts via ledger)
+    // These offset Purchase Due
+    const ledgerDebitsByContact = {};
+    for (const entry of allLedgerEntries) {
+      const amt = Number(entry.amount);
+      if (entry.type === 'TAKEN' || entry.type === 'RETURNED_BY_CONTACT') {
+        ledgerCreditsByContact[entry.contactId] = (ledgerCreditsByContact[entry.contactId] || 0) + amt;
+      } else if (entry.type === 'GIVEN' || entry.type === 'RETURNED_TO_CONTACT') {
+        ledgerDebitsByContact[entry.contactId] = (ledgerDebitsByContact[entry.contactId] || 0) + amt;
+      }
+    }
+    
+    // Total ledger credits (across all contacts) to offset total sales due
+    const totalLedgerCredits = Object.values(ledgerCreditsByContact).reduce((s, v) => s + v, 0);
+    // Total ledger debits (across all contacts) to offset total purchase due
+    const totalLedgerDebits = Object.values(ledgerDebitsByContact).reduce((s, v) => s + v, 0);
 
     // Profit calculations are now done inline with the new calculateProfit function
 
@@ -628,6 +662,43 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       })
     ]);
 
+    // Calculate Sales Due per contact, then subtract ledger credits
+    const salesDueByContact = {};
+    let salesDueWalkIn = 0;
+    for (const sale of totalSalesDueAmount) {
+      const originalAmount = Number(sale.totalAmount);
+      const returnedAmount = (sale.returns || []).reduce((sum, ret) => sum + Number(ret.totalAmount), 0);
+      const totalRefunded = (sale.returns || []).reduce((sum, ret) => sum + (ret.refundPaid ? Number(ret.refundAmount || 0) : 0), 0);
+      const netAmount = Math.max(originalAmount - returnedAmount, 0);
+      const balance = netAmount - Number(sale.paidAmount || 0) + totalRefunded;
+      if (balance > 0) {
+        if (sale.contactId) {
+          salesDueByContact[sale.contactId] = (salesDueByContact[sale.contactId] || 0) + balance;
+        } else {
+          salesDueWalkIn += balance;
+        }
+      }
+    }
+    let totalSalesDue = salesDueWalkIn;
+    for (const [contactId, due] of Object.entries(salesDueByContact)) {
+      const ledgerCredit = ledgerCreditsByContact[contactId] || 0;
+      totalSalesDue += Math.max(0, due - ledgerCredit);
+    }
+
+    // Calculate Purchase Due per contact, then subtract ledger debits
+    let totalPurchaseDue = 0;
+    const purchaseDueByContact = {};
+    for (const p of totalPurchaseDueAmount) {
+      const due = Number(p.totalAmount) - Number(p.paidAmount);
+      if (due > 0) {
+        purchaseDueByContact[p.contactId] = (purchaseDueByContact[p.contactId] || 0) + due;
+      }
+    }
+    for (const [contactId, due] of Object.entries(purchaseDueByContact)) {
+      const ledgerDebit = ledgerDebitsByContact[contactId] || 0;
+      totalPurchaseDue += Math.max(0, due - ledgerDebit);
+    }
+
     res.json({
       // Basic inventory stats
       totalProducts,
@@ -640,19 +711,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       salesLast30Days: Number(salesLast30Days._sum.totalAmount || 0) - Number(returnsLast30DaysAgg._sum.totalAmount || 0),
       salesLast365Days: Number(salesLast365Days._sum.totalAmount || 0) - Number(returnsLast365DaysAgg._sum.totalAmount || 0),
       ...reportPeriodData,
-      totalPurchaseDueAmount: totalPurchaseDueAmount
-        .filter(p => Number(p.totalAmount) > Number(p.paidAmount))
-        .reduce((sum, p) => sum + Number(p.totalAmount - p.paidAmount), 0),
-      totalSalesDueAmount: totalSalesDueAmount
-        .map(sale => {
-          const originalAmount = Number(sale.totalAmount);
-          const returnedAmount = (sale.returns || []).reduce((sum, ret) => sum + Number(ret.totalAmount), 0);
-          const totalRefunded = (sale.returns || []).reduce((sum, ret) => sum + (ret.refundPaid ? Number(ret.refundAmount || 0) : 0), 0);
-          const netAmount = Math.max(originalAmount - returnedAmount, 0);
-          const balance = netAmount - Number(sale.paidAmount || 0) + totalRefunded;
-          return balance > 0 ? balance : 0;
-        })
-        .reduce((sum, due) => sum + due, 0),
+      totalPurchaseDueAmount: totalPurchaseDue,
+      totalSalesDueAmount: totalSalesDue,
       totalDueCredits: (totalDueCredits || [])
         .map(sale => {
           const originalAmount = Number(sale.totalAmount);

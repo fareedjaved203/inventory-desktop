@@ -88,7 +88,7 @@ function createLoanRoutes(prismaInstance) {
       
       await prisma.$executeRaw`
         INSERT INTO "LoanTransaction" (id, amount, type, description, "contactId", date, "userId", "createdAt", "updatedAt")
-        VALUES (${transactionId}, ${amount}, ${type}, ${description}, ${contactId}, ${new Date().toISOString()}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+        VALUES (${transactionId}, ${amount}, ${type}, ${description}, ${contactId}, ${new Date().getTime()}, ${req.userId}, ${new Date().getTime()}, ${new Date().getTime()})
       `;
       
       const transaction = await prisma.loanTransaction.findUnique({

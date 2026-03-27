@@ -197,7 +197,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", description, "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate.toISOString()}, ${req.body.description || null}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null}, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null}, ${req.body.contactId}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate.getTime()}, ${req.body.description || null}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).getTime() : null}, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).getTime() : null}, ${req.body.contactId}, ${req.userId}, ${new Date().getTime()}, ${new Date().getTime()})
           `;
           
           // Create purchase items
@@ -207,7 +207,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             
             await prisma.$executeRaw`
               INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${purchaseId}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${purchaseId}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           
@@ -339,10 +339,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 description = ${req.body.description || null},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
-                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null},
-                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null},
+                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).getTime() : null},
+                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).getTime() : null},
                 "contactId" = ${req.body.contactId},
-                "updatedAt" = ${new Date().toISOString()}
+                "updatedAt" = ${new Date().getTime()}
             WHERE id = ${req.params.id} AND "userId" = ${req.userId}
           `;
           
@@ -352,7 +352,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             const isTotalCostItem = item.perUnitCost ? true : false;
             await prisma.$executeRaw`
               INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${req.params.id}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${req.params.id}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           

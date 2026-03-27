@@ -408,18 +408,12 @@ export function setupContactRoutes(app, prisma) {
         let debit = 0, credit = 0;
         let description = '';
         
-        if (loan.type === 'GIVEN') {
+        if (loan.type === 'GIVEN' || loan.type === 'RETURNED_TO_CONTACT') {
           debit = amount;
-          description = `Debit Charge${loan.description ? ` - ${loan.description}` : ''}`;
-        } else if (loan.type === 'TAKEN') {
+          description = `Debit${loan.description ? ` - ${loan.description}` : ''}`;
+        } else if (loan.type === 'TAKEN' || loan.type === 'RETURNED_BY_CONTACT') {
           credit = amount;
-          description = `Credit Deposit${loan.description ? ` - ${loan.description}` : ''}`;
-        } else if (loan.type === 'RETURNED_BY_CONTACT') {
-          credit = amount;
-          description = `Payment Received${loan.description ? ` - ${loan.description}` : ''}`;
-        } else if (loan.type === 'RETURNED_TO_CONTACT') {
-          debit = amount;
-          description = `Payment Made${loan.description ? ` - ${loan.description}` : ''}`;
+          description = `Credit${loan.description ? ` - ${loan.description}` : ''}`;
         }
         
         allTransactions.push({

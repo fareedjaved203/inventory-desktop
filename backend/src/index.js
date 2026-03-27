@@ -139,6 +139,26 @@ async function ensureSchema(prismaClient) {
     try { await prismaClient.$executeRawUnsafe(sql); } catch (e) { /* index exists */ }
   }
 
+  // Fix any text dates left by old $executeRaw inserts (convert to integer epoch ms)
+  const dateCols = [
+    ['Sale', 'saleDate'], ['Sale', 'createdAt'], ['Sale', 'updatedAt'],
+    ['SaleItem', 'createdAt'], ['SaleItem', 'updatedAt'],
+    ['SaleReturn', 'returnDate'], ['SaleReturn', 'createdAt'], ['SaleReturn', 'updatedAt'],
+    ['SaleReturnItem', 'createdAt'], ['SaleReturnItem', 'updatedAt'],
+    ['BulkPurchase', 'purchaseDate'], ['BulkPurchase', 'createdAt'], ['BulkPurchase', 'updatedAt'],
+    ['BulkPurchaseItem', 'createdAt'], ['BulkPurchaseItem', 'updatedAt'],
+    ['Expense', 'date'], ['Expense', 'createdAt'], ['Expense', 'updatedAt'],
+    ['LoanTransaction', 'date'], ['LoanTransaction', 'createdAt'], ['LoanTransaction', 'updatedAt'],
+    ['Manufacturing', 'productionDate'], ['Manufacturing', 'createdAt'], ['Manufacturing', 'updatedAt'],
+  ];
+  for (const [table, col] of dateCols) {
+    try {
+      await prismaClient.$executeRawUnsafe(
+        `UPDATE "${table}" SET "${col}" = CAST(strftime('%s', "${col}") AS INTEGER) * 1000 WHERE typeof("${col}") = 'text' AND "${col}" IS NOT NULL`
+      );
+    } catch (e) { /* table/column might not exist yet */ }
+  }
+
   console.log('Database schema verified');
 }
 
@@ -609,7 +629,8 @@ app.get('/api/products/damaged', authenticateToken, validateRequest({ query: que
         items: items.map(item => ({
           ...item,
           price: Number(item.price),
-          quantity: Number(item.damagedQuantity || 0)
+          quantity: Number(item.quantity),
+          damagedQuantity: Number(item.damagedQuantity || 0)
         })),
         total,
         page,

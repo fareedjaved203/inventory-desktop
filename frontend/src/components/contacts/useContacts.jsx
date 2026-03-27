@@ -169,9 +169,13 @@ export function useContacts() {
   const createLoanTransaction = useMutation(
     async (data) => await API.createLoanTransaction({ ...data, contactId: selectedContact.id }),
     {
-      onSuccess: () => {
+      onSuccess: async () => {
         queryClient.invalidateQueries(['loan-transactions', selectedContact?.id]);
-        queryClient.invalidateQueries(['contacts']);
+        await queryClient.invalidateQueries(['contacts']);
+        // Update selectedContact with fresh balance from refetched data
+        const freshContacts = queryClient.getQueryData(['contacts', page, debouncedSearchTerm, contactTypeFilter]);
+        const updated = freshContacts?.items?.find(c => c.id === selectedContact?.id);
+        if (updated) setSelectedContact(updated);
         setLoanAmount('');
         setLoanDescription('');
         toast.success('Ledger entry added successfully');
@@ -183,9 +187,12 @@ export function useContacts() {
   const deleteLoanTransaction = useMutation(
     async (transactionId) => await API.deleteLoanTransaction(transactionId),
     {
-      onSuccess: () => {
+      onSuccess: async () => {
         queryClient.invalidateQueries(['loan-transactions', selectedContact?.id]);
-        queryClient.invalidateQueries(['contacts']);
+        await queryClient.invalidateQueries(['contacts']);
+        const freshContacts = queryClient.getQueryData(['contacts', page, debouncedSearchTerm, contactTypeFilter]);
+        const updated = freshContacts?.items?.find(c => c.id === selectedContact?.id);
+        if (updated) setSelectedContact(updated);
         toast.success('Entry deleted');
       },
       onError: (error) => toast.error('Failed to delete transaction')

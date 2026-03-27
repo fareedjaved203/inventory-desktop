@@ -92,7 +92,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const expenseId = crypto.randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "Expense" (id, amount, date, category, description, "paymentMethod", "receiptNumber", "contactId", "productId", "userId", "createdAt", "updatedAt")
-      VALUES (${expenseId}, ${validatedData.amount}, ${createDateWithCurrentTime(validatedData.date).toISOString()}, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+      VALUES (${expenseId}, ${validatedData.amount}, ${createDateWithCurrentTime(validatedData.date).getTime()}, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, ${new Date().getTime()}, ${new Date().getTime()})
     `;
     
     const expense = await prisma.expense.findUnique({
@@ -133,14 +133,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
     await prisma.$executeRaw`
       UPDATE "Expense" 
       SET amount = ${validatedData.amount},
-          date = ${createDateWithCurrentTime(validatedData.date).toISOString()},
+          date = ${createDateWithCurrentTime(validatedData.date).getTime()},
           category = ${validatedData.category},
           description = ${validatedData.description},
           "paymentMethod" = ${validatedData.paymentMethod},
           "receiptNumber" = ${validatedData.receiptNumber},
           "contactId" = ${validatedData.contactId},
           "productId" = ${validatedData.productId},
-          "updatedAt" = ${new Date().toISOString()}
+          "updatedAt" = ${new Date().getTime()}
       WHERE id = ${id} AND "userId" = ${userId}
     `;
     

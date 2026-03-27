@@ -86,7 +86,7 @@ export function setupSalesRoutes(app, prisma) {
           const saleId = crypto.randomUUID();
           await prisma.$executeRaw`
             INSERT INTO "Sale" (id, "billNumber", "totalAmount", "originalTotalAmount", discount, "paidAmount", "saleDate", "contactId", "orderBookerId", "employeeId", "carNumber", "transportCost", "loadingDate", "arrivalDate", description, "userId", "createdAt", "updatedAt")
-            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}, ${req.body.discount || 0}, ${req.body.paidAmount || 0}, ${saleDate.toISOString()}, ${req.body.contactId}, ${req.body.orderBookerId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null}, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null}, ${req.body.description}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+            VALUES (${saleId}, ${billNumber}, ${req.body.totalAmount}, ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)}, ${req.body.discount || 0}, ${req.body.paidAmount || 0}, ${saleDate.getTime()}, ${req.body.contactId}, ${req.body.orderBookerId}, ${req.body.employeeId}, ${req.body.carNumber}, ${req.body.transportCost}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).getTime() : null}, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).getTime() : null}, ${req.body.description}, ${req.userId}, ${new Date().getTime()}, ${new Date().getTime()})
           `;
           
           // Create sale items
@@ -94,7 +94,7 @@ export function setupSalesRoutes(app, prisma) {
             const itemId = crypto.randomUUID();
             await prisma.$executeRaw`
               INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${saleId}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${saleId}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           
@@ -748,16 +748,16 @@ export function setupSalesRoutes(app, prisma) {
                 "originalTotalAmount" = ${req.body.originalTotalAmount || req.body.totalAmount + (req.body.discount || 0)},
                 discount = ${req.body.discount || 0},
                 "paidAmount" = ${req.body.paidAmount || 0},
-                "saleDate" = ${saleDate.toISOString()},
+                "saleDate" = ${saleDate.getTime()},
                 "contactId" = ${req.body.contactId},
                 "orderBookerId" = ${req.body.orderBookerId},
                 "employeeId" = ${req.body.employeeId},
                 "carNumber" = ${req.body.carNumber},
                 "transportCost" = ${req.body.transportCost},
-                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null},
-                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null},
+                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).getTime() : null},
+                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).getTime() : null},
                 description = ${req.body.description},
-                "updatedAt" = ${new Date().toISOString()}
+                "updatedAt" = ${new Date().getTime()}
             WHERE id = ${req.params.id} AND "userId" = ${req.userId}
           `;
           
@@ -766,7 +766,7 @@ export function setupSalesRoutes(app, prisma) {
             const itemId = crypto.randomUUID();
             await prisma.$executeRaw`
               INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${req.params.id}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${req.params.id}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           
@@ -1031,7 +1031,7 @@ app.get('/api/sales-analytics', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Start date must be before end date' });
     }
 
-    const cacheKey = `${interval}-${start.toISOString()}-${end.toISOString()}`;
+    const cacheKey = `${interval}-${start.getTime()}-${end.getTime()}`;
     const cached = analyticsCache.get(cacheKey);
     if (cached && cached.timestamp > Date.now() - CACHE_TTL) {
       return res.json(cached.data);

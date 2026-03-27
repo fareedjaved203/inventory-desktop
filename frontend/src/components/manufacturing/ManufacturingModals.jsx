@@ -55,7 +55,7 @@ export function ManufacturingModals({
                   {t('recipeName')}
                 </label>
                 <input
-                  {...register('name', { required: 'Recipe name is required' })}
+                  {...register('name', { required: 'Formula name is required' })}
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {errors.name && (
@@ -262,7 +262,7 @@ export function ManufacturingModals({
                   {t('recipe')}
                 </label>
                 <select
-                  {...register('recipeId', { required: 'Recipe is required' })}
+                  {...register('recipeId', { required: 'Formula is required' })}
                   onChange={(e) => {
                     const recipeId = e.target.value;
                     setSelectedRecipe(recipeId);

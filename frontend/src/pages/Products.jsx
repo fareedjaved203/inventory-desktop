@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../utils/translations';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -53,6 +54,15 @@ function Products() {
     restoreDamaged,
     itemsPerPage
   } = useProducts();
+
+  const location = useLocation();
+  useEffect(() => {
+    if (location.state?.showLowStock) {
+      setShowLowStock(true);
+      // Clear the state so it doesn't persist on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 ${language === 'ur' ? 'font-urdu' : ''}`}>

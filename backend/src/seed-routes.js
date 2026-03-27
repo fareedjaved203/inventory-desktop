@@ -312,8 +312,8 @@ export function setupSeedRoutes(app, prisma) {
       }
 
       // ── Loan Transactions (30) ──
-      const loanTypes = ['GIVEN', 'TAKEN', 'RETURNED_BY_CONTACT', 'RETURNED_TO_CONTACT'];
-      const loanDescs = { GIVEN: 'Advance payment to', TAKEN: 'Loan received from', RETURNED_BY_CONTACT: 'Payment received from', RETURNED_TO_CONTACT: 'Payment made to' };
+      const loanTypes = ['GIVEN', 'TAKEN'];
+      const loanDescs = { GIVEN: 'Advance payment to', TAKEN: 'Payment received from' };
       for (let i = 0; i < 30; i++) {
         const type = pick(loanTypes);
         const contact = pick(contacts);

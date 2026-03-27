@@ -403,7 +403,7 @@ export function setupManufacturingRoutes(app, prisma) {
         
         await prisma.$executeRaw`
           INSERT INTO "Manufacturing" (id, "recipeId", "quantityProduced", "manufacturingCost", "productionDate", notes, "userId", "createdAt", "updatedAt")
-          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}, ${Number(Math.round(manufacturingCost))}, ${productionDate.toISOString()}, ${req.body.notes || null}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
+          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}, ${Number(Math.round(manufacturingCost))}, ${productionDate.getTime()}, ${req.body.notes || null}, ${req.userId}, ${new Date().getTime()}, ${new Date().getTime()})
         `;
         
         const manufacturing = await prisma.manufacturing.findUnique({

@@ -93,11 +93,8 @@ export function LoanTrackingModal({
                     onChange={(e) => setLoanTypeState ? setLoanTypeState(e.target.value) : setLoanType(e.target.value)}
                     className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="GIVEN">Debit / Charge / Money Given (+)</option>
-                    <option value="TAKEN">Credit / Deposit / Money Received (+)</option>
-                    {/* These two below are legacy/internal - we might want to guide user but let's keep it simple */}
-                    <option value="RETURNED_BY_CONTACT">Payment Received (Credit -)</option>
-                    <option value="RETURNED_TO_CONTACT">Payment Made (Debit -)</option>
+                    <option value="GIVEN">{language === 'ur' ? 'ڈیبٹ (رقم دی)' : 'Debit (Money Given)'}</option>
+                    <option value="TAKEN">{language === 'ur' ? 'کریڈٹ (رقم لی)' : 'Credit (Money Received)'}</option>
                   </select>
                 </div>
                 <div>
@@ -143,10 +140,8 @@ export function LoanTrackingModal({
                   <div key={transaction.id} className="flex justify-between items-center p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-primary-300 transition-colors">
                     <div>
                       <div className="font-semibold text-gray-800">
-                        {transaction.type === 'GIVEN' && '💸 Debit / Charge'}
-                        {transaction.type === 'TAKEN' && '💵 Credit / Deposit'}
-                        {transaction.type === 'RETURNED_BY_CONTACT' && '💰 Payment Received (Credit)'}
-                        {transaction.type === 'RETURNED_TO_CONTACT' && '💳 Payment Made (Debit)'}
+                        {(transaction.type === 'GIVEN' || transaction.type === 'RETURNED_TO_CONTACT') && (language === 'ur' ? '💸 ڈیبٹ (رقم دی)' : '💸 Debit (Money Given)')}
+                        {(transaction.type === 'TAKEN' || transaction.type === 'RETURNED_BY_CONTACT') && (language === 'ur' ? '💵 کریڈٹ (رقم لی)' : '💵 Credit (Money Received)')}
                       </div>
                       {transaction.description && (
                         <div className="text-sm text-gray-600 italic">"{transaction.description}"</div>

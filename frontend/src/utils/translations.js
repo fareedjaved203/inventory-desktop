@@ -174,11 +174,11 @@ export const translations = {
 
     // Manufacturing Page
     manufacturing: 'Manufacturing',
-    recipes: 'Recipes',
+    recipes: 'Formulas',
     productionHistory: 'Production History',
-    addRecipe: 'Add Recipe',
+    addRecipe: 'Add Formula',
     startProduction: 'Start Production',
-    recipeName: 'Recipe Name',
+    recipeName: 'Formula Name',
     finalProduct: 'Final Product',
     selectProduct: 'Select Product',
     ingredients: 'Ingredients',
@@ -189,9 +189,10 @@ export const translations = {
     manufacturingCost: 'Manufacturing Cost',
     quantityToMake: 'Quantity to Make',
     maxProduction: 'Max Production',
-    editRecipe: 'Edit Recipe',
-    addNewRecipe: 'Add New Recipe',
-    selectRecipe: 'Select Recipe',
+    editRecipe: 'Edit Formula',
+    addNewRecipe: 'Add New Formula',
+    selectRecipe: 'Select Formula',
+    recipe: 'Formula',
     totalEstimatedCost: 'Total Estimated Cost',
     costPerUnit: 'Cost per unit'
   },
@@ -371,11 +372,11 @@ export const translations = {
 
     // Manufacturing Page
     manufacturing: 'مینوفیکچرنگ',
-    recipes: 'ترکیبیں',
+    recipes: 'فارمولے',
     productionHistory: 'پیداوار کی تاریخ',
-    addRecipe: 'ترکیب شامل کریں',
+    addRecipe: 'فارمولا شامل کریں',
     startProduction: 'پیداوار شروع کریں',
-    recipeName: 'ترکیب کا نام',
+    recipeName: 'فارمولے کا نام',
     finalProduct: 'حتمی پروڈکٹ',
     selectProduct: 'پروڈکٹ منتخب کریں',
     ingredients: 'اجزاء',
@@ -386,9 +387,10 @@ export const translations = {
     manufacturingCost: 'مینوفیکچرنگ لاگت',
     quantityToMake: 'بنانے کی مقدار',
     maxProduction: 'زیادہ سے زیادہ پیداوار',
-    editRecipe: 'ترکیب میں ترمیم کریں',
-    addNewRecipe: 'نئی ترکیب شامل کریں',
-    selectRecipe: 'ترکیب منتخب کریں',
+    editRecipe: 'فارمولے میں ترمیم کریں',
+    addNewRecipe: 'نیا فارمولا شامل کریں',
+    selectRecipe: 'فارمولا منتخب کریں',
+    recipe: 'فارمولا',
     totalEstimatedCost: 'کل تخمینی لاگت',
     costPerUnit: 'فی یونٹ لاگت'
   }

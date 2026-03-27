@@ -229,51 +229,6 @@ function Dashboard() {
         </div>
       </ErrorBoundary>
 
-      {/* Financial Overview */}
-      <ErrorBoundary>
-        <h2 className="text-xl font-semibold mb-4 text-primary-700">{language === 'ur' ? 'مالی جائزہ' : 'Financial Overview'}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <DashboardCard
-            title={t('totalSales')}
-            value={formatPakistaniCurrency(data?.totalSales || 0)}
-            icon={<RiMoneyDollarCircleFill className="text-xl" />}
-            color="slate"
-            isLoading={isLoading}
-            error={error}
-          />
-          <DashboardCard
-            title="Purchase Due"
-            value={formatPakistaniCurrency(salesStats?.totalPurchaseDueAmount || 0)}
-            icon={<MdOutlinePayments className="text-xl" />}
-            color="rose"
-            isLoading={isLoadingStats}
-            error={statsError}
-            onClick={handlePendingPurchasePaymentsClick}
-            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
-          />
-          <DashboardCard
-            title="Sales Due"
-            value={formatPakistaniCurrency(salesStats?.totalSalesDueAmount || 0)}
-            icon={<MdOutlinePayments className="text-xl" />}
-            color="orange"
-            isLoading={isLoadingStats}
-            error={statsError}
-            onClick={handlePendingSalePaymentsClick}
-            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
-          />
-          <DashboardCard
-            title="Due Credits"
-            value={formatPakistaniCurrency(salesStats?.totalDueCredits || 0)}
-            icon={<RiMoneyDollarCircleFill className="text-xl" />}
-            color="lime"
-            isLoading={isLoadingStats}
-            error={statsError}
-            onClick={handleDueCreditsClick}
-            subtitle={language === 'ur' ? 'تفصیلات دیکھنے کے لیے کلک کریں' : 'Click to view'}
-          />
-        </div>
-      </ErrorBoundary>
-
       {/* Sales Trend Chart */}
       <ErrorBoundary>
         <div className="mb-8">
