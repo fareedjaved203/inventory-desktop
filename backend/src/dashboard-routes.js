@@ -106,7 +106,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     const yearAgo = new Date(todayLocalUTC.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     // Execute queries in smaller batches to avoid connection pool exhaustion
-    const [salesToday, salesLast7Days, salesLast30Days, salesLast365Days] = await Promise.all([
+    const [salesToday, salesLast7Days, salesLast30Days, salesLast365Days,
+           returnsTodayAgg, returnsLast7DaysAgg, returnsLast30DaysAgg, returnsLast365DaysAgg] = await Promise.all([
       // Sales Today
       prisma.sale.aggregate({
         _sum: { totalAmount: true },
@@ -149,6 +150,58 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         where: {
           userId: req.userId,
           saleDate: {
+            gte: yearAgo,
+            lt: tomorrowStart
+          }
+        }
+      }),
+      
+      // Returns Today (non-container only, totalAmount > 0)
+      prisma.saleReturn.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          userId: req.userId,
+          totalAmount: { gt: 0 },
+          returnDate: {
+            gte: todayLocalUTC,
+            lt: tomorrowStart
+          }
+        }
+      }),
+      
+      // Returns Last 7 Days
+      prisma.saleReturn.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          userId: req.userId,
+          totalAmount: { gt: 0 },
+          returnDate: {
+            gte: sevenDaysAgo,
+            lt: tomorrowStart
+          }
+        }
+      }),
+      
+      // Returns Last 30 Days
+      prisma.saleReturn.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          userId: req.userId,
+          totalAmount: { gt: 0 },
+          returnDate: {
+            gte: thirtyDaysAgo,
+            lt: tomorrowStart
+          }
+        }
+      }),
+      
+      // Returns Last 365 Days
+      prisma.saleReturn.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          userId: req.userId,
+          totalAmount: { gt: 0 },
+          returnDate: {
             gte: yearAgo,
             lt: tomorrowStart
           }
@@ -318,6 +371,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     ]);
 
     // Calculate gross profit based on actual sale items (retail price - purchase cost per item)
+    // Also subtracts profit lost from returned items
     const calculateProfit = async (startDate, endDate) => {
       const sales = await prisma.sale.findMany({
         where: {
@@ -328,6 +382,15 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           items: {
             include: {
               product: true
+            }
+          },
+          returns: {
+            include: {
+              items: {
+                include: {
+                  product: true
+                }
+              }
             }
           }
         }
@@ -356,6 +419,29 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           // Calculate profit for this item
           const itemProfit = (salePrice - purchaseCostPerUnit) * quantity;
           totalProfit += itemProfit;
+        }
+        
+        // Subtract profit lost from non-container returns
+        for (const ret of (sale.returns || [])) {
+          if (Number(ret.totalAmount) === 0) continue; // Skip container returns
+          for (const retItem of ret.items) {
+            const retQty = Number(retItem.quantity);
+            // Find the matching sale item to get the purchase cost
+            const matchingSaleItem = sale.items.find(si => si.productId === retItem.productId);
+            if (matchingSaleItem) {
+              const salePrice = Number(retItem.price || matchingSaleItem.price);
+              const product = matchingSaleItem.product;
+              let purchaseCostPerUnit = 0;
+              const weightedUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton'];
+              if (weightedUnits.includes(product.unit?.toLowerCase())) {
+                purchaseCostPerUnit = Number(product.perUnitPurchasePrice || 0);
+              } else {
+                purchaseCostPerUnit = Number(matchingSaleItem.purchasePrice || product.price || 0);
+              }
+              const lostProfit = (salePrice - purchaseCostPerUnit) * retQty;
+              totalProfit -= lostProfit;
+            }
+          }
         }
       }
       
@@ -490,9 +576,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       const totalReturnsAmount = Number(reportReturns._sum.totalAmount || 0);
       
       reportPeriodData = {
-        totalRevenue: totalSalesAmount,
+        totalRevenue: totalSalesAmount - totalReturnsAmount,
         totalExpenses: totalExpensesAmount,
-        totalSales: totalSalesAmount,
+        totalSales: totalSalesAmount - totalReturnsAmount,
         totalPurchases: totalPurchasesAmount,
         totalTransactions: reportTransactions,
         totalPurchaseTransactions: reportPurchaseTransactions,
@@ -548,11 +634,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       totalInventory: Number(totalInventory._sum.quantity || 0),
       lowStock,
       totalSales: Number(totalSales._sum.totalAmount || 0),
-      // Time-based sales stats
-      salesToday: Number(salesToday._sum.totalAmount || 0),
-      salesLast7Days: Number(salesLast7Days._sum.totalAmount || 0),
-      salesLast30Days: Number(salesLast30Days._sum.totalAmount || 0),
-      salesLast365Days: Number(salesLast365Days._sum.totalAmount || 0),
+      // Time-based sales stats (net of returns)
+      salesToday: Number(salesToday._sum.totalAmount || 0) - Number(returnsTodayAgg._sum.totalAmount || 0),
+      salesLast7Days: Number(salesLast7Days._sum.totalAmount || 0) - Number(returnsLast7DaysAgg._sum.totalAmount || 0),
+      salesLast30Days: Number(salesLast30Days._sum.totalAmount || 0) - Number(returnsLast30DaysAgg._sum.totalAmount || 0),
+      salesLast365Days: Number(salesLast365Days._sum.totalAmount || 0) - Number(returnsLast365DaysAgg._sum.totalAmount || 0),
       ...reportPeriodData,
       totalPurchaseDueAmount: totalPurchaseDueAmount
         .filter(p => Number(p.totalAmount) > Number(p.paidAmount))

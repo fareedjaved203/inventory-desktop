@@ -300,26 +300,21 @@ function ReturnModal({ sale, isOpen, onClose, returnType = 'partial' }) {
               />
             </div>
 
-            {returnItems.length > 0 && (
-              <div className={`${isContainerReturn ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4`}>
-                <h4 className={`font-medium ${isContainerReturn ? 'text-blue-800' : 'text-red-800'} mb-2`}>
-                  {isContainerReturn ? 'Container Return Summary' : 'Return Summary'}
+            {returnItems.length > 0 && !isContainerReturn && (
+              <div className="bg-red-50 border-red-200 border rounded-lg p-4">
+                <h4 className="font-medium text-red-800 mb-2">
+                  Return Summary
                 </h4>
-                {isContainerReturn && (
-                  <p className="text-sm text-blue-700 mb-3">
-                    Empty containers returned - No payment adjustment will be made
-                  </p>
-                )}
                 {returnItems.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <span>{item.productName} × {item.quantity}</span>
-                    <span>{isContainerReturn ? 'No refund' : formatPakistaniCurrency(item.price * item.quantity)}</span>
+                    <span>{formatPakistaniCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
-                <div className={`border-t ${isContainerReturn ? 'border-blue-300' : 'border-red-300'} mt-2 pt-2 font-medium`}>
+                <div className="border-t border-red-300 mt-2 pt-2 font-medium">
                   <div className="flex justify-between">
                     <span>Total Return Amount:</span>
-                    <span>{isContainerReturn ? formatPakistaniCurrency(0) : formatPakistaniCurrency(calculateReturnTotal())}</span>
+                    <span>{formatPakistaniCurrency(calculateReturnTotal())}</span>
                   </div>
                 </div>
               </div>

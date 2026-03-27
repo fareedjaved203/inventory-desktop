@@ -1,19 +1,31 @@
 @echo off
-title License Generator
+title License Generator (Device-Bound)
 color 0A
 
 :menu
 cls
 echo ===============================================
-echo           LICENSE GENERATOR v1.0
+echo     LICENSE GENERATOR v2.0 (Device-Bound)
 echo ===============================================
+echo.
+echo STEP 1: Enter the Device ID from the app
+echo         (User copies it from the License screen)
+echo.
+set /p deviceId="Device ID: "
+
+if "%deviceId%"=="" (
+    echo ERROR: Device ID is required!
+    pause
+    goto menu
+)
+
 echo.
 echo Select license duration:
 echo 1. Minutes
 echo 2. Hours
 echo 3. Days  
 echo 4. Years
-echo 5. Lifetime (50 Years)
+echo 5. Lifetime (30 Years)
 echo 6. Exit
 echo.
 set /p choice="Enter your choice (1-6): "
@@ -68,32 +80,52 @@ goto generate
 
 :generate
 cls
-echo Generating license...
+echo Generating device-bound license...
+echo.
 
-:: Generate random hex values
-set /a rand1=%random% * 65536 + %random%
-set /a rand2=%random% * 65536 + %random%
-
-:: Get current timestamp and calculate durations
-powershell -command "$now = [int64](([datetime]::UtcNow).Subtract([datetime]'1970-01-01')).TotalSeconds; $activationWindow = 600; $durationSeconds = %totalMinutes% * 60; Write-Host \"Current: $now\"; Write-Host \"ActivationWindow: $activationWindow\"; Write-Host \"DurationSeconds: $durationSeconds\"; Write-Host \"Minutes: %totalMinutes%\"; $rand1 = Get-Random -Maximum 65536; $rand2 = Get-Random -Maximum 65536; $actWin = $activationWindow -band 0xFFFF; $durHigh = [int]($durationSeconds -shr 16); $durLow = $durationSeconds -band 0xFFFF; $checksum = ($rand1 + $rand2 + $durHigh + $durLow) -band 0xFFFF; $license = '{0:X4}-{1:X4}-{2:X4}-{3:X4}-{4:X4}' -f $rand1, $rand2, $durHigh, $durLow, $checksum; Write-Host \"LICENSE:$license\"; Write-Host \"DURATION:$durationSeconds\"" > temp_license.txt
+powershell -command ^
+  "$secret = 'HisabGhar2025$ecure!Key';" ^
+  "$deviceId = '%deviceId%';" ^
+  "$durationSeconds = %totalMinutes% * 60;" ^
+  "$now = [int64](([datetime]::UtcNow).Subtract([datetime]'1970-01-01')).TotalSeconds;" ^
+  "$devHash = $deviceId.Substring(0, [Math]::Min(8, $deviceId.Length)).ToUpper();" ^
+  "$rand = Get-Random -Maximum 65536;" ^
+  "$durHigh = [int]($durationSeconds -shr 16);" ^
+  "$durLow = $durationSeconds -band 0xFFFF;" ^
+  "$tsHex = '{0:X8}' -f [int]$now;" ^
+  "$randHex = '{0:X4}' -f $rand;" ^
+  "$durHighHex = '{0:X4}' -f $durHigh;" ^
+  "$durLowHex = '{0:X4}' -f $durLow;" ^
+  "$payload = \"$devHash-$randHex-$durHighHex-$durLowHex-$tsHex\";" ^
+  "$hmac = New-Object System.Security.Cryptography.HMACSHA256;" ^
+  "$hmac.Key = [System.Text.Encoding]::UTF8.GetBytes($secret);" ^
+  "$hash = $hmac.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($payload));" ^
+  "$hmacHex = ([BitConverter]::ToString($hash) -replace '-','').Substring(0,8);" ^
+  "$license = \"$payload-$hmacHex\";" ^
+  "Write-Host \"LICENSE:$license\";" ^
+  "Write-Host \"DURATION:$durationSeconds\";" ^
+  "Write-Host \"DEADLINE:5 minutes\"" > temp_license.txt
 
 :: Parse the output
 for /f "tokens=1,2 delims=:" %%a in (temp_license.txt) do (
     if "%%a"=="LICENSE" set license=%%b
-    if "%%a"=="EXPIRY" set expiry=%%b
 )
 
 :: Clean up
 del temp_license.txt
 
+echo ===============================================
+echo    LICENSE GENERATED SUCCESSFULLY!
+echo ===============================================
 echo.
-echo ===============================================
-echo LICENSE GENERATED SUCCESSFULLY!
-echo ===============================================
 echo License Key: %license%
-echo Duration: %duration% %unit%
-echo Activation Window: 10 minutes
-echo Expiry Timestamp: %expiry%
+echo Duration:    %duration% %unit%
+echo Device ID:   %deviceId%
+echo Activation:  Must activate within 5 MINUTES
+echo.
+echo IMPORTANT: This key is bound to the device above.
+echo It cannot be used on any other machine, and cannot
+echo be reused once activated or after 5 minutes.
 echo ===============================================
 echo.
 echo Copy this license key: %license%

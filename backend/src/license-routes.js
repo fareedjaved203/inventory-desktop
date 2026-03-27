@@ -3,8 +3,17 @@ import licenseManager from '../utils/licenseManager.js';
 import { authenticateToken } from './middleware.js';
 const router = express.Router();
 
+router.get('/device-id', authenticateToken, async (req, res) => {
+  try {
+    const deviceId = licenseManager.getDeviceFingerprint();
+    res.json({ deviceId });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get device ID' });
+  }
+});
+
 router.post('/validate', authenticateToken, async (req, res) => {
-  const { licenseKey, forceRebind } = req.body;
+  const { licenseKey } = req.body;
   const userId = req.userId;
   
   if (!licenseKey) {
@@ -12,15 +21,12 @@ router.post('/validate', authenticateToken, async (req, res) => {
   }
 
   try {
-    const result = await licenseManager.validateLicense(licenseKey, userId, forceRebind);
+    const result = await licenseManager.validateLicense(licenseKey, userId);
     
     if (result.valid) {
-      res.json({ success: true, expiry: result.expiry });
+      res.json({ success: true, expiry: result.expiry, duration: result.duration });
     } else {
-      res.status(400).json({ 
-        error: result.error,
-        canRebind: result.canRebind 
-      });
+      res.status(400).json({ error: result.error });
     }
   } catch (error) {
     res.status(500).json({ error: 'License validation failed' });
