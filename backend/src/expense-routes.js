@@ -32,10 +32,10 @@ router.get('/', authenticateToken, async (req, res) => {
       userId,
       ...(search && {
         OR: [
-          { category: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { receiptNumber: { contains: search, mode: 'insensitive' } },
-          { paymentMethod: { contains: search, mode: 'insensitive' } },
+          { category: { contains: search } },
+          { description: { contains: search } },
+          { receiptNumber: { contains: search } },
+          { paymentMethod: { contains: search } },
         ]
       })
     };
@@ -92,7 +92,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const expenseId = crypto.randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "Expense" (id, amount, date, category, description, "paymentMethod", "receiptNumber", "contactId", "productId", "userId", "createdAt", "updatedAt")
-      VALUES (${expenseId}, ${validatedData.amount}::decimal, ${createDateWithCurrentTime(validatedData.date).toISOString()}::timestamp, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+      VALUES (${expenseId}, ${validatedData.amount}, ${createDateWithCurrentTime(validatedData.date).toISOString()}, ${validatedData.category}, ${validatedData.description}, ${validatedData.paymentMethod}, ${validatedData.receiptNumber}, ${validatedData.contactId}, ${validatedData.productId}, ${userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
     `;
     
     const expense = await prisma.expense.findUnique({
@@ -132,15 +132,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await prisma.$executeRaw`
       UPDATE "Expense" 
-      SET amount = ${validatedData.amount}::decimal,
-          date = ${createDateWithCurrentTime(validatedData.date).toISOString()}::timestamp,
+      SET amount = ${validatedData.amount},
+          date = ${createDateWithCurrentTime(validatedData.date).toISOString()},
           category = ${validatedData.category},
           description = ${validatedData.description},
           "paymentMethod" = ${validatedData.paymentMethod},
           "receiptNumber" = ${validatedData.receiptNumber},
           "contactId" = ${validatedData.contactId},
           "productId" = ${validatedData.productId},
-          "updatedAt" = ${new Date().toISOString()}::timestamp
+          "updatedAt" = ${new Date().toISOString()}
       WHERE id = ${id} AND "userId" = ${userId}
     `;
     

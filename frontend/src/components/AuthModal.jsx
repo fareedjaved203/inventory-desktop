@@ -102,7 +102,7 @@ function AuthModal({ onSuccess, queryClient }) {
           </h2>
           <p className="text-gray-600">
             {isSignup 
-              ? 'Start your 7-day free trial' 
+              ? 'Start your 3-day free trial' 
               : 'Sign in to access your inventory system'
             }
           </p>
@@ -302,7 +302,7 @@ function AuthModal({ onSuccess, queryClient }) {
         {isSignup && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-700">
-              <strong>7-Day Free Trial:</strong> Full access to all features. No credit card required.
+              <strong>3-Day Free Trial:</strong> Full access to all features. No credit card required.
             </p>
           </div>
         )}

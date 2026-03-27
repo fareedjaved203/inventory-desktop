@@ -29,7 +29,7 @@ async function updateDemoLicense() {
       update: {
         licenseKey: LICENSE_KEY,
         deviceFingerprint: 'demo-device-fingerprint',
-        expiry: BigInt(licenseExpiry),
+        expiry: licenseExpiry,
         duration: '1_YEAR',
         isTrial: false,
         activatedAt: new Date()
@@ -38,7 +38,7 @@ async function updateDemoLicense() {
         userId: demoUser.id,
         licenseKey: LICENSE_KEY,
         deviceFingerprint: 'demo-device-fingerprint',
-        expiry: BigInt(licenseExpiry),
+        expiry: licenseExpiry,
         duration: '1_YEAR',
         isTrial: false,
         activatedAt: new Date()

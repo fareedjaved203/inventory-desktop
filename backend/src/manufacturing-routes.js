@@ -35,8 +35,7 @@ export function setupManufacturingRoutes(app, prisma) {
 
       if (search) {
         where.name = {
-          contains: search,
-          mode: 'insensitive'
+          contains: search
         };
       }
 
@@ -265,8 +264,7 @@ export function setupManufacturingRoutes(app, prisma) {
       if (search) {
         where.recipe = {
           name: {
-            contains: search,
-            mode: 'insensitive'
+            contains: search
           }
         };
       }
@@ -405,7 +403,7 @@ export function setupManufacturingRoutes(app, prisma) {
         
         await prisma.$executeRaw`
           INSERT INTO "Manufacturing" (id, "recipeId", "quantityProduced", "manufacturingCost", "productionDate", notes, "userId", "createdAt", "updatedAt")
-          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}::decimal, ${Number(Math.round(manufacturingCost))}::decimal, ${productionDate.toISOString()}::timestamp, ${req.body.notes || null}, ${req.userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+          VALUES (${manufacturingId}, ${req.body.recipeId}, ${Number(req.body.quantityProduced)}, ${Number(Math.round(manufacturingCost))}, ${productionDate.toISOString()}, ${req.body.notes || null}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
         `;
         
         const manufacturing = await prisma.manufacturing.findUnique({

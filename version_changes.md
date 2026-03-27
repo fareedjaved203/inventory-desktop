@@ -297,3 +297,7 @@ CREATE TABLE "Player" (
 
 CREATE INDEX "Player_userId_idx" ON "Player"("userId");
 CREATE INDEX "Player_userId_name_idx" ON "Player"("userId", "name");
+
+#5.10.11
+
+-switched to sqlite

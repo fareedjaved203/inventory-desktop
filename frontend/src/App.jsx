@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Sidebar from './components/Sidebar';
@@ -30,6 +30,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NotFound from './pages/NotFound';
 import AuthModal from './components/AuthModal';
 import LicenseModal from './components/LicenseModal';
+import DemoDataModal from './components/DemoDataModal';
 import LoadingSpinner from './components/LoadingSpinner';
 import { useLicense } from './hooks/useLicense';
 import API from './utils/api';
@@ -59,9 +60,11 @@ const queryClient = new QueryClient({
 function AppContent() {
   const queryClient = useQueryClient();
   const location = useLocation();
+  const { language } = useLanguage();
   const [appVersion, setAppVersion] = useState('1.0.0');
   const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [showDemoDataModal, setShowDemoDataModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: shopSettings } = useQuery(['shop-settings'], async () => {
@@ -164,12 +167,17 @@ function AppContent() {
     
     queryClient.invalidateQueries(['auth-check']);
     
+    // Show demo data modal for new signups (trial users)
+    if (authData.isNewUser) {
+      setShowDemoDataModal(true);
+    }
+    
     // Immediate redirect based on user type
     if (type === 'superadmin') {
       window.location.replace('/super-admin');
     } else if (type === 'employee') {
       window.location.replace('/employee-stats');
-    } else {
+    } else if (!authData.isNewUser) {
       window.location.replace('/');
     }
     
@@ -291,6 +299,16 @@ function AppContent() {
         isOpen={showLicenseModal && authState.isAuthenticated}
         onLicenseValidated={handleLicenseValidated}
         onLogout={handleLogout}
+      />
+      
+      {/* Demo data modal - shown right after signup */}
+      <DemoDataModal
+        isOpen={showDemoDataModal}
+        onClose={() => {
+          setShowDemoDataModal(false);
+          window.location.replace('/');
+        }}
+        language={language}
       />
       
       {/* Toast notifications */}

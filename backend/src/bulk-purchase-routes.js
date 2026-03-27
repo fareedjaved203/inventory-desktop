@@ -42,9 +42,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       // Add search filter for ID, invoice number and contact name
       if (search) {
         where.OR = [
-          { id: { contains: search, mode: 'insensitive' } },
-          { invoiceNumber: { contains: search, mode: 'insensitive' } },
-          { contact: { name: { contains: search, mode: 'insensitive' } } }
+          { id: { contains: search } },
+          { invoiceNumber: { contains: search } },
+          { contact: { name: { contains: search } } }
         ];
       }
 
@@ -88,9 +88,9 @@ export function setupBulkPurchaseRoutes(app, prisma) {
       // Add search filter for ID, invoice number and contact name
       if (search) {
         where.OR = [
-          { id: { contains: search, mode: 'insensitive' } },
-          { invoiceNumber: { contains: search, mode: 'insensitive' } },
-          { contact: { name: { contains: search, mode: 'insensitive' } } }
+          { id: { contains: search } },
+          { invoiceNumber: { contains: search } },
+          { contact: { name: { contains: search } } }
         ];
       }
       
@@ -197,7 +197,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
           
           await prisma.$executeRaw`
             INSERT INTO "BulkPurchase" (id, "invoiceNumber", "totalAmount", discount, "paidAmount", "purchaseDate", description, "carNumber", "transportCost", "loadingDate", "arrivalDate", "contactId", "userId", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate.toISOString()}::timestamp, ${req.body.description || null}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null}::timestamp, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null}::timestamp, ${req.body.contactId}, ${req.userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+            VALUES (${purchaseId}, ${invoiceNumber}, ${Number(req.body.totalAmount)}, ${Number(req.body.discount || 0)}, ${Number(req.body.paidAmount)}, ${purchaseDate.toISOString()}, ${req.body.description || null}, ${req.body.carNumber || null}, ${req.body.transportCost ? Number(req.body.transportCost) : null}, ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null}, ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null}, ${req.body.contactId}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
           `;
           
           // Create purchase items
@@ -207,7 +207,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             
             await prisma.$executeRaw`
               INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${isTotalCostItem}, ${purchaseId}, ${item.productId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${purchaseId}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
             `;
           }
           
@@ -339,10 +339,10 @@ export function setupBulkPurchaseRoutes(app, prisma) {
                 description = ${req.body.description || null},
                 "carNumber" = ${req.body.carNumber || null},
                 "transportCost" = ${req.body.transportCost ? Number(req.body.transportCost) : null},
-                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null}::timestamp,
-                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null}::timestamp,
+                "loadingDate" = ${req.body.loadingDate ? createDateWithCurrentTime(req.body.loadingDate).toISOString() : null},
+                "arrivalDate" = ${req.body.arrivalDate ? createDateWithCurrentTime(req.body.arrivalDate).toISOString() : null},
                 "contactId" = ${req.body.contactId},
-                "updatedAt" = ${new Date().toISOString()}::timestamp
+                "updatedAt" = ${new Date().toISOString()}
             WHERE id = ${req.params.id} AND "userId" = ${req.userId}
           `;
           
@@ -352,7 +352,7 @@ export function setupBulkPurchaseRoutes(app, prisma) {
             const isTotalCostItem = item.perUnitCost ? true : false;
             await prisma.$executeRaw`
               INSERT INTO "BulkPurchaseItem" (id, quantity, "purchasePrice", "isTotalCostItem", "bulkPurchaseId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}::decimal, ${item.purchasePrice}::decimal, ${isTotalCostItem}, ${req.params.id}, ${item.productId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+              VALUES (${itemId}, ${item.quantity}, ${item.purchasePrice}, ${isTotalCostItem}, ${req.params.id}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
             `;
           }
           

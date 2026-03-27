@@ -11,7 +11,7 @@ const randomDate = (start, end) => {
 
 // Helper function to generate random amounts
 const randomAmount = (min, max) => {
-  return BigInt(Math.floor(Math.random() * (max - min + 1)) + min);
+  return Math.floor(Math.random( * (max - min + 1)) + min);
 };
 
 async function seedDemoData() {
@@ -38,7 +38,7 @@ async function seedDemoData() {
       update: {
         licenseKey: '7FB2-8CE9-01E1-3380-41FC',
         deviceFingerprint: 'demo-device-fingerprint',
-        expiry: BigInt(licenseExpiry),
+        expiry: licenseExpiry,
         duration: '1_YEAR',
         isTrial: false,
         activatedAt: new Date()
@@ -47,7 +47,7 @@ async function seedDemoData() {
         userId: demoUser.id,
         licenseKey: '7FB2-8CE9-01E1-3380-41FC',
         deviceFingerprint: 'demo-device-fingerprint',
-        expiry: BigInt(licenseExpiry),
+        expiry: licenseExpiry,
         duration: '1_YEAR',
         isTrial: false,
         activatedAt: new Date()
@@ -255,14 +255,14 @@ async function seedDemoData() {
         data: {
           name: data.name,
           description: `High quality ${data.name} with warranty`,
-          price: BigInt(data.price),
-          purchasePrice: BigInt(data.purchasePrice),
-          retailPrice: BigInt(data.price),
-          wholesalePrice: BigInt(Math.floor(data.price * 0.9)),
-          perUnitPurchasePrice: BigInt(Math.floor(data.purchasePrice / data.quantity)),
+          price: data.price,
+          purchasePrice: data.purchasePrice,
+          retailPrice: data.price,
+          wholesalePrice: Math.floor(data.price * 0.9),
+          perUnitPurchasePrice: Math.floor(data.purchasePrice / data.quantity),
           sku: `SKU${String(i + 1).padStart(4, '0')}`,
-          quantity: BigInt(data.quantity),
-          lowStockThreshold: BigInt(data.lowStock),
+          quantity: data.quantity,
+          lowStockThreshold: data.lowStock,
           unit: 'pcs',
           isRawMaterial: data.isRaw,
           categoryId: categories[data.category].id,
@@ -347,7 +347,7 @@ async function seedDemoData() {
         await prisma.bulkPurchaseItem.create({
           data: {
             quantity: randomAmount(5, 50),
-            purchasePrice: BigInt(Number(product.purchasePrice)),
+            purchasePrice: Number(product.purchasePrice),
             bulkPurchaseId: purchase.id,
             productId: product.id
           }
@@ -385,8 +385,8 @@ async function seedDemoData() {
         await prisma.saleItem.create({
           data: {
             quantity: randomAmount(1, 5),
-            price: BigInt(Number(product.price)),
-            purchasePrice: BigInt(Number(product.purchasePrice)),
+            price: Number(product.price),
+            purchasePrice: Number(product.purchasePrice),
             saleId: sale.id,
             productId: product.id,
             priceType: Math.random() > 0.7 ? 'wholesale' : 'retail'
@@ -424,7 +424,7 @@ async function seedDemoData() {
         await prisma.saleReturnItem.create({
           data: {
             quantity: randomAmount(1, Number(item.quantity)),
-            price: BigInt(Number(item.price)),
+            price: Number(item.price),
             saleReturnId: saleReturn.id,
             productId: item.productId
           }

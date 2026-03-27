@@ -25,6 +25,7 @@ import { setupEmployeeStatsRoutes } from './employee-stats-routes.js';
 import { setupSuperAdminRoutes } from './super-admin-routes.js';
 import { setupSyncRoutes } from './sync-routes.js';
 import { setupAuditRoutes } from './audit-routes.js';
+import { setupSeedRoutes } from './seed-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 import createExpenseRoutes from './expense-routes.js';
@@ -39,10 +40,9 @@ dotenv.config();
 
 // Handle Electron environment and database selection
 let databaseUrl = process.env.DATABASE_URL;
-let isPostgreSQL = databaseUrl?.startsWith('postgresql');
 
 console.log('Initial Database URL:', databaseUrl);
-console.log('Initial Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
+console.log('Database type: SQLite');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,37 +57,27 @@ let prisma;
 
 // Initialize application with proper connection management
 async function initializeApp() {
-  // Set PostgreSQL URL for Electron with connection pooling
   if (process.env.ELECTRON_APP) {
     console.log('Running in Electron mode');
-    const postgresUrl = process.env.DATABASE_URL;
-    
-    // Try PostgreSQL first with connection pooling
-    try {
-      process.env.DATABASE_URL = postgresUrl;
-      prisma = new PrismaClient({
-        ...createConnectionConfig(),
-        datasources: {
-          db: {
-            url: postgresUrl
-          }
-        }
-      });
-      await prisma.$connect();
-      await prisma.$queryRaw`SELECT 1`;
-      console.log('PostgreSQL connection successful with pooling');
-      isPostgreSQL = true;
-    } catch (error) {
-      console.error('PostgreSQL connection failed:', error);
-      throw error;
+    const userDataPath = process.env.ELECTRON_USER_DATA;
+    if (userDataPath) {
+      const dbPath = require('path').join(userDataPath, 'inventory.db');
+      process.env.DATABASE_URL = `file:${dbPath}`;
     }
-  } else {
-    prisma = new PrismaClient(createConnectionConfig());
+  }
+  
+  prisma = new PrismaClient(createConnectionConfig());
+  
+  try {
+    await prisma.$connect();
+    console.log('SQLite connection successful');
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    throw error;
   }
   
   console.log('Final Database URL:', process.env.DATABASE_URL);
-  console.log('Database type:', isPostgreSQL ? 'PostgreSQL' : 'SQLite');
-  
+  console.log('Database type: SQLite');
 }
 
 // Start initialization with error handling
@@ -102,12 +92,11 @@ const port = process.env.PORT || 3000;
 async function ensureDatabaseExists() {
   try {
     await prisma.$connect();
-    await prisma.$queryRaw`SELECT 1`;
     console.log('Database connection successful');
-    return { success: true, isPostgreSQL };
+    return { success: true };
   } catch (error) {
     console.log('Database connection failed:', error.message);
-    return { success: false, isPostgreSQL };
+    return { success: false };
   }
 }
 
@@ -197,6 +186,7 @@ setupEmployeeStatsRoutes(app, prisma);
 setupSuperAdminRoutes(app, prisma);
 setupSyncRoutes(app, prisma);
 setupAuditRoutes(app, prisma);
+setupSeedRoutes(app, prisma);
 
 // License routes
 app.use('/api/license', licenseRoutes);
@@ -254,9 +244,9 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
       where.sku = sku;
     } else if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { description: { contains: search } },
+        { sku: { contains: search } },
       ];
     }
 
@@ -366,9 +356,9 @@ app.get('/api/products/low-stock', authenticateToken, validateRequest({ query: q
     if (categoryId) where.categoryId = categoryId;
     if (search) {
         where.OR = [
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-            { sku: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { description: { contains: search } },
+            { sku: { contains: search } },
         ];
     }
 
@@ -418,9 +408,9 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
       categoryId: categoryId || undefined,
       ...(search ? {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { sku: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { sku: { contains: search } },
         ],
       } : {})
     };
@@ -473,9 +463,9 @@ app.get('/api/products/damaged', authenticateToken, validateRequest({ query: que
 
       if (search) {
         where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { sku: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { sku: { contains: search } },
         ];
       }
 
@@ -971,6 +961,6 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-  console.log(`Database type: ${isPostgreSQL ? 'PostgreSQL' : 'SQLite'}`);
+  console.log(`Database type: SQLite`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

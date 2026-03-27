@@ -3,38 +3,38 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Product {
-  id                String             @id @default(uuid())
-  name              String
-  description       String
-  price             Decimal?
-  purchasePrice     Decimal?           @default(0)
-  perUnitPurchasePrice Decimal?        @default(0)
-  sku               String?
-  quantity          Decimal
-  damagedQuantity   Decimal            @default(0)
-  lowStockThreshold Decimal            @default(10)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  unit              String             @default("pcs")
-  userId            String
-  isRawMaterial     Boolean            @default(false)
-  retailPrice       Decimal?
-  wholesalePrice    Decimal?
-  unitValue         Decimal?
-  categoryId        String?
-  image             String?
-  BulkPurchaseItem  BulkPurchaseItem[]
-  expenses          Expense[]
-  SaleItem          SaleItem[]
-  SaleReturnItem    SaleReturnItem[]
-  recipe            Recipe?
-  recipeIngredients RecipeItem[] @relation("RecipeRawMaterial")
-  category          Category?          @relation(fields: [categoryId], references: [id])
+  id                   String             @id @default(uuid())
+  name                 String
+  description          String
+  price                Float?
+  purchasePrice        Float?             @default(0)
+  perUnitPurchasePrice Float?             @default(0)
+  sku                  String?
+  quantity             Float
+  damagedQuantity      Float              @default(0)
+  lowStockThreshold    Float              @default(10)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  unit                 String             @default("pcs")
+  userId               String
+  isRawMaterial        Boolean            @default(false)
+  retailPrice          Float?
+  wholesalePrice       Float?
+  unitValue            Float?
+  categoryId           String?
+  image                String?
+  BulkPurchaseItem     BulkPurchaseItem[]
+  expenses             Expense[]
+  SaleItem             SaleItem[]
+  SaleReturnItem       SaleReturnItem[]
+  recipe               Recipe?
+  recipeIngredients    RecipeItem[]       @relation("RecipeRawMaterial")
+  category             Category?          @relation(fields: [categoryId], references: [id])
 
   @@unique([userId, name])
   @@index([userId])
@@ -47,10 +47,10 @@ model Product {
 model Sale {
   id                  String       @id @default(uuid())
   billNumber          String       @unique
-  totalAmount         Decimal
-  originalTotalAmount Decimal?
-  discount            Decimal      @default(0)
-  paidAmount          Decimal      @default(0)
+  totalAmount         Float
+  originalTotalAmount Float?
+  discount            Float        @default(0)
+  paidAmount          Float        @default(0)
   saleDate            DateTime     @default(now())
   contactId           String?
   employeeId          String?
@@ -59,7 +59,7 @@ model Sale {
   loadingDate         DateTime?
   arrivalDate         DateTime?
   description         String?
-  transportCost       Decimal?
+  transportCost       Float?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   userId              String
@@ -80,9 +80,9 @@ model Sale {
 
 model SaleItem {
   id            String   @id @default(uuid())
-  quantity      Decimal
-  price         Decimal
-  purchasePrice Decimal  @default(0)
+  quantity      Float
+  price         Float
+  purchasePrice Float    @default(0)
   saleId        String
   productId     String
   createdAt     DateTime @default(now())
@@ -116,19 +116,19 @@ model Contact {
 model BulkPurchase {
   id            String             @id @default(uuid())
   invoiceNumber String?            @unique
-  totalAmount   Decimal
-  paidAmount    Decimal
+  totalAmount   Float
+  paidAmount    Float
   purchaseDate  DateTime           @default(now())
   description   String?
   contactId     String
   carNumber     String?
-  transportCost Decimal?
+  transportCost Float?
   loadingDate   DateTime?
   arrivalDate   DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   userId        String
-  discount      Decimal            @default(0)
+  discount      Float              @default(0)
   contact       Contact            @relation(fields: [contactId], references: [id])
   items         BulkPurchaseItem[]
   auditTrail    AuditTrail[]
@@ -138,25 +138,25 @@ model BulkPurchase {
 }
 
 model BulkPurchaseItem {
-  id             String       @id @default(uuid())
-  quantity       Decimal
-  purchasePrice  Decimal
-  bulkPurchaseId String
-  productId      String
-  isTotalCostItem Boolean     @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  bulkPurchase   BulkPurchase @relation(fields: [bulkPurchaseId], references: [id])
-  product        Product      @relation(fields: [productId], references: [id])
+  id              String       @id @default(uuid())
+  quantity        Float
+  purchasePrice   Float
+  bulkPurchaseId  String
+  productId       String
+  isTotalCostItem Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  bulkPurchase    BulkPurchase @relation(fields: [bulkPurchaseId], references: [id])
+  product         Product      @relation(fields: [productId], references: [id])
 }
 
 model SaleReturn {
   id           String           @id @default(uuid())
   returnNumber String           @unique
-  totalAmount  Decimal
+  totalAmount  Float
   returnDate   DateTime         @default(now())
   reason       String?
-  refundAmount Decimal         @default(0)
+  refundAmount Float            @default(0)
   refundPaid   Boolean          @default(false)
   refundDate   DateTime?
   saleId       String
@@ -172,8 +172,8 @@ model SaleReturn {
 
 model SaleReturnItem {
   id           String     @id @default(uuid())
-  quantity     Decimal
-  price        Decimal
+  quantity     Float
+  price        Float
   saleReturnId String
   productId    String
   createdAt    DateTime   @default(now())
@@ -184,7 +184,7 @@ model SaleReturnItem {
 
 model LoanTransaction {
   id          String   @id @default(uuid())
-  amount      Decimal
+  amount      Float
   type        String
   description String?
   date        DateTime @default(now())
@@ -210,7 +210,7 @@ model License {
   userId            String   @unique
   licenseKey        String
   deviceFingerprint String
-  expiry            BigInt
+  expiry            Int
   duration          String?
   activatedAt       DateTime @default(now())
   isTrial           Boolean  @default(false)
@@ -297,7 +297,7 @@ model Employee {
 
 model Expense {
   id            String   @id @default(uuid())
-  amount        Decimal
+  amount        Float
   date          DateTime @default(now())
   category      String
   description   String?
@@ -318,14 +318,14 @@ model Expense {
 }
 
 model Recipe {
-  id            String         @id @default(uuid())
+  id            String          @id @default(uuid())
   name          String
   description   String?
-  productId     String         @unique
+  productId     String          @unique
   userId        String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  product       Product        @relation(fields: [productId], references: [id])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  product       Product         @relation(fields: [productId], references: [id])
   ingredients   RecipeItem[]
   manufacturing Manufacturing[]
 
@@ -334,31 +334,31 @@ model Recipe {
 }
 
 model RecipeItem {
-  id            String  @id @default(uuid())
+  id            String   @id @default(uuid())
   recipeId      String
   rawMaterialId String
-  quantity      Decimal
-  unit          String  @default("pcs")
+  quantity      Float
+  unit          String   @default("pcs")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  recipe        Recipe  @relation(fields: [recipeId], references: [id])
-  rawMaterial   Product @relation("RecipeRawMaterial", fields: [rawMaterialId], references: [id])
+  recipe        Recipe   @relation(fields: [recipeId], references: [id])
+  rawMaterial   Product  @relation("RecipeRawMaterial", fields: [rawMaterialId], references: [id])
 
   @@index([recipeId])
   @@index([rawMaterialId])
 }
 
 model Manufacturing {
-  id               String   @id @default(uuid())
-  recipeId         String
-  quantityProduced   Decimal
-  manufacturingCost  Decimal  @default(0)
-  productionDate   DateTime @default(now())
-  notes            String?
-  userId           String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  recipe           Recipe   @relation(fields: [recipeId], references: [id])
+  id                String   @id @default(uuid())
+  recipeId          String
+  quantityProduced  Float
+  manufacturingCost Float    @default(0)
+  productionDate    DateTime @default(now())
+  notes             String?
+  userId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  recipe            Recipe   @relation(fields: [recipeId], references: [id])
 
   @@index([userId])
   @@index([recipeId])
@@ -382,18 +382,18 @@ model Category {
 }
 
 model AuditTrail {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   tableName   String
   recordId    String
   fieldName   String
   oldValue    String?
   newValue    String?
   description String?
-  changedAt   DateTime @default(now())
-  changedBy   String   @default("system")
+  changedAt   DateTime      @default(now())
+  changedBy   String        @default("system")
   saleId      String?
   purchaseId  String?
-  sale        Sale?    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale        Sale?         @relation(fields: [saleId], references: [id], onDelete: Cascade)
   purchase    BulkPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@index([tableName, recordId])

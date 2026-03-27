@@ -42,7 +42,7 @@ export function setupReturnRoutes(app, prisma) {
         
         await prisma.$executeRaw`
           INSERT INTO "SaleReturn" (id, "returnNumber", "returnDate", "totalAmount", reason, "refundAmount", "saleId", "userId", "createdAt", "updatedAt")
-          VALUES (${returnId}, ${returnNumber}, ${new Date().toISOString()}::timestamp, ${totalAmount}::decimal, ${returnReason}, ${refundAmount}::decimal, ${req.body.saleId}, ${req.userId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+          VALUES (${returnId}, ${returnNumber}, ${new Date().toISOString()}, ${totalAmount}, ${returnReason}, ${refundAmount}, ${req.body.saleId}, ${req.userId}, ${new Date().toISOString()}, ${new Date().toISOString()})
         `;
         
         // Create return items using raw SQL
@@ -51,7 +51,7 @@ export function setupReturnRoutes(app, prisma) {
           const itemPrice = req.body.isContainerReturn ? 0 : item.price;
           await prisma.$executeRaw`
             INSERT INTO "SaleReturnItem" (id, quantity, price, "saleReturnId", "productId", "createdAt", "updatedAt")
-            VALUES (${itemId}, ${item.quantity}::decimal, ${itemPrice}::decimal, ${returnId}, ${item.productId}, ${new Date().toISOString()}::timestamp, ${new Date().toISOString()}::timestamp)
+            VALUES (${itemId}, ${item.quantity}, ${itemPrice}, ${returnId}, ${item.productId}, ${new Date().toISOString()}, ${new Date().toISOString()})
           `;
         }
         
@@ -190,9 +190,9 @@ export function setupReturnRoutes(app, prisma) {
       await prisma.$executeRaw`
         UPDATE "SaleReturn" 
         SET "refundPaid" = true, 
-            "refundAmount" = ${amount ? Number(amount) : 0}::decimal, 
-            "refundDate" = ${new Date().toISOString()}::timestamp,
-            "updatedAt" = ${new Date().toISOString()}::timestamp
+            "refundAmount" = ${amount ? Number(amount) : 0}, 
+            "refundDate" = ${new Date().toISOString()},
+            "updatedAt" = ${new Date().toISOString()}
         WHERE id = ${returnId} AND "userId" = ${req.userId}
       `;
       
@@ -226,8 +226,8 @@ export function setupReturnRoutes(app, prisma) {
       await prisma.$executeRaw`
         UPDATE "SaleReturn" 
         SET "refundPaid" = true, 
-            "refundDate" = ${new Date().toISOString()}::timestamp,
-            "updatedAt" = ${new Date().toISOString()}::timestamp
+            "refundDate" = ${new Date().toISOString()},
+            "updatedAt" = ${new Date().toISOString()}
         WHERE "saleId" = ${saleId} 
           AND "userId" = ${req.userId} 
           AND "refundPaid" = false 

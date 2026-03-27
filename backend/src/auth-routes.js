@@ -80,9 +80,9 @@ function createAuthRoutes(prismaInstance) {
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user with 7-day trial
+      // Create user with 3-day trial
       const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 7);
+      trialEndDate.setDate(trialEndDate.getDate() + 3);
       const trialExpiry = Math.floor(trialEndDate.getTime() / 1000);
 
       const user = await prisma.user.create({
@@ -112,7 +112,7 @@ function createAuthRoutes(prismaInstance) {
         }
       });
 
-      res.json({ success: true, token, userId: user.id, userType: 'admin' });
+      res.json({ success: true, token, userId: user.id, userType: 'admin', isNewUser: true });
     } catch (error) {
       console.error('Signup error:', error);
       res.status(500).json({ error: error.message || 'Failed to create user' });

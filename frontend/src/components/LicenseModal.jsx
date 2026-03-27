@@ -57,6 +57,19 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
       const data = await response.json();
 
       if (data.success) {
+        if (data.hasDemoData) {
+          const clearDemo = confirm(
+            'License activated!\n\nYou have sample/demo data in your account. Would you like to clear it and start fresh?\n\nClick OK to clear demo data, or Cancel to keep everything.'
+          );
+          if (clearDemo) {
+            try {
+              await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+            } catch {}
+          }
+        }
         onLicenseValidated();
       } else {
         setError(data.error || 'Invalid license key');

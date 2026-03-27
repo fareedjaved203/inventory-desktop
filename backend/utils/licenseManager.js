@@ -78,7 +78,10 @@ class LicenseManager {
       // Bind
       await this.bindLicenseToUser(userId, licenseKey, deviceFingerprint, decoded.expiry, decoded.duration);
 
-      return { valid: true, expiry: decoded.expiry, duration: decoded.duration };
+      // Check if user had demo data — frontend will ask them if they want to clear it
+      const hadDemo = await this.hasUserLoadedDemoData(userId);
+
+      return { valid: true, expiry: decoded.expiry, duration: decoded.duration, hasDemoData: hadDemo };
     } catch (error) {
       console.error('License validation error:', error);
       return { valid: false, error: 'Invalid license format' };
@@ -170,7 +173,7 @@ class LicenseManager {
       update: {
         licenseKey,
         deviceFingerprint,
-        expiry: BigInt(expiry),
+        expiry: expiry,
         duration,
         activatedAt: new Date(),
         isTrial: false
@@ -179,7 +182,7 @@ class LicenseManager {
         userId,
         licenseKey,
         deviceFingerprint,
-        expiry: BigInt(expiry),
+        expiry: expiry,
         duration,
         activatedAt: new Date(),
         isTrial: false
@@ -242,7 +245,7 @@ class LicenseManager {
   async createTrialLicense(userId) {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const trialDuration = 7 * 24 * 60 * 60; // 7 days
+      const trialDuration = 3 * 24 * 60 * 60; // 3 days
       const trialExpiry = now + trialDuration;
       const deviceFingerprint = this.getDeviceFingerprint();
       const trialLicenseKey = this.generateTrialLicenseKey(trialDuration);
@@ -254,8 +257,8 @@ class LicenseManager {
         update: {
           licenseKey: trialLicenseKey,
           deviceFingerprint,
-          expiry: BigInt(trialExpiry),
-          duration: '7 Days Trial',
+          expiry: trialExpiry,
+          duration: '3 Days Trial',
           activatedAt: new Date(),
           isTrial: true
         },
@@ -263,19 +266,64 @@ class LicenseManager {
           userId,
           licenseKey: trialLicenseKey,
           deviceFingerprint,
-          expiry: BigInt(trialExpiry),
-          duration: '7 Days Trial',
+          expiry: trialExpiry,
+          duration: '3 Days Trial',
           activatedAt: new Date(),
           isTrial: true
         }
       });
 
-      console.log('Created 7-day trial license for user:', userId);
+      console.log('Created 3-day trial license for user:', userId);
       return true;
     } catch (error) {
       console.error('Failed to create trial license:', error);
       return false;
     }
+  }
+
+  // Check if this user loaded demo/sample data
+  async hasUserLoadedDemoData(userId) {
+    // We track this by checking if shopSettings has the demo shop name
+    const settings = await prisma.shopSettings.findFirst({
+      where: { userId, shopName: 'Hisab Ghar Auto Parts' }
+    });
+    return !!settings;
+  }
+
+  // Wipe all data for a user (used when activating a real license to clear demo data)
+  async wipeUserData(userId) {
+    // Delete in correct FK order — cascades handle AuditTrail
+    const sales = await prisma.sale.findMany({ where: { userId }, select: { id: true } });
+    const saleIds = sales.map(s => s.id);
+    const returns = await prisma.saleReturn.findMany({ where: { userId }, select: { id: true } });
+    const returnIds = returns.map(r => r.id);
+    const purchases = await prisma.bulkPurchase.findMany({ where: { userId }, select: { id: true } });
+    const purchaseIds = purchases.map(p => p.id);
+
+    // Returns and their items
+    if (returnIds.length > 0) await prisma.saleReturnItem.deleteMany({ where: { saleReturnId: { in: returnIds } } });
+    await prisma.saleReturn.deleteMany({ where: { userId } });
+
+    // Sale items then sales (audit trail cascades)
+    if (saleIds.length > 0) await prisma.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+    await prisma.sale.deleteMany({ where: { userId } });
+
+    // Purchase items then purchases (audit trail cascades)
+    if (purchaseIds.length > 0) await prisma.bulkPurchaseItem.deleteMany({ where: { bulkPurchaseId: { in: purchaseIds } } });
+    await prisma.bulkPurchase.deleteMany({ where: { userId } });
+
+    // Independent entities
+    await prisma.loanTransaction.deleteMany({ where: { userId } });
+    await prisma.expense.deleteMany({ where: { userId } });
+    await prisma.manufacturing.deleteMany({ where: { userId } });
+    await prisma.recipeItem.deleteMany({ where: { recipe: { userId } } });
+    await prisma.recipe.deleteMany({ where: { userId } });
+    await prisma.employee.deleteMany({ where: { userId } });
+    await prisma.branch.deleteMany({ where: { userId } });
+    await prisma.contact.deleteMany({ where: { userId } });
+    await prisma.product.deleteMany({ where: { userId } });
+    await prisma.category.deleteMany({ where: { userId } });
+    await prisma.shopSettings.deleteMany({ where: { userId } });
   }
 }
 

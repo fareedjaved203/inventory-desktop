@@ -18,8 +18,7 @@ export function setupCategoryRoutes(app, prisma) {
 
       if (search) {
         where.name = {
-          contains: search,
-          mode: 'insensitive'
+          contains: search
         };
       }
 

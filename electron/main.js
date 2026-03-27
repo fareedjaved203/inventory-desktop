@@ -486,8 +486,7 @@ function startServer() {
       NODE_ENV: isDev ? 'development' : 'production',
       ELECTRON_APP: 'true',
       ELECTRON_USER_DATA: app.getPath('userData'),
-      DATABASE_URL: process.env.DATABASE_URL,
-      DIRECT_URL: process.env.DIRECT_URL
+      DATABASE_URL: `file:${path.join(app.getPath('userData'), 'inventory.db')}`
     };
     
     console.log('Environment variables:');
@@ -495,7 +494,6 @@ function startServer() {
     console.log('- NODE_ENV:', env.NODE_ENV);
     console.log('- ELECTRON_APP:', env.ELECTRON_APP);
     console.log('- DATABASE_URL:', env.DATABASE_URL ? 'Set' : 'Not set');
-    console.log('- DIRECT_URL:', env.DIRECT_URL ? 'Set' : 'Not set');
 
     serverProcess = spawn('node', [serverPath], {
       env,
@@ -593,7 +591,14 @@ async function setupDatabase() {
     writeLog('Created user data directory');
   }
 
-  writeLog('Using PostgreSQL database - no migration needed');
+  const dbPath = path.join(userDataPath, 'inventory.db');
+  writeLog(`SQLite database path: ${dbPath}`);
+  
+  if (!fs.existsSync(dbPath)) {
+    writeLog('Database file does not exist, it will be created on first connection');
+  } else {
+    writeLog('Database file exists');
+  }
 }
 
 app.whenReady().then(async () => {

@@ -6,6 +6,7 @@ import UpdateButton from '../components/UpdateButton';
 import LicenseSettingsForm from '../components/LicenseSettingsForm';
 import OfflineToggle from '../components/OfflineToggle';
 import ThemeToggle from '../components/ThemeToggle';
+import LoadDemoData from '../components/LoadDemoData';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
@@ -20,6 +21,9 @@ function Settings() {
       <div className="space-y-6">
         {/* Theme Settings */}
         <ThemeToggle />
+        
+        {/* Demo Data */}
+        <LoadDemoData />
         
         {/* Priority 1: License Management */}
         <LicenseSettingsForm />
