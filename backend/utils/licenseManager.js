@@ -44,7 +44,7 @@ class LicenseManager {
 
       // --- Device binding check ---
       // New format keys carry a device hash; must match this machine
-      if (decoded.deviceHash && decoded.deviceHash !== deviceFingerprint.substring(0, 8)) {
+      if (decoded.deviceHash && decoded.deviceHash.toLowerCase() !== deviceFingerprint.substring(0, 8).toLowerCase()) {
         return { valid: false, error: 'This license key was generated for a different device. Use this device\'s Device ID to generate a new key.' };
       }
 

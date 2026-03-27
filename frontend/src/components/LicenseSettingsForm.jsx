@@ -14,13 +14,12 @@ export default function LicenseSettingsForm() {
   useEffect(() => {
     const fetchDeviceId = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`);
         const data = await res.json();
         if (data.deviceId) setDeviceId(data.deviceId);
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error('Failed to fetch device ID:', err);
+      }
     };
     fetchDeviceId();
   }, []);
@@ -43,24 +42,29 @@ export default function LicenseSettingsForm() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ licenseKey, forceRebind: false })
+        body: JSON.stringify({ licenseKey })
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response');
-      }
       
       const data = await response.json();
       
       if (data.success) {
+        if (data.hasDemoData) {
+          const clearDemo = confirm(
+            language === 'ur'
+              ? 'لائسنس فعال ہو گیا! کیا آپ نمونہ ڈیٹا صاف کرنا چاہتے ہیں؟'
+              : 'License activated! Would you like to clear the sample/demo data?'
+          );
+          if (clearDemo) {
+            try {
+              await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+            } catch {}
+          }
+        }
         setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');
         setLicenseKey('');
-        // Clear offline license to force DB fetch
         localStorage.removeItem('offlineLicense');
         localStorage.removeItem('lastLicenseStatus');
         // Refresh license from database

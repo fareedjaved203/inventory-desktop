@@ -62,6 +62,7 @@ function AppContent() {
   const location = useLocation();
   const { language } = useLanguage();
   const [appVersion, setAppVersion] = useState('1.0.0');
+  const [deviceId, setDeviceId] = useState('');
   const { valid: licenseValid, loading: licenseLoading, refreshLicense } = useLicense();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [showDemoDataModal, setShowDemoDataModal] = useState(false);
@@ -137,6 +138,13 @@ function AppContent() {
       window.electronAPI.getVersion().then(version => {
         setAppVersion(version);
       });
+    }
+    // Fetch device ID
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(d => { if (d.deviceId) setDeviceId(d.deviceId); }).catch(() => {});
     }
   }, []);
 

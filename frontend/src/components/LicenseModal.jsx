@@ -15,10 +15,7 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
 
   const fetchDeviceId = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`);
       const data = await response.json();
       if (data.deviceId) setDeviceId(data.deviceId);
     } catch {

@@ -3,11 +3,12 @@ import licenseManager from '../utils/licenseManager.js';
 import { authenticateToken } from './middleware.js';
 const router = express.Router();
 
-router.get('/device-id', authenticateToken, async (req, res) => {
+router.get('/device-id', async (req, res) => {
   try {
     const deviceId = licenseManager.getDeviceFingerprint();
     res.json({ deviceId });
   } catch (error) {
+    console.error('Device ID error:', error);
     res.status(500).json({ error: 'Failed to get device ID' });
   }
 });
