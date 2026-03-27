@@ -57,7 +57,7 @@ export function POSProductGrid({
                           <FaShoppingCart className="text-gray-400 text-lg" />
                         </div>
                       )}
-                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
+                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
                           Low
                         </span>
@@ -125,7 +125,7 @@ export function POSProductGrid({
                           <FaShoppingCart className="text-gray-400 text-lg" />
                         </div>
                       )}
-                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= 5 && (
+                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
                           Low
                         </span>

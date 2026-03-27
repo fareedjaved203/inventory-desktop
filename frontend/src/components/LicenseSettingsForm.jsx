@@ -9,6 +9,7 @@ export default function LicenseSettingsForm() {
   const [message, setMessage] = useState('');
   const [deviceId, setDeviceId] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showDemoPrompt, setShowDemoPrompt] = useState(false);
   const { valid, expiry, timeRemaining, refreshLicense } = useLicense();
 
   useEffect(() => {
@@ -49,25 +50,12 @@ export default function LicenseSettingsForm() {
       
       if (data.success) {
         if (data.hasDemoData) {
-          const clearDemo = confirm(
-            language === 'ur'
-              ? 'لائسنس فعال ہو گیا! کیا آپ نمونہ ڈیٹا صاف کرنا چاہتے ہیں؟'
-              : 'License activated! Would you like to clear the sample/demo data?'
-          );
-          if (clearDemo) {
-            try {
-              await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-            } catch {}
-          }
+          setShowDemoPrompt(true);
         }
         setMessage(language === 'ur' ? 'لائسنس کامیابی سے اپڈیٹ ہو گیا!' : 'License updated successfully!');
         setLicenseKey('');
         localStorage.removeItem('offlineLicense');
         localStorage.removeItem('lastLicenseStatus');
-        // Refresh license from database
         setTimeout(() => refreshLicense(), 500);
       } else {
         setMessage(data.error || (language === 'ur' ? 'غلط لائسنس کی' : 'Invalid license key'));
@@ -170,6 +158,31 @@ export default function LicenseSettingsForm() {
           </div>
         )}
       </form>
+
+      {showDemoPrompt && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+          <p className="text-sm text-gray-700 mb-1">{language === 'ur' ? 'نمونہ ڈیٹا صاف کریں؟' : 'Clear sample data and start fresh?'}</p>
+          {language !== 'ur' && <p className="text-sm text-gray-700 mb-3 font-urdu">نمونہ ڈیٹا صاف کریں؟</p>}
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('authToken');
+                  await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                } catch {}
+                setShowDemoPrompt(false);
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+            >
+              {language === 'ur' ? 'ہاں' : 'Yes'}
+            </button>
+            <button onClick={() => setShowDemoPrompt(false)} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm">
+              {language === 'ur' ? 'نہیں' : 'No'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

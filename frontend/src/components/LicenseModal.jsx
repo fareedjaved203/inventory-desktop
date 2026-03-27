@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
   const [licenseKey, setLicenseKey] = useState('');
@@ -6,6 +7,7 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
   const [loading, setLoading] = useState(false);
   const [deviceId, setDeviceId] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showDemoPrompt, setShowDemoPrompt] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,20 +56,12 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
       const data = await response.json();
 
       if (data.success) {
+        toast.success('License activated successfully!');
         if (data.hasDemoData) {
-          const clearDemo = confirm(
-            'License activated!\n\nYou have sample/demo data in your account. Would you like to clear it and start fresh?\n\nClick OK to clear demo data, or Cancel to keep everything.'
-          );
-          if (clearDemo) {
-            try {
-              await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-            } catch {}
-          }
+          setShowDemoPrompt(true);
+        } else {
+          onLicenseValidated();
         }
-        onLicenseValidated();
       } else {
         setError(data.error || 'Invalid license key');
       }
@@ -78,7 +72,38 @@ export default function LicenseModal({ isOpen, onLicenseValidated, onLogout }) {
     }
   };
 
+  const handleClearDemo = async (clear) => {
+    if (clear) {
+      try {
+        const token = localStorage.getItem('authToken');
+        await fetch(`${import.meta.env.VITE_API_URL}/api/license/clear-demo-data`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        toast.success('Demo data cleared');
+      } catch {}
+    }
+    setShowDemoPrompt(false);
+    onLicenseValidated();
+  };
+
   if (!isOpen) return null;
+
+  if (showDemoPrompt) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4 text-center">
+          <h2 className="text-lg font-bold mb-2">License Activated ✓</h2>
+          <p className="text-gray-600 mb-1 text-sm">Clear sample data and start fresh?</p>
+          <p className="text-gray-600 mb-4 text-sm font-urdu">نمونہ ڈیٹا صاف کریں؟</p>
+          <div className="flex gap-3">
+            <button onClick={() => handleClearDemo(true)} className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Yes / ہاں</button>
+            <button onClick={() => handleClearDemo(false)} className="flex-1 py-2 border border-gray-300 rounded-md hover:bg-gray-50">No / نہیں</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
