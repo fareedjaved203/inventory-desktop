@@ -4,28 +4,10 @@
   "description": "Hisab Ghar Desktop Application",
   "main": "electron/main.js",
   "scripts": {
-    "electron": "electron .",
-    "electron-dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\" \"wait-on http://localhost:3000 http://localhost:5173 && electron .\"",
     "build": "npm run frontend:build && npm run backend:build",
-    "frontend:dev": "cd frontend && npm run dev",
     "frontend:build": "node update-version.js && cd frontend && npm run build",
-    "backend:dev": "cd backend && npm run dev",
-    "backend:build": "cd backend && npm install --production",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "dist:publish": "npm run build && npx --node-options=\"-r dotenv/config\" electron-builder --win --publish=always",
-    "dist:simple": "npm run build && electron-builder --win --publish=never",
-    "dist:auto": "node check-db-type.js > .dbtype && set /p DB_TYPE=<.dbtype && del .dbtype && npm run build && electron-builder --win --publish=never --config.win.artifactName=Hisab-Ghar-%DB_TYPE%-Setup-${version}.${ext}",
-    "dist:publish:online": "npm run build && electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}",
-    "dist:offline": "npm run build && electron-builder --win --publish=never --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
-    "dist:publish:offline": "npm run build && npx --node-options=\"-r dotenv/config\" electron-builder --win --publish=always --config.win.artifactName=Hisab-Ghar-offline-Setup-${version}.${ext}",
-    "build:custom": "npm run build && npx electron-builder --win --publish=never --config.directories.output=build-output --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}",
-    "version:patch": "npm version patch --no-git-tag-version",
-    "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version",
-    "generate:sql": "cd backend && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > ../complete-schema.sql"
+    "backend:build": "cd backend && npx prisma generate && node -e \"require('fs').readdirSync('node_modules/.prisma/client').filter(f=>f.includes('.tmp')).forEach(f=>require('fs').unlinkSync('node_modules/.prisma/client/'+f))\"",
+    "build:custom": "npm run build && npx electron-builder --win --publish=never --config.directories.output=build-output --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}"
   },
   "build": {
     "appId": "com.hisabghar.desktop",
@@ -33,7 +15,7 @@
     "asarUnpack": [
       "**\\*.{node,dll}"
     ],
-    "compression": "maximum",
+    "compression": "normal",
     "directories": {
       "output": "dist",
       "buildResources": "assets"
@@ -60,19 +42,35 @@
     "extraResources": [
       {
         "from": "backend",
-        "to": "backend"
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!node_modules/.cache/**",
+          "!node_modules/prisma/**",
+          "!node_modules/@prisma/engines/**",
+          "!node_modules/.prisma/client/*.tmp*",
+          "!node_modules/.package-lock.json",
+          "!**/*.md",
+          "!**/*.map",
+          "!**/test/**",
+          "!**/tests/**",
+          "!**/docs/**",
+          "!prisma/migrations/**",
+          "!prisma/inventory.db",
+          "!*.sql",
+          "!seed-demo-data.js",
+          "!update-demo-license.js",
+          "!create-super-admin.js",
+          "!run-migration.js",
+          "!run-seed.js",
+          "!migrate-logo.js",
+          "!.env.*",
+          "!.gitignore"
+        ]
       },
       {
         "from": "frontend/dist",
         "to": "frontend/dist"
-      },
-      {
-        "from": "scripts",
-        "to": "scripts"
-      },
-      {
-        "from": "setup-database.bat",
-        "to": "setup-database.bat"
       }
     ],
     "win": {
@@ -127,10 +125,7 @@
     "electron-updater": "^6.1.7"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "dotenv": "^17.2.2",
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "wait-on": "^7.2.0"
+    "electron-builder": "^24.9.1"
   }
 }

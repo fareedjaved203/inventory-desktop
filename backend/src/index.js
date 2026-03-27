@@ -55,14 +55,119 @@ if (typeof global !== 'undefined') {
 const app = express();
 let prisma;
 
+// Ensure all tables and columns exist in SQLite (runs on every startup)
+async function ensureSchema(prismaClient) {
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS "User" ("id" TEXT NOT NULL PRIMARY KEY, "email" TEXT NOT NULL, "password" TEXT NOT NULL, "resetOtp" TEXT, "otpExpiry" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "companyName" TEXT, "role" TEXT DEFAULT 'admin', "trialEndDate" DATETIME)`,
+    `CREATE TABLE IF NOT EXISTS "License" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "licenseKey" TEXT NOT NULL, "deviceFingerprint" TEXT NOT NULL, "expiry" INTEGER NOT NULL, "duration" TEXT, "activatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "isTrial" BOOLEAN NOT NULL DEFAULT false, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "Category" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT, "color" TEXT DEFAULT '#3B82F6', "icon" TEXT DEFAULT '📦', "userId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "Product" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT NOT NULL, "price" REAL, "purchasePrice" REAL DEFAULT 0, "perUnitPurchasePrice" REAL DEFAULT 0, "sku" TEXT, "quantity" REAL NOT NULL, "damagedQuantity" REAL NOT NULL DEFAULT 0, "lowStockThreshold" REAL NOT NULL DEFAULT 10, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "unit" TEXT NOT NULL DEFAULT 'pcs', "userId" TEXT NOT NULL, "isRawMaterial" BOOLEAN NOT NULL DEFAULT false, "retailPrice" REAL, "wholesalePrice" REAL, "unitValue" REAL, "categoryId" TEXT, "image" TEXT, CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE SET NULL ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "Contact" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "address" TEXT, "phoneNumber" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, "contactType" TEXT NOT NULL DEFAULT 'customer')`,
+    `CREATE TABLE IF NOT EXISTS "Branch" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "code" TEXT NOT NULL, "location" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "Employee" ("id" TEXT NOT NULL PRIMARY KEY, "firstName" TEXT NOT NULL, "lastName" TEXT NOT NULL, "phone" TEXT NOT NULL, "email" TEXT NOT NULL, "password" TEXT NOT NULL, "permissions" TEXT NOT NULL, "branchId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, CONSTRAINT "Employee_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "Sale" ("id" TEXT NOT NULL PRIMARY KEY, "billNumber" TEXT NOT NULL, "totalAmount" REAL NOT NULL, "originalTotalAmount" REAL, "discount" REAL NOT NULL DEFAULT 0, "paidAmount" REAL NOT NULL DEFAULT 0, "saleDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "contactId" TEXT, "employeeId" TEXT, "orderBookerId" TEXT, "carNumber" TEXT, "loadingDate" DATETIME, "arrivalDate" DATETIME, "description" TEXT, "transportCost" REAL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, CONSTRAINT "Sale_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact" ("id") ON DELETE SET NULL ON UPDATE CASCADE, CONSTRAINT "Sale_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE SET NULL ON UPDATE CASCADE, CONSTRAINT "Sale_orderBookerId_fkey" FOREIGN KEY ("orderBookerId") REFERENCES "Contact" ("id") ON DELETE SET NULL ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "SaleItem" ("id" TEXT NOT NULL PRIMARY KEY, "quantity" REAL NOT NULL, "price" REAL NOT NULL, "purchasePrice" REAL NOT NULL DEFAULT 0, "saleId" TEXT NOT NULL, "productId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "priceType" TEXT NOT NULL DEFAULT 'retail', CONSTRAINT "SaleItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, CONSTRAINT "SaleItem_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "SaleReturn" ("id" TEXT NOT NULL PRIMARY KEY, "returnNumber" TEXT NOT NULL, "totalAmount" REAL NOT NULL, "returnDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "reason" TEXT, "refundAmount" REAL NOT NULL DEFAULT 0, "refundPaid" BOOLEAN NOT NULL DEFAULT false, "refundDate" DATETIME, "saleId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, CONSTRAINT "SaleReturn_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "SaleReturnItem" ("id" TEXT NOT NULL PRIMARY KEY, "quantity" REAL NOT NULL, "price" REAL NOT NULL, "saleReturnId" TEXT NOT NULL, "productId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "SaleReturnItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, CONSTRAINT "SaleReturnItem_saleReturnId_fkey" FOREIGN KEY ("saleReturnId") REFERENCES "SaleReturn" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "BulkPurchase" ("id" TEXT NOT NULL PRIMARY KEY, "invoiceNumber" TEXT, "totalAmount" REAL NOT NULL, "paidAmount" REAL NOT NULL, "purchaseDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT, "contactId" TEXT NOT NULL, "carNumber" TEXT, "transportCost" REAL, "loadingDate" DATETIME, "arrivalDate" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, "discount" REAL NOT NULL DEFAULT 0, CONSTRAINT "BulkPurchase_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "BulkPurchaseItem" ("id" TEXT NOT NULL PRIMARY KEY, "quantity" REAL NOT NULL, "purchasePrice" REAL NOT NULL, "bulkPurchaseId" TEXT NOT NULL, "productId" TEXT NOT NULL, "isTotalCostItem" BOOLEAN NOT NULL DEFAULT false, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "BulkPurchaseItem_bulkPurchaseId_fkey" FOREIGN KEY ("bulkPurchaseId") REFERENCES "BulkPurchase" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, CONSTRAINT "BulkPurchaseItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "LoanTransaction" ("id" TEXT NOT NULL PRIMARY KEY, "amount" REAL NOT NULL, "type" TEXT NOT NULL, "description" TEXT, "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "contactId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, CONSTRAINT "LoanTransaction_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "Expense" ("id" TEXT NOT NULL PRIMARY KEY, "amount" REAL NOT NULL, "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "category" TEXT NOT NULL, "description" TEXT, "paymentMethod" TEXT, "receiptNumber" TEXT, "contactId" TEXT, "userId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "productId" TEXT, CONSTRAINT "Expense_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact" ("id") ON DELETE SET NULL ON UPDATE CASCADE, CONSTRAINT "Expense_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE SET NULL ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "Recipe" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT, "productId" TEXT NOT NULL, "userId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "Recipe_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "RecipeItem" ("id" TEXT NOT NULL PRIMARY KEY, "recipeId" TEXT NOT NULL, "rawMaterialId" TEXT NOT NULL, "quantity" REAL NOT NULL, "unit" TEXT NOT NULL DEFAULT 'pcs', "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "RecipeItem_recipeId_fkey" FOREIGN KEY ("recipeId") REFERENCES "Recipe" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, CONSTRAINT "RecipeItem_rawMaterialId_fkey" FOREIGN KEY ("rawMaterialId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "Manufacturing" ("id" TEXT NOT NULL PRIMARY KEY, "recipeId" TEXT NOT NULL, "quantityProduced" REAL NOT NULL, "manufacturingCost" REAL NOT NULL DEFAULT 0, "productionDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "notes" TEXT, "userId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, CONSTRAINT "Manufacturing_recipeId_fkey" FOREIGN KEY ("recipeId") REFERENCES "Recipe" ("id") ON DELETE RESTRICT ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "ShopSettings" ("id" TEXT NOT NULL PRIMARY KEY, "email" TEXT NOT NULL, "shopName" TEXT NOT NULL, "shopDescription" TEXT, "shopDescription2" TEXT, "userName1" TEXT NOT NULL, "userPhone1" TEXT NOT NULL, "userName2" TEXT, "userPhone2" TEXT, "userName3" TEXT, "userPhone3" TEXT, "brand1" TEXT, "brand1Registered" BOOLEAN NOT NULL DEFAULT false, "brand2" TEXT, "brand2Registered" BOOLEAN NOT NULL DEFAULT false, "brand3" TEXT, "brand3Registered" BOOLEAN NOT NULL DEFAULT false, "logo" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "DriveSettings" ("id" TEXT NOT NULL PRIMARY KEY, "serviceAccountKey" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "AuditTrail" ("id" TEXT NOT NULL PRIMARY KEY, "tableName" TEXT NOT NULL, "recordId" TEXT NOT NULL, "fieldName" TEXT NOT NULL, "oldValue" TEXT, "newValue" TEXT, "description" TEXT, "changedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "changedBy" TEXT NOT NULL DEFAULT 'system', "saleId" TEXT, "purchaseId" TEXT, CONSTRAINT "AuditTrail_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale" ("id") ON DELETE CASCADE ON UPDATE CASCADE, CONSTRAINT "AuditTrail_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "BulkPurchase" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+  ];
+
+  // Columns that may be missing on older DBs — SQLite ALTER TABLE ADD COLUMN is safe (no-op if exists fails gracefully)
+  const alterColumns = [
+    `ALTER TABLE "User" ADD COLUMN "companyName" TEXT`,
+    `ALTER TABLE "User" ADD COLUMN "role" TEXT DEFAULT 'admin'`,
+    `ALTER TABLE "User" ADD COLUMN "trialEndDate" DATETIME`,
+    `ALTER TABLE "Product" ADD COLUMN "isRawMaterial" BOOLEAN DEFAULT false`,
+    `ALTER TABLE "Product" ADD COLUMN "retailPrice" REAL`,
+    `ALTER TABLE "Product" ADD COLUMN "wholesalePrice" REAL`,
+    `ALTER TABLE "Product" ADD COLUMN "unitValue" REAL`,
+    `ALTER TABLE "Product" ADD COLUMN "categoryId" TEXT`,
+    `ALTER TABLE "Product" ADD COLUMN "image" TEXT`,
+    `ALTER TABLE "Product" ADD COLUMN "damagedQuantity" REAL DEFAULT 0`,
+    `ALTER TABLE "Sale" ADD COLUMN "originalTotalAmount" REAL`,
+    `ALTER TABLE "Sale" ADD COLUMN "orderBookerId" TEXT`,
+    `ALTER TABLE "Sale" ADD COLUMN "carNumber" TEXT`,
+    `ALTER TABLE "Sale" ADD COLUMN "loadingDate" DATETIME`,
+    `ALTER TABLE "Sale" ADD COLUMN "arrivalDate" DATETIME`,
+    `ALTER TABLE "Sale" ADD COLUMN "description" TEXT`,
+    `ALTER TABLE "Sale" ADD COLUMN "transportCost" REAL`,
+    `ALTER TABLE "BulkPurchase" ADD COLUMN "discount" REAL DEFAULT 0`,
+    `ALTER TABLE "BulkPurchase" ADD COLUMN "carNumber" TEXT`,
+    `ALTER TABLE "BulkPurchase" ADD COLUMN "transportCost" REAL`,
+    `ALTER TABLE "BulkPurchase" ADD COLUMN "loadingDate" DATETIME`,
+    `ALTER TABLE "BulkPurchase" ADD COLUMN "arrivalDate" DATETIME`,
+    `ALTER TABLE "BulkPurchaseItem" ADD COLUMN "isTotalCostItem" BOOLEAN DEFAULT false`,
+    `ALTER TABLE "SaleItem" ADD COLUMN "priceType" TEXT DEFAULT 'retail'`,
+    `ALTER TABLE "License" ADD COLUMN "duration" TEXT`,
+    `ALTER TABLE "License" ADD COLUMN "isTrial" BOOLEAN DEFAULT false`,
+  ];
+
+  // Create tables
+  for (const sql of tables) {
+    try { await prismaClient.$executeRawUnsafe(sql); } catch (e) { /* table exists */ }
+  }
+
+  // Add missing columns
+  for (const sql of alterColumns) {
+    try { await prismaClient.$executeRawUnsafe(sql); } catch (e) { /* column exists — SQLite throws "duplicate column name" */ }
+  }
+
+  // Create unique indexes (IF NOT EXISTS)
+  const indexes = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "License_userId_key" ON "License"("userId")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Sale_billNumber_key" ON "Sale"("billNumber")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "BulkPurchase_invoiceNumber_key" ON "BulkPurchase"("invoiceNumber")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "SaleReturn_returnNumber_key" ON "SaleReturn"("returnNumber")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Branch_name_key" ON "Branch"("name")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Branch_code_key" ON "Branch"("code")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Employee_email_key" ON "Employee"("email")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Recipe_productId_key" ON "Recipe"("productId")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Product_userId_name_key" ON "Product"("userId", "name")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Category_userId_name_key" ON "Category"("userId", "name")`,
+  ];
+  for (const sql of indexes) {
+    try { await prismaClient.$executeRawUnsafe(sql); } catch (e) { /* index exists */ }
+  }
+
+  console.log('Database schema verified');
+}
+
 // Initialize application with proper connection management
 async function initializeApp() {
   if (process.env.ELECTRON_APP) {
     console.log('Running in Electron mode');
     const userDataPath = process.env.ELECTRON_USER_DATA;
     if (userDataPath) {
-      const dbPath = require('path').join(userDataPath, 'inventory.db');
-      process.env.DATABASE_URL = `file:${dbPath}`;
+      const dbPath = path.join(userDataPath, 'inventory.db');
+      process.env.DATABASE_URL = `file:${dbPath.replace(/\\/g, '/')}`;
+      
+      // One-time migration: delete old incompatible DB from previous PostgreSQL/old-schema builds
+      const migrationMarker = path.join(userDataPath, '.sqlite_v2_migrated');
+      if (fs.existsSync(dbPath) && !fs.existsSync(migrationMarker)) {
+        console.log('Detected old database, removing for fresh SQLite schema...');
+        try {
+          fs.unlinkSync(dbPath);
+          // Also remove WAL/SHM files if they exist
+          if (fs.existsSync(dbPath + '-wal')) fs.unlinkSync(dbPath + '-wal');
+          if (fs.existsSync(dbPath + '-shm')) fs.unlinkSync(dbPath + '-shm');
+        } catch (e) {
+          console.error('Failed to remove old DB:', e.message);
+        }
+      }
+      // Write marker so we only do this once
+      if (!fs.existsSync(migrationMarker)) {
+        try { fs.writeFileSync(migrationMarker, new Date().toISOString()); } catch (e) { /* ignore */ }
+      }
     }
   }
   
@@ -70,6 +175,7 @@ async function initializeApp() {
   
   try {
     await prisma.$connect();
+    await ensureSchema(prisma);
     console.log('SQLite connection successful');
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -81,7 +187,54 @@ async function initializeApp() {
 }
 
 // Start initialization with error handling
-initializeApp().catch(error => {
+initializeApp().then(() => {
+  // Setup routes AFTER prisma is initialized
+  setupContactRoutes(app, prisma);
+  setupSalesRoutes(app, prisma);
+  setupBulkPurchaseRoutes(app, prisma);
+  setupDashboardRoutes(app, prisma);
+  setupUserRoutes(app, prisma);
+  setupShopSettingsRoutes(app, prisma);
+  setupReturnRoutes(app, prisma);
+  setupManufacturingRoutes(app, prisma);
+  setupCategoryRoutes(app, prisma);
+  app.use('/api/loans', createLoanRoutes(prisma));
+  app.use('/api/auth', createAuthRoutes(prisma));
+  setupBranchRoutes(app, prisma);
+  setupEmployeeRoutes(app, prisma);
+  setupEmployeeStatsRoutes(app, prisma);
+  setupSuperAdminRoutes(app, prisma);
+  setupSyncRoutes(app, prisma);
+  setupAuditRoutes(app, prisma);
+  setupSeedRoutes(app, prisma);
+  app.use('/api/license', licenseRoutes);
+  app.use('/api/expenses', createExpenseRoutes(prisma));
+  app.use('/api/backup', backupRoutes);
+
+  // Catch-all handler for Electron SPA routing (must be LAST, after all API routes)
+  if (process.env.ELECTRON_APP) {
+    app.get('*', (req, res) => {
+      const isPackaged = process.env.NODE_ENV === 'production';
+      let indexPath;
+      if (isPackaged && process.resourcesPath) {
+        indexPath = path.join(process.resourcesPath, 'frontend', 'dist', 'index.html');
+      } else {
+        indexPath = path.join(__dirname, '..', '..', 'frontend', 'dist', 'index.html');
+      }
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Application files not found');
+      }
+    });
+  }
+
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+    console.log(`Database type: SQLite`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}).catch(error => {
   console.error('Critical initialization error:', error);
   process.exit(1);
 });
@@ -167,35 +320,7 @@ if (process.env.ELECTRON_APP) {
   console.log('Serving web uploads from:', uploadsPath);
 }
 
-// Setup routes
-setupContactRoutes(app, prisma);
-setupSalesRoutes(app, prisma);
-setupBulkPurchaseRoutes(app, prisma);
-setupDashboardRoutes(app, prisma);
-setupUserRoutes(app, prisma);
-setupShopSettingsRoutes(app, prisma);
-setupReturnRoutes(app, prisma);
-
-setupManufacturingRoutes(app, prisma);
-setupCategoryRoutes(app, prisma);
-app.use('/api/loans', createLoanRoutes(prisma));
-app.use('/api/auth', createAuthRoutes(prisma));
-setupBranchRoutes(app, prisma);
-setupEmployeeRoutes(app, prisma);
-setupEmployeeStatsRoutes(app, prisma);
-setupSuperAdminRoutes(app, prisma);
-setupSyncRoutes(app, prisma);
-setupAuditRoutes(app, prisma);
-setupSeedRoutes(app, prisma);
-
-// License routes
-app.use('/api/license', licenseRoutes);
-
-// Expense routes
-app.use('/api/expenses', createExpenseRoutes(prisma));
-
-// Backup routes
-app.use('/api/backup', backupRoutes);
+// Routes are registered inside initializeApp().then() above
 
 // Member routes
 // Game and members related routes removed
@@ -801,42 +926,7 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 
 
 
-// Catch-all handler for Electron mode
-if (process.env.ELECTRON_APP) {
-  app.get('*', (req, res) => {
-    const isPackaged = !process.env.NODE_ENV || process.env.NODE_ENV !== 'development';
-    let indexPath;
-    
-    if (isPackaged && process.resourcesPath) {
-      indexPath = path.join(process.resourcesPath, 'frontend', 'dist', 'index.html');
-    } else {
-      // For development, use relative path from current file
-      indexPath = path.join(__dirname, '..', '..', 'frontend', 'dist', 'index.html');
-    }
-    
-    console.log('Serving index.html from:', indexPath);
-    console.log('isPackaged:', isPackaged);
-    console.log('process.resourcesPath:', process.resourcesPath);
-    console.log('__dirname:', __dirname);
-    
-    // Check if file exists before serving
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      console.error('Index.html not found at:', indexPath);
-      res.status(404).send(`
-        <html>
-          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1>Application Not Found</h1>
-            <p>The frontend application files are missing.</p>
-            <p>Path: ${indexPath}</p>
-            <p>Please ensure the application is properly built.</p>
-          </body>
-        </html>
-      `);
-    }
-  });
-}
+// Product routes and other inline handlers below use module-level `prisma` via closure
 
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
@@ -957,10 +1047,4 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   console.log('Keep-alive ping received');
   res.send('Server is running');
-});
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-  console.log(`Database type: SQLite`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

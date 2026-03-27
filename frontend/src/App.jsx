@@ -308,7 +308,6 @@ function AppContent() {
           setShowDemoDataModal(false);
           window.location.replace('/');
         }}
-        language={language}
       />
       
       {/* Toast notifications */}

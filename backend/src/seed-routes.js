@@ -10,11 +10,30 @@ export function setupSeedRoutes(app, prisma) {
     try {
       const userId = req.userId;
 
-      // Check if user already has data
-      const productCount = await prisma.product.count({ where: { userId } });
-      if (productCount > 0) {
-        return res.status(400).json({ error: 'Account already has data. Please use a fresh account or clear existing data first.' });
-      }
+      // Wipe any partial/existing data for this user first (makes it safe to retry)
+      const sales = await prisma.sale.findMany({ where: { userId }, select: { id: true } });
+      const saleIds = sales.map(s => s.id);
+      const returns = await prisma.saleReturn.findMany({ where: { userId }, select: { id: true } });
+      const returnIds = returns.map(r => r.id);
+      const purchases = await prisma.bulkPurchase.findMany({ where: { userId }, select: { id: true } });
+      const purchaseIds = purchases.map(p => p.id);
+      if (returnIds.length) await prisma.saleReturnItem.deleteMany({ where: { saleReturnId: { in: returnIds } } });
+      await prisma.saleReturn.deleteMany({ where: { userId } });
+      if (saleIds.length) await prisma.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+      await prisma.sale.deleteMany({ where: { userId } });
+      if (purchaseIds.length) await prisma.bulkPurchaseItem.deleteMany({ where: { bulkPurchaseId: { in: purchaseIds } } });
+      await prisma.bulkPurchase.deleteMany({ where: { userId } });
+      await prisma.loanTransaction.deleteMany({ where: { userId } });
+      await prisma.expense.deleteMany({ where: { userId } });
+      await prisma.manufacturing.deleteMany({ where: { userId } });
+      await prisma.recipeItem.deleteMany({ where: { recipe: { userId } } });
+      await prisma.recipe.deleteMany({ where: { userId } });
+      await prisma.employee.deleteMany({ where: { userId } });
+      await prisma.branch.deleteMany({ where: { userId } });
+      await prisma.contact.deleteMany({ where: { userId } });
+      await prisma.product.deleteMany({ where: { userId } });
+      await prisma.category.deleteMany({ where: { userId } });
+      await prisma.shopSettings.deleteMany({ where: { userId } });
 
       // ── Categories (8) ──
       const catDefs = [
@@ -164,9 +183,10 @@ export function setupSeedRoutes(app, prisma) {
       // ── Branches (4) ──
       const branchDefs = ['Main Showroom', 'Service Center', 'Parts Warehouse', 'Online Store'];
       const branches = [];
+      const shortId = userId.substring(0, 6);
       for (let i = 0; i < branchDefs.length; i++) {
         branches.push(await prisma.branch.create({
-          data: { name: branchDefs[i], code: `BR${String(i + 1).padStart(3, '0')}`, location: `Location ${i + 1}, City`, userId }
+          data: { name: `${branchDefs[i]} [${shortId}]`, code: `BR${shortId}${i + 1}`, location: `Location ${i + 1}, City`, userId }
         }));
       }
 
@@ -203,7 +223,7 @@ export function setupSeedRoutes(app, prisma) {
         const paid = i % 5 === 0 ? randomAmount(Math.floor(total * 0.3), Math.floor(total * 0.8)) : total;
         const purchase = await prisma.bulkPurchase.create({
           data: {
-            invoiceNumber: `INV-${String(i + 1).padStart(5, '0')}`,
+            invoiceNumber: `INV-${shortId}-${String(i + 1).padStart(5, '0')}`,
             totalAmount: total, paidAmount: paid, discount: randomAmount(0, Math.floor(total * 0.05)),
             purchaseDate, description: `Purchase batch ${i + 1}`,
             contactId: pick(suppliers).id, userId, createdAt: purchaseDate,
@@ -231,7 +251,7 @@ export function setupSeedRoutes(app, prisma) {
         const discount = randomAmount(0, Math.floor(total * 0.1));
         const finalTotal = total - discount;
         const paid = i % 6 === 0 ? randomAmount(Math.floor(finalTotal * 0.4), Math.floor(finalTotal * 0.9)) : finalTotal;
-        const billNumber = String(1000000 + i);
+        const billNumber = `${shortId}${String(1000000 + i)}`;
         const sale = await prisma.sale.create({
           data: {
             billNumber, totalAmount: finalTotal, originalTotalAmount: total,
@@ -261,7 +281,7 @@ export function setupSeedRoutes(app, prisma) {
         const returnDate = new Date(sale.saleDate.getTime() + randomAmount(1, 7) * 86400000);
         const ret = await prisma.saleReturn.create({
           data: {
-            returnNumber: `RET-${String(i + 1).padStart(5, '0')}`,
+            returnNumber: `RET-${shortId}-${String(i + 1).padStart(5, '0')}`,
             totalAmount: isContainer ? 0 : retTotal, returnDate,
             reason: pick(['Defective', 'Wrong item', 'Customer changed mind', 'Damaged in transit', 'Size mismatch']),
             refundAmount: isContainer ? 0 : retTotal,
@@ -335,7 +355,7 @@ export function setupSeedRoutes(app, prisma) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
       await prisma.shopSettings.create({
         data: {
-          email: user.email, shopName: 'Hisab Ghar Auto Parts',
+          email: user?.email || 'demo@hisabghar.com', shopName: 'Hisab Ghar Auto Parts',
           shopDescription: 'Your trusted automotive partner since 2020',
           shopDescription2: 'Quality parts • Competitive prices • Expert service',
           userName1: 'Muhammad Ahmed', userPhone1: '+92300-1234567',

@@ -486,7 +486,7 @@ function startServer() {
       NODE_ENV: isDev ? 'development' : 'production',
       ELECTRON_APP: 'true',
       ELECTRON_USER_DATA: app.getPath('userData'),
-      DATABASE_URL: `file:${path.join(app.getPath('userData'), 'inventory.db')}`
+      DATABASE_URL: `file:${path.join(app.getPath('userData'), 'inventory.db').replace(/\\/g, '/')}`
     };
     
     console.log('Environment variables:');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLicense } from '../hooks/useLicense';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -7,7 +7,23 @@ export default function LicenseSettingsForm() {
   const [licenseKey, setLicenseKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [deviceId, setDeviceId] = useState('');
+  const [copied, setCopied] = useState(false);
   const { valid, expiry, timeRemaining, refreshLicense } = useLicense();
+
+  useEffect(() => {
+    const fetchDeviceId = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/license/device-id`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.deviceId) setDeviceId(data.deviceId);
+      } catch { /* ignore */ }
+    };
+    fetchDeviceId();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,6 +119,24 @@ export default function LicenseSettingsForm() {
           )}
         </div>
       </div>
+
+      {deviceId && (
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">{language === 'ur' ? 'ڈیوائس آئی ڈی' : 'Device ID'}:</span>
+            <div className="flex items-center gap-2">
+              <code className="text-sm font-mono bg-white px-2 py-1 rounded border select-all">{deviceId}</code>
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard.writeText(deviceId); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+              >
+                {copied ? '✓' : (language === 'ur' ? 'کاپی' : 'Copy')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

@@ -9,7 +9,7 @@ echo     LICENSE GENERATOR v2.0 (Device-Bound)
 echo ===============================================
 echo.
 echo STEP 1: Enter the Device ID from the app
-echo         (User copies it from the License screen)
+echo         (Settings ^> License Management ^> Device ID)
 echo.
 set /p deviceId="Device ID: "
 
