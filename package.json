@@ -7,7 +7,8 @@
     "build": "npm run frontend:build && npm run backend:build",
     "frontend:build": "node update-version.js && cd frontend && npm run build",
     "backend:build": "cd backend && npx prisma generate && node -e \"require('fs').readdirSync('node_modules/.prisma/client').filter(f=>f.includes('.tmp')).forEach(f=>require('fs').unlinkSync('node_modules/.prisma/client/'+f))\"",
-    "build:custom": "npm run build && npx electron-builder --win --publish=never --config.directories.output=build-output --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}"
+    "build:custom": "npm run build && npx electron-builder --win --publish=never --config.directories.output=build-output --config.win.artifactName=Hisab-Ghar-Setup-${version}.${ext}",
+    "test": "vitest --run"
   },
   "build": {
     "appId": "com.hisabghar.desktop",
@@ -126,6 +127,7 @@
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "vitest": "^4.1.2"
   }
 }

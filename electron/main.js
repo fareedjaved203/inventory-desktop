@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { getSpawnConfig } = require('./spawn-config');
 
 let mainWindow;
 let serverProcess;
@@ -495,8 +496,10 @@ function startServer() {
     console.log('- ELECTRON_APP:', env.ELECTRON_APP);
     console.log('- DATABASE_URL:', env.DATABASE_URL ? 'Set' : 'Not set');
 
-    serverProcess = spawn('node', [serverPath], {
-      env,
+    const spawnConfig = getSpawnConfig(isDev, env);
+
+    serverProcess = spawn(spawnConfig.execPath, [serverPath], {
+      env: spawnConfig.spawnEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd
     });

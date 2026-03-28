@@ -18,7 +18,7 @@ class LicenseManager {
     // Use MAC address of first non-internal network interface for stronger binding
     const nets = os.networkInterfaces();
     let mac = '';
-    for (const name of Object.keys(nets)) {
+    for (const name of Object.keys(nets).sort()) {
       for (const iface of nets[name]) {
         if (!iface.internal && iface.mac && iface.mac !== '00:00:00:00:00:00') {
           mac = iface.mac;
