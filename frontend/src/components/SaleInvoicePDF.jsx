@@ -32,10 +32,12 @@ function formatPakistaniCurrencyPDF(amount, showCurrency = true) {
 const styles = StyleSheet.create({
   page: {
     padding: 20,
-    paddingBottom: 20,
+    paddingBottom: 50,
     fontSize: 10,
     fontFamily: "Helvetica",
     color: "#000",
+    display: "flex",
+    flexDirection: "column",
   },
   // Header section
   companyHeader: {
@@ -91,6 +93,7 @@ const styles = StyleSheet.create({
   table: {
     border: "1px solid #000",
     marginBottom: 10,
+    flexGrow: 1,
   },
   tableHeader: {
     flexDirection: "row",
@@ -173,32 +176,19 @@ const styles = StyleSheet.create({
   },
   // Footer
   footer: {
-    position: 'absolute',
-    bottom: 45,
-    left: 20,
-    right: 20,
     textAlign: "left",
     fontSize: 8,
     paddingTop: 5,
   },
   shopDescriptionFooter: {
-    position: 'absolute',
-    bottom: 18,
-    left: 0,
-    right: 0,
     backgroundColor: '#fff',
     color: '#000',
     textAlign: 'center',
     fontSize: 8,
     padding: 5,
-    margin: 0,
     borderTop: '2px solid #000',
   },
   contactFooter: {
-    position: 'absolute',
-    bottom: 5,
-    left: 0,
-    right: 0,
     textAlign: 'center',
     fontSize: 7,
     padding: 5,
@@ -265,11 +255,17 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
         {/* Company Header */}
         <View style={styles.companyHeader}>
           <Text style={styles.companyName}>{shopSettings?.shopName || "COMPANY NAME"}</Text>
+          {shopSettings?.shopDescription2 && (
+            <Text style={styles.companySubtitle}>{shopSettings.shopDescription2}</Text>
+          )}
           {brands.length > 0 && (
             <Text style={styles.companySubtitle}>{brands.join(" • ")}</Text>
           )}
           {shopSettings?.shopDescription && (
             <Text style={styles.companySubtitle}>{shopSettings.shopDescription}</Text>
+          )}
+          {sale.contact?.address && preferences.showContactAddress !== false && (
+            <Text style={styles.companySubtitle}>{sale.contact.address}</Text>
           )}
         </View>
 
@@ -277,22 +273,17 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
         <Text style={styles.invoiceTitle}>INVOICE</Text>
 
         {/* Date and Invoice Number */}
-        <View style={styles.invoiceInfo}>
+        <View style={styles.invoiceInfo} wrap={false}>
           <Text style={styles.dateSection}>DATE: {new Date(sale.saleDate).toLocaleDateString()}</Text>
           <Text style={styles.invoiceNumber}>INVOICE NO.: {sale.billNumber}</Text>
         </View>
 
         {/* Bill To Section */}
-        <View style={styles.billToSection}>
+        <View style={styles.billToSection} wrap={false}>
           <Text style={styles.billToTitle}>BILL TO:</Text>
           <Text style={styles.customerInfo}>CUSTOMER NAME: {sale.contact?.name || "Walk-in Customer"}</Text>
           {sale.contact?.phoneNumber && preferences.showContactPhone !== false && (
             <Text style={styles.customerInfo}>CONTACT #: {sale.contact.phoneNumber}</Text>
-          )}
-          {sale.contact?.address && preferences.showContactAddress !== false && (
-            <View style={{ border: "1px solid #000", padding: 5, marginTop: 5 }}>
-              <Text style={styles.customerInfo}>ADDRESS: {sale.contact.address}</Text>
-            </View>
           )}
         </View>
 
@@ -317,10 +308,8 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
               <Text style={styles.colAmount}>{formatPakistaniCurrencyPDF(item.price * item.quantity, false)}</Text>
             </View>
           ))}
-          {/* Empty rows to fill space */}
-          {Array.from({ length: Math.max(0, 20 - sale.items.length) }).map((_, i) => (
-            <View style={styles.emptyTableRow} key={`empty-${i}`} />
-          ))}
+          {/* Spacer to push total row to bottom of table */}
+          <View style={{ flexGrow: 1 }} />
           <View style={[styles.tableRow, { backgroundColor: "#fff", fontWeight: "bold", borderTop: "2px solid #000" }]}>
             <Text style={styles.colSr}></Text>
             <Text style={[styles.colDescription, { fontWeight: "bold" }]}>TOTAL</Text>
@@ -332,7 +321,7 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
         </View>
 
         {/* Summary Section */}
-        <View style={styles.summarySection}>
+        <View style={styles.summarySection} wrap={false}>
           <View style={styles.summaryLeft}>
             <View style={styles.summaryRow}>
               <Text style={{ fontWeight: "bold", fontSize: 9 }}>TOTAL AMOUNT</Text>
@@ -383,7 +372,7 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
         </View>
 
         {/* Payment Status Section */}
-        <View style={styles.statusSection}>
+        <View style={styles.statusSection} wrap={false}>
           {sale.returns && sale.returns.length > 0 && (
             <View style={styles.statusRow}>
               <Text>Net Amount (After Returns):</Text>
@@ -412,7 +401,7 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
 
         {/* Returns Section */}
         {sale.returns && sale.returns.length > 0 && (
-          <View style={styles.returnsSection}>
+          <View style={styles.returnsSection} wrap={false}>
             <Text style={styles.returnsTitle}>RETURNED ITEMS:</Text>
             {sale.returns.map((returnRecord, index) => (
               <Text key={index} style={{ fontSize: 8, marginBottom: 2 }}>
@@ -426,16 +415,9 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={{marginTop: '4px', marginBottom: '4px'}}>CHECK & APPROVED BY: _________________________</Text>
+          {/* <Text style={{marginTop: '4px', marginBottom: '4px'}}>CHECK & APPROVED BY: _________________________</Text> */}
         </View>
         
-        {/* Shop Description Footer */}
-        {shopSettings?.shopDescription2 && (
-          <View style={styles.shopDescriptionFooter}>
-            <Text>{shopSettings.shopDescription2}</Text>
-          </View>
-        )}
-
         {/* Contact Footer */}
         <Text style={styles.contactFooter}>NEED SYSTEM? CONTACT 03145292649</Text>
           

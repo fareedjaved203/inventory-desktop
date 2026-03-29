@@ -211,7 +211,7 @@ model License {
   userId            String   @unique
   licenseKey        String
   deviceFingerprint String
-  expiry            Int
+  expiry            BigInt
   duration          String?
   activatedAt       DateTime @default(now())
   isTrial           Boolean  @default(false)

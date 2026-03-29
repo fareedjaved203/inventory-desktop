@@ -59,7 +59,7 @@ let prisma;
 async function ensureSchema(prismaClient) {
   const tables = [
     `CREATE TABLE IF NOT EXISTS "User" ("id" TEXT NOT NULL PRIMARY KEY, "email" TEXT NOT NULL, "password" TEXT NOT NULL, "resetOtp" TEXT, "otpExpiry" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "companyName" TEXT, "role" TEXT DEFAULT 'admin', "trialEndDate" DATETIME)`,
-    `CREATE TABLE IF NOT EXISTS "License" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "licenseKey" TEXT NOT NULL, "deviceFingerprint" TEXT NOT NULL, "expiry" INTEGER NOT NULL, "duration" TEXT, "activatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "isTrial" BOOLEAN NOT NULL DEFAULT false, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS "License" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "licenseKey" TEXT NOT NULL, "deviceFingerprint" TEXT NOT NULL, "expiry" BIGINT NOT NULL, "duration" TEXT, "activatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "isTrial" BOOLEAN NOT NULL DEFAULT false, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS "Category" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT, "color" TEXT DEFAULT '#3B82F6', "icon" TEXT DEFAULT '📦', "userId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS "Product" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT NOT NULL, "price" REAL, "purchasePrice" REAL DEFAULT 0, "perUnitPurchasePrice" REAL DEFAULT 0, "sku" TEXT, "quantity" REAL NOT NULL, "damagedQuantity" REAL NOT NULL DEFAULT 0, "lowStockThreshold" REAL NOT NULL DEFAULT 10, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "unit" TEXT NOT NULL DEFAULT 'pcs', "userId" TEXT NOT NULL, "isRawMaterial" BOOLEAN NOT NULL DEFAULT false, "retailPrice" REAL, "wholesalePrice" REAL, "unitValue" REAL, "categoryId" TEXT, "image" TEXT, CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE SET NULL ON UPDATE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS "Contact" ("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "address" TEXT, "phoneNumber" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL, "userId" TEXT NOT NULL, "contactType" TEXT NOT NULL DEFAULT 'customer')`,
@@ -120,6 +120,14 @@ async function ensureSchema(prismaClient) {
   for (const sql of alterColumns) {
     try { await prismaClient.$executeRawUnsafe(sql); } catch (e) { /* column exists — SQLite throws "duplicate column name" */ }
   }
+
+  // Migrate License.expiry from INTEGER to BIGINT (needed for lifetime licenses)
+  try {
+    await prismaClient.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "License_new" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "licenseKey" TEXT NOT NULL, "deviceFingerprint" TEXT NOT NULL, "expiry" BIGINT NOT NULL, "duration" TEXT, "activatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "isTrial" BOOLEAN NOT NULL DEFAULT false, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`);
+    await prismaClient.$executeRawUnsafe(`INSERT OR IGNORE INTO "License_new" SELECT * FROM "License"`);
+    await prismaClient.$executeRawUnsafe(`DROP TABLE "License"`);
+    await prismaClient.$executeRawUnsafe(`ALTER TABLE "License_new" RENAME TO "License"`);
+  } catch (e) { /* migration already done or table doesn't exist yet */ }
 
   // Create unique indexes (IF NOT EXISTS)
   const indexes = [

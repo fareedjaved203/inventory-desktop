@@ -94,6 +94,89 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
     return response.data;
   });
 
+  const printThermalReceipt = () => {
+    if (!currentSale) return;
+    const saleDate = new Date(currentSale.saleDate);
+    const subtotal = currentSale.originalTotalAmount || currentSale.totalAmount;
+    const discount = currentSale.discount || 0;
+    const total = currentSale.totalAmount;
+    const paid = currentSale.paidAmount;
+    const change = paid - total;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title>
+      <style>
+        @media print { @page { size: 80mm auto; margin: 0; } }
+        body { font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; line-height: 1.3; margin: 0; padding: 5mm; width: 70mm; color: #000; }
+        .header { text-align: center; padding-bottom: 8px; margin-bottom: 8px; }
+        .shop-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+        .shop-info { font-size: 9px; line-height: 1.4; margin-bottom: 2px; }
+        .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+        .receipt-info { font-size: 10px; margin-bottom: 8px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        th { text-align: left; font-size: 10px; padding: 4px 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; }
+        th:last-child { border-right: none; }
+        th.center { text-align: center; } th.right { text-align: right; }
+        td { padding: 4px 2px; font-size: 10px; vertical-align: top; border-right: 1px solid #000; }
+        td:last-child { border-right: none; }
+        td.center { text-align: center; } td.right { text-align: right; }
+        .totals { border-top: 1px dashed #000; padding-top: 6px; margin-bottom: 8px; }
+        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+        .total-line.grand { font-size: 13px; font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
+        .footer { text-align: center; font-size: 9px; border-top: 1px dashed #000; padding-top: 6px; margin-top: 8px; line-height: 1.4; }
+      </style></head><body>
+      <div class="header">
+        ${shopSettings?.logo ? `<div style="text-align:center;margin-bottom:5px;"><img src="${shopSettings.logo}" alt="Logo" style="max-width:50mm;max-height:18mm;filter:grayscale(100%) contrast(200%);" onerror="this.style.display='none'" /></div>` : ''}
+        <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
+        ${shopSettings?.shopDescription2 ? `<div class="shop-info">${shopSettings.shopDescription2}</div>` : ''}
+        ${shopSettings?.userPhone1 ? `<div class="shop-info">Contact# ${shopSettings.userPhone1}</div>` : ''}
+      </div>
+      <div class="divider"></div>
+      <div class="receipt-info">
+        <div class="info-row">
+          ${shopSettings?.userName1 ? `<span>Cashier: ${shopSettings.userName1}</span>` : ''}
+          <span>${saleDate.toLocaleDateString()}</span>
+        </div>
+        <div class="info-row">
+          <span>Number: ${currentSale.billNumber}</span>
+          <span>${saleDate.toLocaleTimeString()}</span>
+        </div>
+        ${currentSale.contact?.name ? `<div class="info-row"><span>Customer:</span><span>${currentSale.contact.name}</span></div>` : ''}
+      </div>
+      <table><thead><tr>
+        <th style="width:8%;">0</th><th style="width:42%;">Descriptions</th>
+        <th class="center" style="width:15%;">Qty</th><th class="right" style="width:17%;">Rate</th>
+        <th class="right" style="width:18%;">Amnt</th>
+      </tr></thead><tbody>
+        ${(currentSale.items || []).map((item, i) => `<tr>
+          <td>${i + 1}</td>
+          <td style="word-wrap:break-word;">${item.product?.name || item.name || 'Unknown'}</td>
+          <td class="center">${Number(item.quantity).toFixed(1)}</td>
+          <td class="right">${Number(item.price).toFixed(1)}</td>
+          <td class="right">${Number(item.price * item.quantity).toFixed(1)}</td>
+        </tr>`).join('')}
+      </tbody></table>
+      <div class="totals">
+        <div class="total-line"><span>Total Rs :</span><span>${Number(subtotal).toFixed(1)}</span></div>
+        ${discount > 0 ? `<div class="total-line"><span>Total Disc: Rs :</span><span>${Number(discount).toFixed(1)}</span></div>` : ''}
+        <div class="total-line"><span>Sub Total Rs :</span><span>${Number(total).toFixed(1)}</span></div>
+        <div class="total-line grand"><span>Paid Rs :</span><span>${Number(paid).toFixed(1)}</span></div>
+        ${change > 0 ? `<div class="total-line"><span>Change Rs :</span><span>${Number(change).toFixed(1)}</span></div>` : `<div class="total-line"><span>Change Rs :</span><span>0.0</span></div>`}
+      </div>
+      <div class="footer">
+        <div style="margin-bottom:6px;font-weight:bold;">Thank You for Visiting Us!</div>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px dashed #000;font-size:10px;">Powered By Hisab Ghar 03142740270</div>
+      </div>
+    </body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    }
+  };
+
   const payCredit = useMutation(
     async (paymentData) => {
       let response;
@@ -283,6 +366,15 @@ function SaleDetailsModal({ sale, isOpen, onClose }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015-1.837-2.175a48.041 48.041 0 711.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
               </svg>
               Print PDF
+            </button>
+            <button
+              onClick={printThermalReceipt}
+              className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-3 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 shadow-sm flex items-center gap-2 text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+              </svg>
+              Thermal
             </button>
             <UrduInvoiceHTML sale={sale} shopSettings={shopSettings} preferences={pdfPreferences} />
             <button

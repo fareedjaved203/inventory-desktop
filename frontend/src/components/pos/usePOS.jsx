@@ -485,7 +485,7 @@ export function usePOS() {
             font-size: 10px;
             padding: 4px 2px;
             border-bottom: 1px solid #000;
-            border-right: 2px solid #000;
+            border-right: 1px solid #000;
           }
           th:last-child { border-right: none; }
           th.center { text-align: center; }
@@ -494,7 +494,7 @@ export function usePOS() {
             padding: 4px 2px;
             font-size: 10px;
             vertical-align: top;
-            border-right: 2px solid #000;
+            border-right: 1px solid #000;
           }
           td:last-child { border-right: none; }
           td.center { text-align: center; }
@@ -543,7 +543,7 @@ export function usePOS() {
         
         <div class="receipt-info">
           <div class="info-row">
-            <span>Cashier: ${shopSettings?.userName1 || 'N/A'}</span>
+            ${shopSettings?.userName1 ? `<span>Cashier: ${shopSettings.userName1}</span>` : ''}
             <span>${now.toLocaleDateString()}</span>
           </div>
           <div class="info-row">
@@ -657,6 +657,7 @@ export function usePOS() {
         toast.success('Sale completed successfully!');
         clearCart();
         queryClient.invalidateQueries(['pos-products']);
+        queryClient.invalidateQueries(['category-products']);
         printReceipt(data);
       },
       onError: (error) => {

@@ -32,6 +32,8 @@ class LicenseManager {
     return crypto.createHash('sha256').update(raw).digest('hex').substring(0, 16);
   }
 
+
+
   async validateLicense(licenseKey, userId) {
     try {
       const decoded = this.decodeLicenseKey(licenseKey);
@@ -84,7 +86,7 @@ class LicenseManager {
       return { valid: true, expiry: decoded.expiry, duration: decoded.duration, hasDemoData: hadDemo };
     } catch (error) {
       console.error('License validation error:', error);
-      return { valid: false, error: 'Invalid license format' };
+      return { valid: false, error: error.message || 'Invalid license format' };
     }
   }
 
@@ -113,6 +115,10 @@ class LicenseManager {
 
         if (hmacPart.toUpperCase() !== expectedHmac) {
           console.error('License HMAC validation failed');
+          console.error('  Key segments:', parts);
+          console.error('  Payload:', payload);
+          console.error('  Expected HMAC:', expectedHmac);
+          console.error('  Got HMAC:', hmacPart.toUpperCase());
           return null;
         }
 
