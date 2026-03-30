@@ -122,7 +122,7 @@ function Products() {
             Showing <span className="font-medium text-gray-900">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, products?.total || 0)}</span> of <span className="font-medium text-gray-900">{products?.total || 0}</span> results
             {showLowStock && <span className="ml-2 text-orange-600 font-medium">(Filtered: Low Stock Only)</span>}
             {showDamaged && <span className="ml-2 text-red-600 font-medium">(Filtered: Damaged Only)</span>}
-            {showRawMaterials && <span className="ml-2 text-blue-600 font-medium">(Filtered: Raw Materials Only)</span>}
+            {showRawMaterials && <span className="ml-2 text-blue-600 font-medium">(Filtered: {t('rawMaterials')} Only)</span>}
           </div>
           
           <div className="flex justify-between items-center mt-4">

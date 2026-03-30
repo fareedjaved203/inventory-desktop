@@ -1,5 +1,6 @@
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { formatPakistaniCurrency } from '../../utils/formatCurrency';
+import featuresConfig from '../../config/features.json';
 
 export function ManufacturingModals({
   t,
@@ -90,7 +91,9 @@ export function ManufacturingModals({
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Specify how much of each raw material is needed to make 1 unit of the final product. Set per unit costs in Products section for cost estimation.
+                  {featuresConfig.manufacture
+                    ? 'Specify how much of each raw material is needed to make 1 unit of the final product. Set per unit costs in Products section for cost estimation.'
+                    : 'Specify the quantity of each item included in 1 bundle. Set per unit costs in Products section for cost estimation.'}
                 </p>
                 {ingredients.map((ingredient, index) => {
                   const selectedMaterial = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
@@ -329,7 +332,7 @@ export function ManufacturingModals({
                   }`}>Ingredient Stock Status & Cost Breakdown</h4>
                   {maxProduction === 0 && (
                     <div className="mb-3 p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm font-medium">
-                      ⚠️ Production cannot be completed - insufficient raw materials
+                      ⚠️ {featuresConfig.manufacture ? 'Production cannot be completed - insufficient raw materials' : 'Bundle cannot be created - insufficient items'}
                     </div>
                   )}
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -398,7 +401,7 @@ export function ManufacturingModals({
                   {productionCost === 0 && (
                     <div className="mt-3 pt-2 border-t border-orange-200 bg-orange-50 rounded p-2">
                       <div className="text-orange-700 text-sm">
-                        💡 To see production costs, set "Per Unit Cost" for raw materials in the Products section
+                        💡 {featuresConfig.manufacture ? 'To see production costs, set "Per Unit Cost" for raw materials in the Products section' : 'To see bundle costs, set "Per Unit Cost" for items in the Products section'}
                       </div>
                     </div>
                   )}
@@ -429,7 +432,7 @@ export function ManufacturingModals({
                   className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Leave empty to use estimated cost: {productionCost > 0 ? formatPakistaniCurrency(productionCost) : 'Set per unit costs for raw materials'}
+                  Leave empty to use estimated cost: {productionCost > 0 ? formatPakistaniCurrency(productionCost) : (featuresConfig.manufacture ? 'Set per unit costs for raw materials' : 'Set per unit costs for items')}
                 </p>
               </div>
 

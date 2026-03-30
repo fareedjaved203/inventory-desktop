@@ -98,6 +98,7 @@ export const querySchema = z.object({
   vendorId: z.string().optional(),
   contactType: z.enum(["customer", "supplier", "both", "order_booker"]).optional(),
   categoryId: z.string().optional(),
+  contactId: z.string().optional(),
   lowStock: z.union([z.string(), z.boolean()]).optional(),
   isRawMaterial: z.union([z.string(), z.boolean()]).optional(),
 });

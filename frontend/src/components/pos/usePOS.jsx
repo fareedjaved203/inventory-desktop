@@ -277,7 +277,7 @@ export function usePOS() {
       }
 
       if (insufficientMaterials.length > 0) {
-        const errorLines = ['Insufficient raw materials:'];
+        const errorLines = ['Insufficient stock for bundle:'];
         insufficientMaterials.forEach(msg => {
           errorLines.push(`• ${msg}`);
         });
@@ -312,7 +312,7 @@ export function usePOS() {
           if (insufficientMaterials.length > 0) {
             toast.error(
               <div>
-                <div className="font-semibold">Insufficient raw materials:</div>
+                <div className="font-semibold">Insufficient stock:</div>
                 {insufficientMaterials.map((msg, idx) => (
                   <div key={idx} className="text-sm">• {msg}</div>
                 ))}
@@ -382,7 +382,7 @@ export function usePOS() {
             if (insufficientMaterials.length > 0) {
               toast.error(
                 <div>
-                  <div className="font-semibold">Insufficient raw materials:</div>
+                  <div className="font-semibold">Insufficient stock:</div>
                   {insufficientMaterials.map((msg, idx) => (
                     <div key={idx} className="text-sm">• {msg}</div>
                   ))}

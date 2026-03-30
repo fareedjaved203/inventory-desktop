@@ -1,3 +1,7 @@
+import featuresConfig from '../config/features.json';
+
+const isManufacture = featuresConfig.manufacture;
+
 export const translations = {
   en: {
     // Sale Invoice
@@ -153,7 +157,7 @@ export const translations = {
     addFirstProduct: 'Add your first product',
     lowStock: 'Low Stock',
     damaged: 'Damaged',
-    rawMaterials: 'Raw Materials',
+    rawMaterials: isManufacture ? 'Raw Materials' : 'Bundle Items',
     allCategories: 'All Categories',
     searchProducts: 'Search products...',
     addBtn: 'Add Product',
@@ -172,29 +176,33 @@ export const translations = {
     receivable: 'Receivable',
     payable: 'Payable',
 
-    // Manufacturing Page
-    manufacturing: 'Manufacturing',
-    recipes: 'Formulas',
-    productionHistory: 'Production History',
-    addRecipe: 'Add Formula',
-    startProduction: 'Start Production',
-    recipeName: 'Formula Name',
-    finalProduct: 'Final Product',
+    // Manufacturing / Product Bundles Page
+    manufacturing: isManufacture ? 'Manufacturing' : 'Product Bundles',
+    recipes: isManufacture ? 'Formulas' : 'Bundles',
+    productionHistory: isManufacture ? 'Production History' : 'Bundle History',
+    addRecipe: isManufacture ? 'Add Formula' : 'Create Bundle',
+    startProduction: isManufacture ? 'Start Production' : 'Create Bundle Pack',
+    recipeName: isManufacture ? 'Formula Name' : 'Bundle Name',
+    finalProduct: isManufacture ? 'Final Product' : 'Bundle Product',
     selectProduct: 'Select Product',
-    ingredients: 'Ingredients',
-    amountPerUnit: 'Amount per unit',
-    addIngredient: 'Add Ingredient',
+    ingredients: isManufacture ? 'Ingredients' : 'Bundle Items',
+    amountPerUnit: isManufacture ? 'Amount per unit' : 'Qty per bundle',
+    addIngredient: isManufacture ? 'Add Ingredient' : 'Add Item',
     estimatedCost: 'Estimated Cost',
-    productionDate: 'Production Date',
-    manufacturingCost: 'Manufacturing Cost',
-    quantityToMake: 'Quantity to Make',
-    maxProduction: 'Max Production',
-    editRecipe: 'Edit Formula',
-    addNewRecipe: 'Add New Formula',
-    selectRecipe: 'Select Formula',
-    recipe: 'Formula',
+    productionDate: isManufacture ? 'Production Date' : 'Bundle Date',
+    manufacturingCost: isManufacture ? 'Manufacturing Cost' : 'Bundle Cost',
+    quantityToMake: isManufacture ? 'Quantity to Make' : 'Bundles to Create',
+    maxProduction: isManufacture ? 'Max Production' : 'Max Bundles',
+    editRecipe: isManufacture ? 'Edit Formula' : 'Edit Bundle',
+    addNewRecipe: isManufacture ? 'Add New Formula' : 'New Bundle',
+    selectRecipe: isManufacture ? 'Select Formula' : 'Select Bundle',
+    recipe: isManufacture ? 'Formula' : 'Bundle',
     totalEstimatedCost: 'Total Estimated Cost',
-    costPerUnit: 'Cost per unit'
+    costPerUnit: isManufacture ? 'Cost per unit' : 'Cost per bundle',
+    selectRawMaterial: isManufacture ? 'Select Raw Material' : 'Select Item',
+    quantityMade: isManufacture ? 'Qty Produced' : 'Qty Created',
+    productionCost: isManufacture ? 'Production Cost' : 'Bundle Cost',
+    notes: 'Notes'
   },
   
   ur: {
@@ -351,7 +359,7 @@ export const translations = {
     addFirstProduct: 'اپنی پہلی پروڈکٹ شامل کریں',
     lowStock: 'کم اسٹاک',
     damaged: 'خراب شدہ',
-    rawMaterials: 'خام مال',
+    rawMaterials: isManufacture ? 'خام مال' : 'بنڈل آئٹمز',
     allCategories: 'تمام کیٹیگریز',
     searchProducts: 'تلاش کریں...',
     addBtn: 'شامل کریں',
@@ -370,29 +378,33 @@ export const translations = {
     receivable: 'قابل وصول',
     payable: 'قابل ادائیگی',
 
-    // Manufacturing Page
-    manufacturing: 'مینوفیکچرنگ',
-    recipes: 'فارمولے',
-    productionHistory: 'پیداوار کی تاریخ',
-    addRecipe: 'فارمولا شامل کریں',
-    startProduction: 'پیداوار شروع کریں',
-    recipeName: 'فارمولے کا نام',
-    finalProduct: 'حتمی پروڈکٹ',
+    // Manufacturing / Product Bundles Page
+    manufacturing: isManufacture ? 'مینوفیکچرنگ' : 'پروڈکٹ بنڈلز',
+    recipes: isManufacture ? 'فارمولے' : 'بنڈلز',
+    productionHistory: isManufacture ? 'پیداوار کی تاریخ' : 'بنڈل کی تاریخ',
+    addRecipe: isManufacture ? 'فارمولا شامل کریں' : 'بنڈل بنائیں',
+    startProduction: isManufacture ? 'پیداوار شروع کریں' : 'بنڈل پیک بنائیں',
+    recipeName: isManufacture ? 'فارمولے کا نام' : 'بنڈل کا نام',
+    finalProduct: isManufacture ? 'حتمی پروڈکٹ' : 'بنڈل پروڈکٹ',
     selectProduct: 'پروڈکٹ منتخب کریں',
-    ingredients: 'اجزاء',
-    amountPerUnit: 'فی یونٹ مقدار',
-    addIngredient: 'نیا جزو شامل کریں',
+    ingredients: isManufacture ? 'اجزاء' : 'بنڈل آئٹمز',
+    amountPerUnit: isManufacture ? 'فی یونٹ مقدار' : 'فی بنڈل مقدار',
+    addIngredient: isManufacture ? 'نیا جزو شامل کریں' : 'آئٹم شامل کریں',
     estimatedCost: 'تخمینی لاگت',
-    productionDate: 'پیداوار کی تاریخ',
-    manufacturingCost: 'مینوفیکچرنگ لاگت',
-    quantityToMake: 'بنانے کی مقدار',
-    maxProduction: 'زیادہ سے زیادہ پیداوار',
-    editRecipe: 'فارمولے میں ترمیم کریں',
-    addNewRecipe: 'نیا فارمولا شامل کریں',
-    selectRecipe: 'فارمولا منتخب کریں',
-    recipe: 'فارمولا',
+    productionDate: isManufacture ? 'پیداوار کی تاریخ' : 'بنڈل کی تاریخ',
+    manufacturingCost: isManufacture ? 'مینوفیکچرنگ لاگت' : 'بنڈل لاگت',
+    quantityToMake: isManufacture ? 'بنانے کی مقدار' : 'بنڈلز کی تعداد',
+    maxProduction: isManufacture ? 'زیادہ سے زیادہ پیداوار' : 'زیادہ سے زیادہ بنڈلز',
+    editRecipe: isManufacture ? 'فارمولے میں ترمیم کریں' : 'بنڈل میں ترمیم',
+    addNewRecipe: isManufacture ? 'نیا فارمولا شامل کریں' : 'نیا بنڈل',
+    selectRecipe: isManufacture ? 'فارمولا منتخب کریں' : 'بنڈل منتخب کریں',
+    recipe: isManufacture ? 'فارمولا' : 'بنڈل',
     totalEstimatedCost: 'کل تخمینی لاگت',
-    costPerUnit: 'فی یونٹ لاگت'
+    costPerUnit: isManufacture ? 'فی یونٹ لاگت' : 'فی بنڈل لاگت',
+    selectRawMaterial: isManufacture ? 'خام مال منتخب کریں' : 'آئٹم منتخب کریں',
+    quantityMade: isManufacture ? 'پیداوار کی مقدار' : 'بنائی گئی تعداد',
+    productionCost: isManufacture ? 'پیداوار کی لاگت' : 'بنڈل لاگت',
+    notes: 'نوٹس'
   }
 };
 

@@ -1,6 +1,7 @@
 import { FaBoxOpen, FaTag, FaBarcode, FaDollarSign, FaWarehouse } from 'react-icons/fa';
 import ProductImageUpload from '../../components/ProductImageUpload';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import featuresConfig from '../../config/features.json';
 
 export function ProductFormModal({
   language,
@@ -49,7 +50,7 @@ export function ProductFormModal({
                     className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <label htmlFor="isRawMaterial" className="text-sm font-medium text-blue-800">
-                    Raw Material <span className="text-xs text-blue-600">(For Manufacturing)</span>
+                    {featuresConfig.manufacture ? 'Raw Material' : 'Bundle Item'} <span className="text-xs text-blue-600">({featuresConfig.manufacture ? 'For Manufacturing' : 'For Bundles'})</span>
                   </label>
                 </div>
                 <div>

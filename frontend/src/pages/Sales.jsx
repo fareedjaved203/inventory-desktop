@@ -36,6 +36,7 @@ function Sales() {
   const [showCreditBalance, setShowCreditBalance] = useState(
     location?.state?.showCreditBalance || false
   );
+  const [contactFilter, setContactFilter] = useState("");
   const form = useSalesForm(language);
 
   const handleDateChange = (e) => {
@@ -61,6 +62,7 @@ function Sales() {
       debouncedSearchTerm,
       showPendingPayments,
       showCreditBalance,
+      contactFilter,
       currentPage,
     ],
     async () => {
@@ -73,6 +75,10 @@ function Sales() {
       if (selectedDate) {
         const [year, month, day] = selectedDate.split("-");
         params.date = `${day}/${month}/${year}`;
+      }
+
+      if (contactFilter) {
+        params.contactId = contactFilter;
       }
 
       // Use dedicated endpoints for pending payments and credit balance
@@ -246,6 +252,8 @@ function Sales() {
         debouncedSearchTerm={debouncedSearchTerm}
         onNewSale={handleNewSale}
         searchInputRef={searchInputRef}
+        contactFilter={contactFilter}
+        setContactFilter={setContactFilter}
       />
 
       <SalesTable

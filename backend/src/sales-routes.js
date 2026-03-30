@@ -411,6 +411,7 @@ export function setupSalesRoutes(app, prisma) {
   app.get('/api/sales', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
     try {
       const { page = 1, limit = 10, search = '' } = req.query;
+      const contactId = req.query.contactId || '';
       let date = decodeURIComponent(req.query.date || '');
       
       // Force extract date from URL if not in query
@@ -450,6 +451,11 @@ export function setupSalesRoutes(app, prisma) {
             }
           });
         }
+      }
+
+      // Handle contact filter
+      if (contactId && contactId.trim() !== '') {
+        conditions.push({ contactId });
       }
 
       // Handle search (bill number or contact name)
