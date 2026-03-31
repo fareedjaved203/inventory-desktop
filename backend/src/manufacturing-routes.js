@@ -422,16 +422,36 @@ export function setupManufacturingRoutes(app, prisma) {
           }
         });
 
-        // Update the manufactured product's purchase cost with manufacturing cost per unit
+        // Update the manufactured product's purchase cost
         if (manufacturingCost > 0) {
           const costPerUnit = manufacturingCost / Number(req.body.quantityProduced);
-          await prisma.product.update({
-            where: { id: recipe.productId },
-            data: {
-              purchasePrice: Math.round(costPerUnit),
-              perUnitPurchasePrice: Math.round(costPerUnit)
-            }
-          });
+          const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(recipe.product.unit);
+          
+          if (isBulkUnit) {
+            // For bulk units: store costPerUnit × currentTotalQuantity as purchasePrice
+            // so the form's ÷ quantity gives the correct per-unit cost
+            const updatedProduct = await prisma.product.findUnique({
+              where: { id: recipe.productId },
+              select: { quantity: true }
+            });
+            const totalQuantity = Number(updatedProduct.quantity);
+            await prisma.product.update({
+              where: { id: recipe.productId },
+              data: {
+                purchasePrice: Math.round(costPerUnit * totalQuantity),
+                perUnitPurchasePrice: Math.round(costPerUnit)
+              }
+            });
+          } else {
+            // For piece units: store per-unit cost directly (form doesn't divide)
+            await prisma.product.update({
+              where: { id: recipe.productId },
+              data: {
+                purchasePrice: Math.round(costPerUnit),
+                perUnitPurchasePrice: Math.round(costPerUnit)
+              }
+            });
+          }
         }
 
 
