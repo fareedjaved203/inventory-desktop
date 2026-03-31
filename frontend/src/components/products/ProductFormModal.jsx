@@ -458,7 +458,7 @@ export function ProductFormModal({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-medium text-gray-700">
-                            Variant Preview ({variantPreview.filter(v => !(formData.excludedVariants || []).includes(v.variantLabel)).length} of {variantPreview.length} selected)
+                            Variants ({variantPreview.filter(v => !(formData.excludedVariants || []).includes(v.variantLabel)).length} of {variantPreview.length} selected)
                           </label>
                           <div className="flex gap-2">
                             <button
@@ -477,12 +477,23 @@ export function ProductFormModal({
                             </button>
                           </div>
                         </div>
-                        <div className="bg-white border border-indigo-200 rounded-md p-2 max-h-40 overflow-y-auto">
-                          <ul className="space-y-0.5">
-                            {variantPreview.map((variant) => {
-                              const isExcluded = (formData.excludedVariants || []).includes(variant.variantLabel);
-                              return (
-                                <li key={variant.variantLabel} className="flex items-center gap-2">
+                        <div className="bg-white border border-indigo-200 rounded-md p-2 max-h-72 overflow-y-auto space-y-1.5">
+                          {variantPreview.map((variant) => {
+                            const isExcluded = (formData.excludedVariants || []).includes(variant.variantLabel);
+                            const overrides = (formData.variantOverrides || {})[variant.variantLabel] || {};
+                            const updateOverride = (field, value) => {
+                              const current = formData.variantOverrides || {};
+                              setFormData({
+                                ...formData,
+                                variantOverrides: {
+                                  ...current,
+                                  [variant.variantLabel]: { ...current[variant.variantLabel], [field]: value }
+                                }
+                              });
+                            };
+                            return (
+                              <div key={variant.variantLabel} className={`rounded border ${isExcluded ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-indigo-50/50 border-indigo-200'}`}>
+                                <div className="flex items-center gap-2 px-2 py-1.5">
                                   <input
                                     type="checkbox"
                                     checked={!isExcluded}
@@ -493,15 +504,59 @@ export function ProductFormModal({
                                         : [...current, variant.variantLabel];
                                       setFormData({ ...formData, excludedVariants: updated });
                                     }}
-                                    className="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    className="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
                                   />
-                                  <span className={`text-xs px-2 py-0.5 rounded flex-1 ${isExcluded ? 'text-gray-400 line-through bg-gray-50' : 'text-gray-700 bg-indigo-50'}`}>
-                                    {variant.name}
+                                  <span className={`text-xs font-medium flex-1 ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                    {variant.variantLabel}
                                   </span>
-                                </li>
-                              );
-                            })}
-                          </ul>
+                                </div>
+                                {!isExcluded && (
+                                  <div className="grid grid-cols-4 gap-1.5 px-2 pb-2">
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Qty</label>
+                                      <input
+                                        type="number" min="0" step="0.01"
+                                        value={overrides.quantity ?? formData.quantity}
+                                        onChange={(e) => updateOverride('quantity', e.target.value)}
+                                        onWheel={(e) => e.target.blur()}
+                                        className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Retail</label>
+                                      <input
+                                        type="number" min="0" step="1"
+                                        value={overrides.retailPrice ?? formData.retailPrice}
+                                        onChange={(e) => updateOverride('retailPrice', e.target.value)}
+                                        onWheel={(e) => e.target.blur()}
+                                        className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Wholesale</label>
+                                      <input
+                                        type="number" min="0" step="1"
+                                        value={overrides.wholesalePrice ?? formData.wholesalePrice}
+                                        onChange={(e) => updateOverride('wholesalePrice', e.target.value)}
+                                        onWheel={(e) => e.target.blur()}
+                                        className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Purchase</label>
+                                      <input
+                                        type="number" min="0" step="1"
+                                        value={overrides.purchasePrice ?? formData.purchasePrice}
+                                        onChange={(e) => updateOverride('purchasePrice', e.target.value)}
+                                        onWheel={(e) => e.target.blur()}
+                                        className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

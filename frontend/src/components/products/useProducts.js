@@ -38,7 +38,8 @@ const initialFormState = {
   isRawMaterial: false,
   sizes: [],
   colors: [],
-  excludedVariants: []
+  excludedVariants: [],
+  variantOverrides: {}
 };
 
 /**
@@ -270,6 +271,9 @@ export function useProducts() {
       if (formData.excludedVariants && formData.excludedVariants.length > 0) {
         payload.excludedVariants = formData.excludedVariants;
       }
+      if (formData.variantOverrides && Object.keys(formData.variantOverrides).length > 0) {
+        payload.variantOverrides = formData.variantOverrides;
+      }
       
       if (isEditMode) {
         updateProduct.mutate({ id: selectedProduct.id, data: payload });
@@ -318,6 +322,21 @@ export function useProducts() {
       excludedVariants = fullMatrix.filter(label => !existingLabels.has(label));
     }
 
+    // Build variantOverrides from existing child variants' individual values
+    let variantOverrides = {};
+    if (product.variants && product.variants.length > 0) {
+      for (const v of product.variants) {
+        if (v.variantLabel) {
+          variantOverrides[v.variantLabel] = {
+            quantity: (v.quantity ?? '0').toString(),
+            retailPrice: (v.retailPrice ?? '0').toString(),
+            wholesalePrice: (v.wholesalePrice ?? '0').toString(),
+            purchasePrice: (v.purchasePrice ?? '0').toString(),
+          };
+        }
+      }
+    }
+
     setFormData({
       name: product.name || '',
       sku: product.sku || '',
@@ -334,7 +353,8 @@ export function useProducts() {
       isRawMaterial: !!product.isRawMaterial,
       sizes,
       colors,
-      excludedVariants
+      excludedVariants,
+      variantOverrides
     });
     setValidationErrors({});
     setIsModalOpen(true);

@@ -890,10 +890,11 @@ app.post(
   validateRequest({ body: productSchema }),
   async (req, res) => {
     try {
-      const { sizes, colors, excludedVariants, ...productData } = req.body;
+      const { sizes, colors, excludedVariants, variantOverrides, ...productData } = req.body;
       const hasSizes = Array.isArray(sizes) && sizes.length > 0;
       const hasColors = Array.isArray(colors) && colors.length > 0;
       const excludedSet = new Set(Array.isArray(excludedVariants) ? excludedVariants : []);
+      const overrides = variantOverrides || {};
 
       // Check for existing product with same name
       const existingProduct = await prisma.product.findFirst({
@@ -1019,7 +1020,8 @@ app.post(
         const children = [];
         let skuIndex = 1;
         for (const variant of variantMatrix) {
-          // Generate a unique SKU for each child variant based on parent SKU
+          // Apply per-variant overrides if provided
+          const vo = overrides[variant.variantLabel] || {};
           const parentSku = productData.sku || parent.id.substring(0, 8);
           const childSku = `${parentSku}-${skuIndex}`;
           const child = await tx.product.create({
@@ -1029,6 +1031,10 @@ app.post(
               variantLabel: variant.variantLabel,
               parentProductId: parent.id,
               sku: childSku,
+              ...(vo.quantity !== undefined && { quantity: parseFloat(vo.quantity) || 0 }),
+              ...(vo.retailPrice !== undefined && { retailPrice: parseFloat(vo.retailPrice) || 0 }),
+              ...(vo.wholesalePrice !== undefined && { wholesalePrice: parseFloat(vo.wholesalePrice) || 0 }),
+              ...(vo.purchasePrice !== undefined && { purchasePrice: parseFloat(vo.purchasePrice) || 0 }),
             }
           });
           children.push(child);
@@ -1085,10 +1091,11 @@ app.put(
   validateRequest({ body: productUpdateSchema }),
   async (req, res) => {
     try {
-      const { sizes, colors, excludedVariants: excludedVariantsUpdate, ...updateData } = req.body;
+      const { sizes, colors, excludedVariants: excludedVariantsUpdate, variantOverrides: variantOverridesUpdate, ...updateData } = req.body;
       const hasSizes = Array.isArray(sizes) && sizes.length > 0;
       const hasColors = Array.isArray(colors) && colors.length > 0;
       const excludedSetUpdate = new Set(Array.isArray(excludedVariantsUpdate) ? excludedVariantsUpdate : []);
+      const overridesUpdate = variantOverridesUpdate || {};
 
       // Check for existing product with same name (excluding current product)
       if (updateData.name) {
@@ -1245,13 +1252,38 @@ app.put(
           }
         }
 
-        // Update child names if parent name changed
+        // Update child names if parent name changed, and apply overrides to existing variants
         for (const variant of toUpdate) {
           const existing = originalProduct.variants.find(ev => ev.variantLabel === variant.variantLabel);
           if (existing) {
+            const vo = overridesUpdate[variant.variantLabel] || {};
             await tx.product.update({
               where: { id: existing.id },
-              data: { name: variant.name }
+              data: {
+                name: variant.name,
+                ...(vo.quantity !== undefined && { quantity: parseFloat(vo.quantity) || 0 }),
+                ...(vo.retailPrice !== undefined && { retailPrice: parseFloat(vo.retailPrice) || 0 }),
+                ...(vo.wholesalePrice !== undefined && { wholesalePrice: parseFloat(vo.wholesalePrice) || 0 }),
+                ...(vo.purchasePrice !== undefined && { purchasePrice: parseFloat(vo.purchasePrice) || 0 }),
+              }
+            });
+          }
+        }
+
+        // Also apply overrides to existing variants that aren't in toUpdate (no name change but values changed)
+        for (const existingVariant of originalProduct.variants) {
+          const vo = overridesUpdate[existingVariant.variantLabel] || {};
+          const isInToUpdate = toUpdate.some(v => v.variantLabel === existingVariant.variantLabel);
+          const isInToDelete = toDelete.some(v => v.variantLabel === existingVariant.variantLabel);
+          if (!isInToUpdate && !isInToDelete && Object.keys(vo).length > 0) {
+            await tx.product.update({
+              where: { id: existingVariant.id },
+              data: {
+                ...(vo.quantity !== undefined && { quantity: parseFloat(vo.quantity) || 0 }),
+                ...(vo.retailPrice !== undefined && { retailPrice: parseFloat(vo.retailPrice) || 0 }),
+                ...(vo.wholesalePrice !== undefined && { wholesalePrice: parseFloat(vo.wholesalePrice) || 0 }),
+                ...(vo.purchasePrice !== undefined && { purchasePrice: parseFloat(vo.purchasePrice) || 0 }),
+              }
             });
           }
         }
@@ -1282,6 +1314,7 @@ app.put(
         let skuIndex = existingSkuNumbers.length > 0 ? Math.max(...existingSkuNumbers) + 1 : originalProduct.variants.length + 1;
 
         for (const variant of toCreate) {
+          const vo = overridesUpdate[variant.variantLabel] || {};
           const childSku = `${parent.sku || parent.id.substring(0, 8)}-${skuIndex}`;
           await tx.product.create({
             data: {
@@ -1290,6 +1323,10 @@ app.put(
               variantLabel: variant.variantLabel,
               parentProductId: parent.id,
               sku: childSku,
+              ...(vo.quantity !== undefined && { quantity: parseFloat(vo.quantity) || 0 }),
+              ...(vo.retailPrice !== undefined && { retailPrice: parseFloat(vo.retailPrice) || 0 }),
+              ...(vo.wholesalePrice !== undefined && { wholesalePrice: parseFloat(vo.wholesalePrice) || 0 }),
+              ...(vo.purchasePrice !== undefined && { purchasePrice: parseFloat(vo.purchasePrice) || 0 }),
             }
           });
           skuIndex++;

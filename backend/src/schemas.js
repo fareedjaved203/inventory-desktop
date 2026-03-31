@@ -21,6 +21,12 @@ export const productSchema = z.object({
   sizes: z.array(z.string().min(1)).optional(),
   colors: z.array(z.string().min(1)).optional(),
   excludedVariants: z.array(z.string().min(1)).optional(),
+  variantOverrides: z.record(z.string(), z.object({
+    quantity: z.string().optional(),
+    retailPrice: z.string().optional(),
+    wholesalePrice: z.string().optional(),
+    purchasePrice: z.string().optional(),
+  })).optional(),
 });
 
 export const productUpdateSchema = productSchema.partial();
