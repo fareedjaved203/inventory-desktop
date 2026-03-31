@@ -16,6 +16,11 @@ export const productSchema = z.object({
   isRawMaterial: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
+  parentProductId: z.string().nullable().optional(),
+  variantLabel: z.string().nullable().optional(),
+  sizes: z.array(z.string().min(1)).optional(),
+  colors: z.array(z.string().min(1)).optional(),
+  excludedVariants: z.array(z.string().min(1)).optional(),
 });
 
 export const productUpdateSchema = productSchema.partial();
@@ -101,4 +106,6 @@ export const querySchema = z.object({
   contactId: z.string().optional(),
   lowStock: z.union([z.string(), z.boolean()]).optional(),
   isRawMaterial: z.union([z.string(), z.boolean()]).optional(),
+  parentOnly: z.union([z.string(), z.boolean()]).optional(),
+  excludeParents: z.union([z.string(), z.boolean()]).optional(),
 });

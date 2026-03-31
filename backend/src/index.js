@@ -33,6 +33,7 @@ import backupRoutes from './backup-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
 import { runMigrations } from './migrations.js';
+import { generateVariantMatrix, reconcileVariants } from './variant-utils.js';
 
 dotenv.config();
 
@@ -109,6 +110,8 @@ async function ensureSchema(prismaClient) {
     `ALTER TABLE "SaleItem" ADD COLUMN "priceType" TEXT DEFAULT 'retail'`,
     `ALTER TABLE "License" ADD COLUMN "duration" TEXT`,
     `ALTER TABLE "License" ADD COLUMN "isTrial" BOOLEAN DEFAULT false`,
+    `ALTER TABLE "Product" ADD COLUMN "parentProductId" TEXT`,
+    `ALTER TABLE "Product" ADD COLUMN "variantLabel" TEXT`,
   ];
 
   // Create tables
@@ -357,7 +360,7 @@ if (process.env.ELECTRON_APP) {
 app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
   try {
     // Use aggregation to get max barcode number efficiently
-    const result = await prisma.product.findFirst({
+    const allHBarcodes = await prisma.product.findMany({
       where: {
         userId: req.userId,
         sku: {
@@ -365,15 +368,17 @@ app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
           not: null
         }
       },
-      select: { sku: true },
-      orderBy: { sku: 'desc' }
+      select: { sku: true }
     });
 
     let nextNumber = 1;
-    if (result?.sku) {
-      // Extract number from the highest barcode (H00001 -> 1)
-      const currentNumber = parseInt(result.sku.substring(1));
-      nextNumber = currentNumber + 1;
+    if (allHBarcodes.length > 0) {
+      // Find the highest numeric barcode, ignoring non-numeric ones
+      const maxNumber = allHBarcodes
+        .map(p => parseInt(p.sku.substring(1)))
+        .filter(n => !isNaN(n))
+        .reduce((max, n) => Math.max(max, n), 0);
+      nextNumber = maxNumber + 1;
     }
 
     const barcode = `H${nextNumber.toString().padStart(5, '0')}`;
@@ -387,7 +392,7 @@ app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
 // Get all products with search and pagination
 app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', sku = '', lowStock = false, categoryId = '', isRawMaterial } = req.query;
+    const { page = 1, limit = 10, search = '', sku = '', lowStock = false, categoryId = '', isRawMaterial, parentOnly, excludeParents } = req.query;
 
     let where = {
       userId: req.userId
@@ -396,11 +401,33 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
     if (sku) {
       where.sku = sku;
     } else if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } },
-        { sku: { contains: search } },
-      ];
+      // When parentOnly + search: also include parents whose children match the search
+      if (parentOnly === 'true' || parentOnly === true) {
+        where.OR = [
+          { name: { contains: search }, parentProductId: null },
+          { description: { contains: search }, parentProductId: null },
+          { sku: { contains: search }, parentProductId: null },
+          // Include parents that have a child variant matching the search
+          {
+            parentProductId: null,
+            variants: {
+              some: {
+                OR: [
+                  { name: { contains: search } },
+                  { variantLabel: { contains: search } },
+                  { sku: { contains: search } },
+                ]
+              }
+            }
+          }
+        ];
+      } else {
+        where.OR = [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { sku: { contains: search } },
+        ];
+      }
     }
 
     if (categoryId) {
@@ -409,6 +436,33 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
 
     if (isRawMaterial !== undefined) {
       where.isRawMaterial = isRawMaterial === 'true';
+    }
+
+    // parentOnly=true: return only top-level products (parentProductId is null)
+    // (When search is active, parentProductId: null is already embedded in the OR conditions above)
+    if (parentOnly === 'true' || parentOnly === true) {
+      if (!search) {
+        where.parentProductId = null;
+      }
+    }
+
+    // excludeParents=true: exclude products that have child variants (for POS/sales)
+    // Include child variants (parentProductId not null) OR standalone products (no children)
+    if (excludeParents === 'true' || excludeParents === true) {
+      const excludeParentsCondition = {
+        OR: [
+          { parentProductId: { not: null } },
+          { variants: { none: {} }, parentProductId: null }
+        ]
+      };
+      if (where.OR) {
+        // Search OR is already set — combine with AND so both conditions apply
+        const searchCondition = { OR: where.OR };
+        delete where.OR;
+        where.AND = [searchCondition, excludeParentsCondition];
+      } else {
+        where.OR = excludeParentsCondition.OR;
+      }
     }
 
     // Include category and recipe in all fetches
@@ -424,6 +478,11 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
         }
       }
     };
+
+    // When parentOnly, include variants relation for parent products
+    if (parentOnly === 'true' || parentOnly === true) {
+      include.variants = true;
+    }
 
     if (lowStock === 'true' || lowStock === true) {
       // For low stock, we need to fetch all and filter in JS because of dynamic threshold
@@ -443,7 +502,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
       return res.json({
         items: paginatedItems.map(item => {
           const isManufactured = !!item.recipe;
-          return {
+          const mapped = {
             ...item,
             id: item.id.toString(),
             price: item.price ? Number(item.price) : null,
@@ -456,6 +515,11 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
             isManufactured,
             recipe: item.recipe || undefined
           };
+          if ((parentOnly === 'true' || parentOnly === true) && item.variants) {
+            mapped.variantCount = item.variants.length;
+            mapped.totalVariantQuantity = item.variants.reduce((sum, v) => sum + Number(v.quantity || 0), 0);
+          }
+          return mapped;
         }),
         total,
         page,
@@ -477,7 +541,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
     res.json({
       items: items.map(item => {
         const isManufactured = !!item.recipe;
-        return {
+        const mapped = {
           ...item,
           id: item.id.toString(),
           price: item.price ? Number(item.price) : null,
@@ -490,6 +554,11 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
           isManufactured,
           recipe: item.recipe || undefined
         };
+        if ((parentOnly === 'true' || parentOnly === true) && item.variants) {
+          mapped.variantCount = item.variants.length;
+          mapped.totalVariantQuantity = item.variants.reduce((sum, v) => sum + Number(v.quantity || 0), 0);
+        }
+        return mapped;
       }),
       total,
       page,
@@ -772,6 +841,7 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
       },
       include: {
         category: true,
+        variants: true,
         recipe: {
           include: {
             ingredients: {
@@ -795,7 +865,18 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
       purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
       perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
       unitValue: product.unitValue ? Number(product.unitValue) : null,
-      quantity: Number(product.quantity)
+      quantity: Number(product.quantity),
+      variants: (product.variants || []).map(child => ({
+        ...child,
+        id: child.id.toString(),
+        price: child.price ? Number(child.price) : null,
+        retailPrice: child.retailPrice ? Number(child.retailPrice) : null,
+        wholesalePrice: child.wholesalePrice ? Number(child.wholesalePrice) : null,
+        purchasePrice: child.purchasePrice ? Number(child.purchasePrice) : null,
+        perUnitPurchasePrice: child.perUnitPurchasePrice ? Number(child.perUnitPurchasePrice) : null,
+        unitValue: child.unitValue ? Number(child.unitValue) : null,
+        quantity: Number(child.quantity)
+      }))
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -809,10 +890,15 @@ app.post(
   validateRequest({ body: productSchema }),
   async (req, res) => {
     try {
+      const { sizes, colors, excludedVariants, ...productData } = req.body;
+      const hasSizes = Array.isArray(sizes) && sizes.length > 0;
+      const hasColors = Array.isArray(colors) && colors.length > 0;
+      const excludedSet = new Set(Array.isArray(excludedVariants) ? excludedVariants : []);
+
       // Check for existing product with same name
       const existingProduct = await prisma.product.findFirst({
         where: { 
-          name: req.body.name,
+          name: productData.name,
           userId: req.userId
         }
       });
@@ -820,27 +906,159 @@ app.post(
       if (existingProduct) {
         return res.status(400).json({ error: 'Product name must be unique' });
       }
-      
-      const product = await prisma.product.create({
-        data: {
-          ...req.body,
-          userId: req.userId
+
+      // Prevent setting parentProductId to a product that is itself a child
+      if (productData.parentProductId) {
+        const parentCandidate = await prisma.product.findUnique({
+          where: { id: productData.parentProductId },
+          select: { parentProductId: true }
+        });
+        if (parentCandidate?.parentProductId) {
+          return res.status(400).json({ error: 'Cannot nest variants more than one level deep.' });
+        }
+      }
+
+      // If no sizes/colors, create a standalone product (original behavior)
+      if (!hasSizes && !hasColors) {
+        const product = await prisma.product.create({
+          data: {
+            ...productData,
+            userId: req.userId
+          },
+          include: { category: true }
+        });
+
+        return res.status(201).json({
+          ...product,
+          id: product.id.toString(),
+          price: product.price ? Number(product.price) : null,
+          retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+          wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+          purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+          perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
+          unitValue: product.unitValue ? Number(product.unitValue) : null,
+          quantity: Number(product.quantity)
+        });
+      }
+
+      // Variant creation: create parent + children in a transaction
+      let variantMatrix = generateVariantMatrix(productData.name, sizes, colors);
+
+      // Filter out excluded variants (user unchecked them in the preview)
+      if (excludedSet.size > 0) {
+        variantMatrix = variantMatrix.filter(v => !excludedSet.has(v.variantLabel));
+      }
+
+      // If all variants were excluded, create a standalone product
+      if (variantMatrix.length === 0) {
+        const product = await prisma.product.create({
+          data: {
+            ...productData,
+            userId: req.userId
+          },
+          include: { category: true }
+        });
+
+        return res.status(201).json({
+          ...product,
+          id: product.id.toString(),
+          price: product.price ? Number(product.price) : null,
+          retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+          wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+          purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+          perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
+          unitValue: product.unitValue ? Number(product.unitValue) : null,
+          quantity: Number(product.quantity)
+        });
+      }
+
+      // Check for name collisions with existing products
+      const variantNames = variantMatrix.map(v => v.name);
+      const existingVariants = await prisma.product.findMany({
+        where: {
+          userId: req.userId,
+          name: { in: variantNames }
         },
-        include: { category: true }
+        select: { name: true }
       });
-      
-      // Note: Automatic expense creation removed for compatibility
-      
+      if (existingVariants.length > 0) {
+        return res.status(400).json({
+          error: `Product name must be unique. Conflicting names: ${existingVariants.map(v => v.name).join(', ')}`
+        });
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        // Create the parent product first
+        const parent = await tx.product.create({
+          data: {
+            ...productData,
+            userId: req.userId
+          },
+          include: { category: true }
+        });
+
+        // Fields inherited from parent by each child variant
+        const inheritedFields = {
+          userId: req.userId,
+          description: productData.description,
+          unit: productData.unit,
+          isRawMaterial: productData.isRawMaterial,
+          categoryId: productData.categoryId,
+          image: productData.image,
+          price: productData.price,
+          retailPrice: productData.retailPrice,
+          wholesalePrice: productData.wholesalePrice,
+          purchasePrice: productData.purchasePrice,
+          perUnitPurchasePrice: productData.perUnitPurchasePrice,
+          quantity: productData.quantity,
+          lowStockThreshold: productData.lowStockThreshold,
+          unitValue: productData.unitValue,
+        };
+
+        // Create all child variant rows
+        const children = [];
+        let skuIndex = 1;
+        for (const variant of variantMatrix) {
+          // Generate a unique SKU for each child variant based on parent SKU
+          const parentSku = productData.sku || parent.id.substring(0, 8);
+          const childSku = `${parentSku}-${skuIndex}`;
+          const child = await tx.product.create({
+            data: {
+              ...inheritedFields,
+              name: variant.name,
+              variantLabel: variant.variantLabel,
+              parentProductId: parent.id,
+              sku: childSku,
+            }
+          });
+          children.push(child);
+          skuIndex++;
+        }
+
+        return { parent, children };
+      });
+
       res.status(201).json({
-        ...product,
-        id: product.id.toString(),
-        price: product.price ? Number(product.price) : null,
-        retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
-        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
-        purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
-        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
-        unitValue: product.unitValue ? Number(product.unitValue) : null,
-        quantity: Number(product.quantity)
+        ...result.parent,
+        id: result.parent.id.toString(),
+        price: result.parent.price ? Number(result.parent.price) : null,
+        retailPrice: result.parent.retailPrice ? Number(result.parent.retailPrice) : null,
+        wholesalePrice: result.parent.wholesalePrice ? Number(result.parent.wholesalePrice) : null,
+        purchasePrice: result.parent.purchasePrice ? Number(result.parent.purchasePrice) : null,
+        perUnitPurchasePrice: result.parent.perUnitPurchasePrice ? Number(result.parent.perUnitPurchasePrice) : null,
+        unitValue: result.parent.unitValue ? Number(result.parent.unitValue) : null,
+        quantity: Number(result.parent.quantity),
+        variants: result.children.map(child => ({
+          ...child,
+          id: child.id.toString(),
+          price: child.price ? Number(child.price) : null,
+          retailPrice: child.retailPrice ? Number(child.retailPrice) : null,
+          wholesalePrice: child.wholesalePrice ? Number(child.wholesalePrice) : null,
+          purchasePrice: child.purchasePrice ? Number(child.purchasePrice) : null,
+          perUnitPurchasePrice: child.perUnitPurchasePrice ? Number(child.perUnitPurchasePrice) : null,
+          unitValue: child.unitValue ? Number(child.unitValue) : null,
+          quantity: Number(child.quantity)
+        }))
       });
     } catch (error) {
       console.error('Product creation error:', error);
@@ -867,11 +1085,16 @@ app.put(
   validateRequest({ body: productUpdateSchema }),
   async (req, res) => {
     try {
+      const { sizes, colors, excludedVariants: excludedVariantsUpdate, ...updateData } = req.body;
+      const hasSizes = Array.isArray(sizes) && sizes.length > 0;
+      const hasColors = Array.isArray(colors) && colors.length > 0;
+      const excludedSetUpdate = new Set(Array.isArray(excludedVariantsUpdate) ? excludedVariantsUpdate : []);
+
       // Check for existing product with same name (excluding current product)
-      if (req.body.name) {
+      if (updateData.name) {
         const existingProduct = await prisma.product.findFirst({
           where: {
-            name: req.body.name,
+            name: updateData.name,
             userId: req.userId,
             NOT: { id: req.params.id }
           }
@@ -884,30 +1107,224 @@ app.put(
       
       // Get original product data
       const originalProduct = await prisma.product.findUnique({
-        where: { id: req.params.id, userId: req.userId }
+        where: { id: req.params.id, userId: req.userId },
+        include: { variants: true }
       });
-      
-      const product = await prisma.product.update({
-        where: { 
-          id: req.params.id,
-          userId: req.userId
-        },
-        data: req.body,
-        include: { category: true }
+
+      if (!originalProduct) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      // Prevent a product that has child variants from being set as another product's child
+      if (updateData.parentProductId && originalProduct.variants.length > 0) {
+        return res.status(400).json({ error: 'Cannot make a parent product with existing variants into a child variant.' });
+      }
+
+      // If no sizes/colors provided, do a simple update (original behavior)
+      // This also handles individual child variant updates (price, quantity, SKU, etc.)
+      if (!hasSizes && !hasColors) {
+        const product = await prisma.product.update({
+          where: { 
+            id: req.params.id,
+            userId: req.userId
+          },
+          data: updateData,
+          include: { category: true, variants: true }
+        });
+        
+        return res.json({
+          ...product,
+          id: product.id.toString(),
+          price: product.price ? Number(product.price) : null,
+          retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
+          wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
+          purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
+          perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
+          unitValue: product.unitValue ? Number(product.unitValue) : null,
+          quantity: Number(product.quantity)
+        });
+      }
+
+      // Variant reconciliation path
+      const newParentName = updateData.name || originalProduct.name;
+      const oldParentName = originalProduct.name;
+
+      const desiredMatrix = generateVariantMatrix(newParentName, sizes, colors);
+
+      // Filter out excluded variants (user unchecked them in the preview)
+      const filteredMatrix = excludedSetUpdate.size > 0
+        ? desiredMatrix.filter(v => !excludedSetUpdate.has(v.variantLabel))
+        : desiredMatrix;
+
+      const existingVariants = originalProduct.variants.map(v => ({
+        id: v.id,
+        variantLabel: v.variantLabel,
+        name: v.name,
+      }));
+
+      const { toCreate, toDelete, toUpdate } = reconcileVariants(
+        existingVariants,
+        filteredMatrix,
+        newParentName,
+        oldParentName
+      );
+
+      // Safety check: before deleting, check for associated records
+      if (toDelete.length > 0) {
+        const deleteIds = toDelete.map(v => {
+          const existing = originalProduct.variants.find(ev => ev.variantLabel === v.variantLabel);
+          return existing?.id;
+        }).filter(Boolean);
+
+        const [saleItems, bulkPurchaseItems, saleReturnItems] = await Promise.all([
+          prisma.saleItem.findMany({
+            where: { productId: { in: deleteIds } },
+            select: { productId: true }
+          }),
+          prisma.bulkPurchaseItem.findMany({
+            where: { productId: { in: deleteIds } },
+            select: { productId: true }
+          }),
+          prisma.saleReturnItem.findMany({
+            where: { productId: { in: deleteIds } },
+            select: { productId: true }
+          }),
+        ]);
+
+        const blockedIds = new Set([
+          ...saleItems.map(i => i.productId),
+          ...bulkPurchaseItems.map(i => i.productId),
+          ...saleReturnItems.map(i => i.productId),
+        ]);
+
+        if (blockedIds.size > 0) {
+          const blockedNames = toDelete
+            .filter(v => {
+              const existing = originalProduct.variants.find(ev => ev.variantLabel === v.variantLabel);
+              return existing && blockedIds.has(existing.id);
+            })
+            .map(v => v.name);
+
+          return res.status(400).json({
+            error: `Cannot remove variants because they have associated sales, purchase, or return records: ${blockedNames.join(', ')}`
+          });
+        }
+      }
+
+      // Check for name collisions with new variant names
+      if (toCreate.length > 0) {
+        const newNames = toCreate.map(v => v.name);
+        const existingWithNames = await prisma.product.findMany({
+          where: {
+            userId: req.userId,
+            name: { in: newNames }
+          },
+          select: { name: true }
+        });
+        if (existingWithNames.length > 0) {
+          return res.status(400).json({
+            error: `Product name must be unique. Conflicting names: ${existingWithNames.map(v => v.name).join(', ')}`
+          });
+        }
+      }
+
+      // Execute all changes in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Update the parent product
+        const parent = await tx.product.update({
+          where: { id: req.params.id, userId: req.userId },
+          data: updateData,
+          include: { category: true }
+        });
+
+        // Delete removed variants
+        for (const variant of toDelete) {
+          const existing = originalProduct.variants.find(ev => ev.variantLabel === variant.variantLabel);
+          if (existing) {
+            await tx.product.delete({ where: { id: existing.id } });
+          }
+        }
+
+        // Update child names if parent name changed
+        for (const variant of toUpdate) {
+          const existing = originalProduct.variants.find(ev => ev.variantLabel === variant.variantLabel);
+          if (existing) {
+            await tx.product.update({
+              where: { id: existing.id },
+              data: { name: variant.name }
+            });
+          }
+        }
+
+        // Create new variants
+        const inheritedFields = {
+          userId: req.userId,
+          description: parent.description,
+          unit: parent.unit,
+          isRawMaterial: parent.isRawMaterial,
+          categoryId: parent.categoryId,
+          image: parent.image,
+          price: parent.price,
+          retailPrice: parent.retailPrice,
+          wholesalePrice: parent.wholesalePrice,
+          purchasePrice: parent.purchasePrice,
+          perUnitPurchasePrice: parent.perUnitPurchasePrice,
+          quantity: parent.quantity,
+          lowStockThreshold: parent.lowStockThreshold,
+          unitValue: parent.unitValue,
+        };
+
+        // Determine next SKU index based on existing variants
+        const existingSkuNumbers = originalProduct.variants
+          .filter(v => v.sku && v.sku.startsWith(parent.sku + '-'))
+          .map(v => parseInt(v.sku.split('-').pop()))
+          .filter(n => !isNaN(n));
+        let skuIndex = existingSkuNumbers.length > 0 ? Math.max(...existingSkuNumbers) + 1 : originalProduct.variants.length + 1;
+
+        for (const variant of toCreate) {
+          const childSku = `${parent.sku || parent.id.substring(0, 8)}-${skuIndex}`;
+          await tx.product.create({
+            data: {
+              ...inheritedFields,
+              name: variant.name,
+              variantLabel: variant.variantLabel,
+              parentProductId: parent.id,
+              sku: childSku,
+            }
+          });
+          skuIndex++;
+        }
+
+        // Fetch updated parent with all variants
+        const updatedParent = await tx.product.findUnique({
+          where: { id: parent.id },
+          include: { category: true, variants: true }
+        });
+
+        return updatedParent;
       });
-      
-      // Note: Automatic expense creation removed for compatibility
-      
+
       res.json({
-        ...product,
-        id: product.id.toString(),
-        price: product.price ? Number(product.price) : null,
-        retailPrice: product.retailPrice ? Number(product.retailPrice) : null,
-        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : null,
-        purchasePrice: product.purchasePrice ? Number(product.purchasePrice) : null,
-        perUnitPurchasePrice: product.perUnitPurchasePrice ? Number(product.perUnitPurchasePrice) : null,
-        unitValue: product.unitValue ? Number(product.unitValue) : null,
-        quantity: Number(product.quantity)
+        ...result,
+        id: result.id.toString(),
+        price: result.price ? Number(result.price) : null,
+        retailPrice: result.retailPrice ? Number(result.retailPrice) : null,
+        wholesalePrice: result.wholesalePrice ? Number(result.wholesalePrice) : null,
+        purchasePrice: result.purchasePrice ? Number(result.purchasePrice) : null,
+        perUnitPurchasePrice: result.perUnitPurchasePrice ? Number(result.perUnitPurchasePrice) : null,
+        unitValue: result.unitValue ? Number(result.unitValue) : null,
+        quantity: Number(result.quantity),
+        variants: result.variants.map(child => ({
+          ...child,
+          id: child.id.toString(),
+          price: child.price ? Number(child.price) : null,
+          retailPrice: child.retailPrice ? Number(child.retailPrice) : null,
+          wholesalePrice: child.wholesalePrice ? Number(child.wholesalePrice) : null,
+          purchasePrice: child.purchasePrice ? Number(child.purchasePrice) : null,
+          perUnitPurchasePrice: child.perUnitPurchasePrice ? Number(child.perUnitPurchasePrice) : null,
+          unitValue: child.unitValue ? Number(child.unitValue) : null,
+          quantity: Number(child.quantity)
+        }))
       });
     } catch (error) {
       console.error('Product update error:', error);
@@ -933,11 +1350,114 @@ app.put(
 // Delete a product
 app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   try {
+    // Fetch the product with its child variants
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.id, userId: req.userId },
+      include: { variants: true }
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // If this product has child variants, check all children for associated records
+    if (product.variants.length > 0) {
+      const childIds = product.variants.map(v => v.id);
+
+      const [saleItems, bulkPurchaseItems, saleReturnItems] = await Promise.all([
+        prisma.saleItem.findMany({
+          where: { productId: { in: childIds } },
+          select: { productId: true }
+        }),
+        prisma.bulkPurchaseItem.findMany({
+          where: { productId: { in: childIds } },
+          select: { productId: true }
+        }),
+        prisma.saleReturnItem.findMany({
+          where: { productId: { in: childIds } },
+          select: { productId: true }
+        }),
+      ]);
+
+      // Build a map of blocked child IDs to their record types
+      const blockedMap = new Map();
+      for (const item of saleItems) {
+        if (!blockedMap.has(item.productId)) blockedMap.set(item.productId, new Set());
+        blockedMap.get(item.productId).add('sales');
+      }
+      for (const item of bulkPurchaseItems) {
+        if (!blockedMap.has(item.productId)) blockedMap.set(item.productId, new Set());
+        blockedMap.get(item.productId).add('purchases');
+      }
+      for (const item of saleReturnItems) {
+        if (!blockedMap.has(item.productId)) blockedMap.set(item.productId, new Set());
+        blockedMap.get(item.productId).add('returns');
+      }
+
+      if (blockedMap.size > 0) {
+        const blockedDetails = product.variants
+          .filter(v => blockedMap.has(v.id))
+          .map(v => `${v.name} (${[...blockedMap.get(v.id)].join(', ')})`)
+          .join('; ');
+
+        return res.status(400).json({
+          error: `Cannot delete product because the following variants have associated records: ${blockedDetails}`
+        });
+      }
+
+      // No children have records — delete all children then parent in a transaction
+      await prisma.$transaction(async (tx) => {
+        for (const variant of product.variants) {
+          await tx.product.delete({ where: { id: variant.id } });
+        }
+        await tx.product.delete({ where: { id: product.id } });
+      });
+
+      return res.status(204).send();
+    }
+
+    // If this is a child variant, check only this variant for associated records
+    if (product.parentProductId) {
+      const [saleItems, bulkPurchaseItems, saleReturnItems] = await Promise.all([
+        prisma.saleItem.findMany({
+          where: { productId: product.id },
+          select: { id: true },
+          take: 1,
+        }),
+        prisma.bulkPurchaseItem.findMany({
+          where: { productId: product.id },
+          select: { id: true },
+          take: 1,
+        }),
+        prisma.saleReturnItem.findMany({
+          where: { productId: product.id },
+          select: { id: true },
+          take: 1,
+        }),
+      ]);
+
+      const recordTypes = [];
+      if (saleItems.length > 0) recordTypes.push('sales');
+      if (bulkPurchaseItems.length > 0) recordTypes.push('purchases');
+      if (saleReturnItems.length > 0) recordTypes.push('returns');
+
+      if (recordTypes.length > 0) {
+        return res.status(400).json({
+          error: `Cannot delete variant '${product.name}' because it has associated ${recordTypes.join(', ')} records.`
+        });
+      }
+
+      // No associated records — delete only this child variant
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+
+      return res.status(204).send();
+    }
+
+    // No child variants and not a child variant — delete the standalone product directly
     await prisma.product.delete({
-      where: { 
-        id: req.params.id,
-        userId: req.userId
-      },
+      where: { id: req.params.id, userId: req.userId },
     });
     res.status(204).send();
   } catch (error) {

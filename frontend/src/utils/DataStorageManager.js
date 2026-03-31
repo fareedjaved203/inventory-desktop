@@ -704,7 +704,8 @@ class DataStorageManager {
       const maxSku = products.items
         .filter(p => p.sku && p.sku.startsWith('H'))
         .map(p => parseInt(p.sku.substring(1)))
-        .reduce((max, num) => Math.max(max, num || 0), 0);
+        .filter(n => !isNaN(n))
+        .reduce((max, num) => Math.max(max, num, 0), 0);
       
       return { barcode: `H${(maxSku + 1).toString().padStart(5, '0')}` };
     }

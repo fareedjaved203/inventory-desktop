@@ -108,6 +108,7 @@ function Products() {
               t={t}
               products={products}
               showDamaged={showDamaged}
+              searchTerm={searchTerm}
               handleEditProduct={handleEditProduct}
               handlePrintLabel={handlePrintLabel}
               handleDamaged={handleDamaged}
@@ -164,6 +165,7 @@ function Products() {
         handleSubmit={handleSubmit}
         createProduct={createProduct}
         updateProduct={updateProduct}
+        selectedProduct={selectedProduct}
       />
 
       <ProductModals

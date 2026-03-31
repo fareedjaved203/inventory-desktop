@@ -36,6 +36,10 @@ model Product {
   recipe               Recipe?
   recipeIngredients    RecipeItem[]       @relation("RecipeRawMaterial")
   category             Category?          @relation(fields: [categoryId], references: [id])
+  parentProductId      String?
+  variantLabel         String?
+  parentProduct        Product?           @relation("ProductVariants", fields: [parentProductId], references: [id])
+  variants             Product[]          @relation("ProductVariants")
 
   @@unique([userId, name])
   @@index([userId])

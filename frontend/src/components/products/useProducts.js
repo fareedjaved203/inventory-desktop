@@ -35,8 +35,42 @@ const initialFormState = {
   lowStockThreshold: '5',
   description: '',
   image: null,
-  isRawMaterial: false
+  isRawMaterial: false,
+  sizes: [],
+  colors: [],
+  excludedVariants: []
 };
+
+/**
+ * Extract unique sizes and colors from variant labels.
+ * Labels follow the format "Color - Size" (both), "Size" (size-only), or "Color" (color-only).
+ * When any label contains " - ", we assume "Color - Size" format.
+ */
+export function extractSizesAndColorsFromVariants(variants) {
+  if (!variants || variants.length === 0) return { sizes: [], colors: [] };
+
+  const labels = variants.map(v => v.variantLabel).filter(Boolean);
+  if (labels.length === 0) return { sizes: [], colors: [] };
+
+  const hasComposite = labels.some(label => label.includes(' - '));
+
+  if (hasComposite) {
+    const colors = new Set();
+    const sizes = new Set();
+    for (const label of labels) {
+      const parts = label.split(' - ');
+      if (parts.length >= 2) {
+        colors.add(parts[0].trim());
+        sizes.add(parts.slice(1).join(' - ').trim());
+      }
+    }
+    return { sizes: [...sizes], colors: [...colors] };
+  }
+
+  // Single-part labels — treat as sizes (cannot distinguish without more context)
+  const sizes = [...new Set(labels.map(l => l.trim()))];
+  return { sizes, colors: [] };
+}
 
 export function useProducts() {
   const queryClient = useQueryClient();
@@ -95,7 +129,8 @@ export function useProducts() {
           limit: itemsPerPage,
           search: debouncedSearchTerm,
           lowStock: showLowStock,
-          categoryId: selectedCategory || undefined
+          categoryId: selectedCategory || undefined,
+          parentOnly: true
         }
       });
       return response.data;
@@ -223,11 +258,23 @@ export function useProducts() {
     try {
       const validatedData = productSchema.parse(formData);
       setValidationErrors({});
+
+      // Include sizes and colors arrays in the payload if they have values
+      const payload = { ...validatedData };
+      if (formData.sizes && formData.sizes.length > 0) {
+        payload.sizes = formData.sizes;
+      }
+      if (formData.colors && formData.colors.length > 0) {
+        payload.colors = formData.colors;
+      }
+      if (formData.excludedVariants && formData.excludedVariants.length > 0) {
+        payload.excludedVariants = formData.excludedVariants;
+      }
       
       if (isEditMode) {
-        updateProduct.mutate({ id: selectedProduct.id, data: validatedData });
+        updateProduct.mutate({ id: selectedProduct.id, data: payload });
       } else {
-        createProduct.mutate(validatedData);
+        createProduct.mutate(payload);
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -244,6 +291,33 @@ export function useProducts() {
   const handleEditProduct = (product) => {
     setIsEditMode(true);
     setSelectedProduct(product);
+
+    // Extract sizes and colors from existing child variants when editing a parent product
+    const { sizes, colors } = product.variants && product.variants.length > 0
+      ? extractSizesAndColorsFromVariants(product.variants)
+      : { sizes: [], colors: [] };
+
+    // Determine which variant labels from the full matrix are NOT present as existing children
+    // These are the "excluded" variants the user previously unchecked or deleted
+    let excludedVariants = [];
+    if (product.variants && product.variants.length > 0 && (sizes.length > 0 || colors.length > 0)) {
+      const existingLabels = new Set(product.variants.map(v => v.variantLabel).filter(Boolean));
+      // Generate the full matrix to find what's missing
+      const fullMatrix = [];
+      if (sizes.length > 0 && colors.length > 0) {
+        for (const color of colors) {
+          for (const size of sizes) {
+            fullMatrix.push(`${color} - ${size}`);
+          }
+        }
+      } else if (sizes.length > 0) {
+        for (const size of sizes) fullMatrix.push(size);
+      } else {
+        for (const color of colors) fullMatrix.push(color);
+      }
+      excludedVariants = fullMatrix.filter(label => !existingLabels.has(label));
+    }
+
     setFormData({
       name: product.name || '',
       sku: product.sku || '',
@@ -257,7 +331,10 @@ export function useProducts() {
       lowStockThreshold: (product.lowStockThreshold ?? '5').toString(),
       description: product.description || '',
       image: product.image,
-      isRawMaterial: !!product.isRawMaterial
+      isRawMaterial: !!product.isRawMaterial,
+      sizes,
+      colors,
+      excludedVariants
     });
     setValidationErrors({});
     setIsModalOpen(true);
@@ -292,21 +369,22 @@ export function useProducts() {
   };
 
   const handleAddProduct = async () => {
+    if (isGeneratingBarcode) return; // Prevent double-clicks while generating
     setIsEditMode(false);
     setSelectedProduct(null);
     setValidationErrors({});
+    setFormData(initialFormState);
+    setIsModalOpen(true);
     setIsGeneratingBarcode(true);
     
     try {
         const autoBarcode = await generateUserBarcode();
-        setFormData({ ...initialFormState, sku: autoBarcode });
+        setFormData(prev => ({ ...prev, sku: autoBarcode }));
     } catch (error) {
         console.error('Failed to auto-generate barcode:', error);
-        setFormData(initialFormState);
         toast.error('Could not auto-generate barcode. Please enter manually.');
     } finally {
         setIsGeneratingBarcode(false);
-        setIsModalOpen(true);
     }
   };
 

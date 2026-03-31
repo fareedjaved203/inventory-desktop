@@ -31,6 +31,16 @@ export function setupSyncRoutes(app, prisma) {
               createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
               updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date()
             };
+
+            // Preserve variant fields as null when not present (avoid stripping them)
+            if (modelName === 'product') {
+              if (!('parentProductId' in itemData) || itemData.parentProductId === undefined) {
+                itemData.parentProductId = null;
+              }
+              if (!('variantLabel' in itemData) || itemData.variantLabel === undefined) {
+                itemData.variantLabel = null;
+              }
+            }
             
             // Remove any undefined values that might cause issues
             Object.keys(itemData).forEach(key => {
@@ -157,7 +167,10 @@ export function setupSyncRoutes(app, prisma) {
               amount: item.amount ? Number(item.amount) : item.amount,
               total: item.total ? Number(item.total) : item.total,
               totalAmount: item.totalAmount ? Number(item.totalAmount) : item.totalAmount,
-              paidAmount: item.paidAmount ? Number(item.paidAmount) : item.paidAmount
+              paidAmount: item.paidAmount ? Number(item.paidAmount) : item.paidAmount,
+              // Include variant fields for product sync compatibility
+              parentProductId: item.parentProductId || null,
+              variantLabel: item.variantLabel || null
             };
             
             // Preserve nested items array for sales, bulk purchases, and returns

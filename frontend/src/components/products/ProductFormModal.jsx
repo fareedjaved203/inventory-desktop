@@ -1,7 +1,94 @@
-import { FaBoxOpen, FaTag, FaBarcode, FaDollarSign, FaWarehouse } from 'react-icons/fa';
+import { useState, useMemo } from 'react';
+import { FaBoxOpen, FaTag, FaBarcode, FaDollarSign, FaWarehouse, FaChevronDown, FaChevronRight, FaTimes, FaPlus, FaLayerGroup } from 'react-icons/fa';
 import ProductImageUpload from '../../components/ProductImageUpload';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import featuresConfig from '../../config/features.json';
+
+/**
+ * Client-side variant matrix generator (mirrors backend logic).
+ * Returns array of { name, variantLabel } objects.
+ */
+function generateVariantMatrixPreview(parentName, sizes, colors) {
+  const hasSizes = sizes.length > 0;
+  const hasColors = colors.length > 0;
+  if (!hasSizes && !hasColors) return [];
+  const variants = [];
+  if (hasSizes && hasColors) {
+    for (const color of colors) {
+      for (const size of sizes) {
+        variants.push({ name: `${parentName} - ${color} - ${size}`, variantLabel: `${color} - ${size}` });
+      }
+    }
+  } else if (hasSizes) {
+    for (const size of sizes) {
+      variants.push({ name: `${parentName} - ${size}`, variantLabel: `${size}` });
+    }
+  } else {
+    for (const color of colors) {
+      variants.push({ name: `${parentName} - ${color}`, variantLabel: `${color}` });
+    }
+  }
+  return variants;
+}
+
+function TagInput({ tags, onAdd, onRemove, placeholder }) {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleAdd = () => {
+    const trimmed = inputValue.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      onAdd(trimmed);
+      setInputValue('');
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => onRemove(tag)}
+              className="text-indigo-500 hover:text-indigo-700"
+              aria-label={`Remove ${tag}`}
+            >
+              <FaTimes className="w-2.5 h-2.5" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="px-2.5 py-1.5 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 text-sm flex items-center gap-1"
+        >
+          <FaPlus className="w-2.5 h-2.5" /> Add
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function ProductFormModal({
   language,
@@ -19,8 +106,18 @@ export function ProductFormModal({
   generateUserBarcode,
   handleSubmit,
   createProduct,
-  updateProduct
+  updateProduct,
+  selectedProduct
 }) {
+  const isChildVariant = !!(selectedProduct?.parentProductId);
+  const hasExistingVariants = formData.sizes?.length > 0 || formData.colors?.length > 0;
+  const [variantsExpanded, setVariantsExpanded] = useState(hasExistingVariants);
+
+  const variantPreview = useMemo(
+    () => generateVariantMatrixPreview(formData.name || 'Product', formData.sizes || [], formData.colors || []),
+    [formData.name, formData.sizes, formData.colors]
+  );
+
   if (!isModalOpen) return null;
 
   return (
@@ -29,7 +126,11 @@ export function ProductFormModal({
         <div className="flex-shrink-0">
           <h2 className="text-2xl font-bold mb-6 text-primary-800 border-b border-primary-100 pb-2 flex items-center gap-2">
             <FaBoxOpen className="text-primary-600" />
-            {isEditMode ? (language === 'ur' ? 'پروڈکٹ میں تبدیلی' : 'Edit Product') : (language === 'ur' ? 'نیا پروڈکٹ شامل کریں' : 'Add New Product')}
+            {isEditMode
+              ? (isChildVariant
+                ? (language === 'ur' ? 'ویرینٹ میں تبدیلی' : `Edit Variant: ${selectedProduct?.variantLabel || selectedProduct?.name || ''}`)
+                : (language === 'ur' ? 'پروڈکٹ میں تبدیلی' : 'Edit Product'))
+              : (language === 'ur' ? 'نیا پروڈکٹ شامل کریں' : 'Add New Product')}
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto px-1 py-2">
@@ -94,9 +195,11 @@ export function ProductFormModal({
                         setValidationErrors(newErrors);
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    readOnly={isChildVariant}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm ${isChildVariant ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     placeholder="Enter unique product name"
                   />
+                  {isChildVariant && <p className="text-gray-400 text-xs mt-1">Variant name is derived from the parent product</p>}
                   {validationErrors.name && <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>}
                 </div>
                 <div>
@@ -294,6 +397,95 @@ export function ProductFormModal({
                 </div>
               </div>
             </div>
+
+            {/* Section 5: Variants — hidden when editing a child variant */}
+            {!isChildVariant && (
+              <div className="bg-gradient-to-r from-indigo-50 to-violet-50 p-4 rounded-lg border border-indigo-200">
+                <button
+                  type="button"
+                  onClick={() => setVariantsExpanded(!variantsExpanded)}
+                  className="w-full flex items-center justify-between text-sm font-bold text-indigo-900"
+                >
+                  <span className="flex items-center gap-2">
+                    <FaLayerGroup /> Variants (Sizes & Colors)
+                  </span>
+                  {variantsExpanded ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+                </button>
+                {variantsExpanded && (
+                  <div className="mt-3 space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Sizes</label>
+                      <TagInput
+                        tags={formData.sizes || []}
+                        onAdd={(val) => setFormData({ ...formData, sizes: [...(formData.sizes || []), val] })}
+                        onRemove={(val) => setFormData({ ...formData, sizes: (formData.sizes || []).filter(s => s !== val) })}
+                        placeholder="Type a size and press Enter (e.g. S, M, L)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Colors</label>
+                      <TagInput
+                        tags={formData.colors || []}
+                        onAdd={(val) => setFormData({ ...formData, colors: [...(formData.colors || []), val] })}
+                        onRemove={(val) => setFormData({ ...formData, colors: (formData.colors || []).filter(c => c !== val) })}
+                        placeholder="Type a color and press Enter (e.g. Red, Blue)"
+                      />
+                    </div>
+                    {variantPreview.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-gray-700">
+                            Variant Preview ({variantPreview.filter(v => !(formData.excludedVariants || []).includes(v.variantLabel)).length} of {variantPreview.length} selected)
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, excludedVariants: [] })}
+                              className="text-xs text-indigo-600 hover:text-indigo-800"
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, excludedVariants: variantPreview.map(v => v.variantLabel) })}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Deselect All
+                            </button>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-indigo-200 rounded-md p-2 max-h-40 overflow-y-auto">
+                          <ul className="space-y-0.5">
+                            {variantPreview.map((variant) => {
+                              const isExcluded = (formData.excludedVariants || []).includes(variant.variantLabel);
+                              return (
+                                <li key={variant.variantLabel} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={!isExcluded}
+                                    onChange={() => {
+                                      const current = formData.excludedVariants || [];
+                                      const updated = isExcluded
+                                        ? current.filter(l => l !== variant.variantLabel)
+                                        : [...current, variant.variantLabel];
+                                      setFormData({ ...formData, excludedVariants: updated });
+                                    }}
+                                    className="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  <span className={`text-xs px-2 py-0.5 rounded flex-1 ${isExcluded ? 'text-gray-400 line-through bg-gray-50' : 'text-gray-700 bg-indigo-50'}`}>
+                                    {variant.name}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           </form>
         </div>

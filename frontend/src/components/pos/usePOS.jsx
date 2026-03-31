@@ -120,13 +120,14 @@ export function usePOS() {
     debouncedCustomerSearch(value);
   };
 
-  // Fetch products for search
+  // Fetch products for search (excludeParents hides parent products that have variants, showing only child variants and standalone products)
   const { data: products = [], isLoading: productsLoading } = useQuery(
     ['pos-products', debouncedSearchTerm],
     async () => {
       const result = await API.getProducts({
         limit: 50,
-        search: debouncedSearchTerm
+        search: debouncedSearchTerm,
+        excludeParents: true
       });
       return result.items || [];
     }
@@ -176,12 +177,12 @@ export function usePOS() {
     async () => {
       if (!selectedCategory?.id) return [];
       if (selectedCategory.id === 'other') {
-        // Fetch products without category
-        const response = await API.getProducts({ limit: 100 });
+        // Fetch products without category (excludeParents hides parent products that have variants)
+        const response = await API.getProducts({ limit: 100, excludeParents: true });
         const allProducts = response.items || [];
         return allProducts.filter(product => !product.categoryId);
       }
-      const response = await API.getProducts({ limit: 100 });
+      const response = await API.getProducts({ limit: 100, excludeParents: true });
       const allProducts = response.items || [];
       return allProducts.filter(product => product.categoryId === selectedCategory.id);
     },
@@ -244,7 +245,7 @@ export function usePOS() {
 
     setBarcodeLoading(true);
     try {
-      const result = await API.getProducts({ sku: barcodeInput.trim().toUpperCase() });
+      const result = await API.getProducts({ sku: barcodeInput.trim().toUpperCase(), excludeParents: true });
       const productsFromBarcode = result.items || [];
       
       if (productsFromBarcode.length > 0) {
