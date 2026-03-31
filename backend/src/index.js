@@ -511,7 +511,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
             purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
             perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
             unitValue: item.unitValue ? Number(item.unitValue) : null,
-            quantity: isManufactured ? null : Number(item.quantity),
+            quantity: Number(item.quantity),
             isManufactured,
             recipe: item.recipe || undefined
           };
@@ -550,7 +550,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
           purchasePrice: item.purchasePrice ? Number(item.purchasePrice) : null,
           perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
           unitValue: item.unitValue ? Number(item.unitValue) : null,
-          quantity: isManufactured ? null : Number(item.quantity),
+          quantity: Number(item.quantity),
           isManufactured,
           recipe: item.recipe || undefined
         };

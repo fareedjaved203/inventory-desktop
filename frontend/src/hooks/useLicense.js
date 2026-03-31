@@ -29,8 +29,8 @@ export function useLicense() {
       const savedLicense = localStorage.getItem('offlineLicense');
       if (savedLicense) {
         const parsed = JSON.parse(savedLicense);
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((parsed.expiry - now) / 1000));
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, parsed.expiry - nowSeconds);
         setLicenseStatus({
           valid: remaining > 0,
           expiry: parsed.expiry,
@@ -43,8 +43,8 @@ export function useLicense() {
           localStorage.removeItem('offlineLicense');
         }
       } else {
-        // New user gets 7-day trial
-        const trialExpiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
+        // New user gets 7-day trial (store expiry in unix seconds to match backend)
+        const trialExpiry = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
         localStorage.setItem('offlineLicense', JSON.stringify({ expiry: trialExpiry, type: 'trial' }));
         setLicenseStatus({
           valid: true,
@@ -88,8 +88,9 @@ export function useLicense() {
     const savedLicense = localStorage.getItem('offlineLicense');
     if (savedLicense) {
       const parsed = JSON.parse(savedLicense);
-      const now = Date.now();
-      const remaining = Math.max(0, Math.floor((parsed.expiry - now) / 1000));
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      // expiry is stored in unix seconds from the backend
+      const remaining = Math.max(0, parsed.expiry - nowSeconds);
       setLicenseStatus({
         valid: remaining > 0,
         expiry: parsed.expiry,

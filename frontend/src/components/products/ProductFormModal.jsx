@@ -291,40 +291,58 @@ export function ProductFormModal({
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Purchase Price</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit)
+                        ? 'Total Purchase Cost'
+                        : 'Purchase Price'}
+                    </label>
                     <input
                       type="number"
                       step="1"
                       min="0"
                       value={formData.purchasePrice}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        const quantity = parseFloat(formData.quantity);
-                        if (value && quantity && quantity > 0) {
-                          const perUnitCost = value / quantity;
-                          setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit);
+                        if (isBulkUnit) {
+                          const value = parseFloat(e.target.value);
+                          const quantity = parseFloat(formData.quantity);
+                          if (value && quantity && quantity > 0) {
+                            const perUnitCost = value / quantity;
+                            setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                          } else {
+                            setFormData({ ...formData, purchasePrice: e.target.value });
+                          }
                         } else {
                           setFormData({ ...formData, purchasePrice: e.target.value });
                         }
                       }}
                       onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                      placeholder="Total cost"
+                      placeholder={['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) ? `Total cost for all ${formData.unit}` : 'Cost per item'}
                     />
                   </div>
                   {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Per Unit Cost</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.perUnitPurchasePrice || ''}
-                        onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
-                        onWheel={(e) => e.target.blur()}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-50"
-                        placeholder="Auto-calculated"
-                      />
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Per {formData.unit === 'kg' ? 'Kg' : formData.unit === 'gram' ? 'Gram' : formData.unit === 'ltr' ? 'Ltr' : formData.unit === 'ml' ? 'ml' : formData.unit === 'ton' ? 'Ton' : 'Unit'} Cost
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.perUnitPurchasePrice || ''}
+                          onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-50"
+                          placeholder="Auto: total ÷ qty"
+                        />
+                        {formData.purchasePrice && formData.quantity && parseFloat(formData.quantity) > 0 && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-purple-400 pointer-events-none">
+                            {parseFloat(formData.purchasePrice).toLocaleString()} ÷ {parseFloat(formData.quantity)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -337,11 +355,16 @@ export function ProductFormModal({
                       step="0.01"
                       value={formData.quantity}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        const purchasePrice = parseFloat(formData.purchasePrice);
-                        if (purchasePrice && value && value > 0) {
-                          const perUnitCost = purchasePrice / value;
-                          setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit);
+                        if (isBulkUnit) {
+                          const value = parseFloat(e.target.value);
+                          const purchasePrice = parseFloat(formData.purchasePrice);
+                          if (purchasePrice && value && value > 0) {
+                            const perUnitCost = purchasePrice / value;
+                            setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
+                          } else {
+                            setFormData({ ...formData, quantity: e.target.value });
+                          }
                         } else {
                           setFormData({ ...formData, quantity: e.target.value });
                         }
