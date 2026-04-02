@@ -11,6 +11,8 @@ export function ProductsHeader({
   setShowDamaged,
   showRawMaterials,
   setShowRawMaterials,
+  showServices,
+  setShowServices,
   categories,
   selectedCategory,
   setSelectedCategory,
@@ -60,6 +62,19 @@ export function ProductsHeader({
               <FaFilter className={showRawMaterials ? 'text-blue-600' : 'text-gray-400'} />
               {t('rawMaterials')}
             </button>
+            <button
+              onClick={() => setShowServices(!showServices)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                showServices 
+                  ? 'bg-green-100 text-green-800 border-2 border-green-200' 
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-4 h-4 ${showServices ? 'text-green-600' : 'text-gray-400'}`}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085" />
+              </svg>
+              Services
+            </button>
             
             {/* Category Filter */}
             <select
@@ -88,14 +103,14 @@ export function ProductsHeader({
           </div>
           <button
             onClick={handleAddProduct}
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
+            className="bg-primary-600 text-white px-4 py-2 h-10 rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
           >
             <FaPlus /> {t('addBtn')}
           </button>
           
           <button
             onClick={() => handlePrint(products?.items || [])}
-            className="p-2 text-gray-600 hover:text-primary-600 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center w-full sm:w-auto min-w-[42px]"
+            className="p-2 h-10 w-10 text-gray-600 hover:text-primary-600 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center"
             title="Print Product Report"
           >
             <FaPrint className="w-5 h-5" />

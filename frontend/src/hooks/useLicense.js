@@ -70,7 +70,7 @@ export function useLicense() {
           timeRemaining: data.timeRemaining
         };
         
-        // Store both for caching and offline use
+        // Store for caching and offline use
         localStorage.setItem('lastLicenseStatus', JSON.stringify(licenseData));
         localStorage.setItem('offlineLicense', JSON.stringify({ 
           expiry: data.expiry, 
@@ -81,15 +81,34 @@ export function useLicense() {
         return;
       }
     } catch (error) {
-      console.log('API call failed, using offline license data');
+      console.log('API call failed, using cached license data');
     }
     
-    // Fallback to offline license storage
+    // Fallback: use last known good status from API, then offline license
+    const lastStatus = localStorage.getItem('lastLicenseStatus');
+    if (lastStatus) {
+      const parsed = JSON.parse(lastStatus);
+      // Trust the last known status if it was valid and expiry hasn't passed
+      if (parsed.valid && parsed.expiry) {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, parsed.expiry - nowSeconds);
+        if (remaining > 0) {
+          setLicenseStatus({
+            valid: true,
+            expiry: parsed.expiry,
+            timeRemaining: remaining,
+            loading: false
+          });
+          return;
+        }
+      }
+    }
+
+    // Final fallback: offline license storage
     const savedLicense = localStorage.getItem('offlineLicense');
     if (savedLicense) {
       const parsed = JSON.parse(savedLicense);
       const nowSeconds = Math.floor(Date.now() / 1000);
-      // expiry is stored in unix seconds from the backend
       const remaining = Math.max(0, parsed.expiry - nowSeconds);
       setLicenseStatus({
         valid: remaining > 0,
@@ -98,13 +117,11 @@ export function useLicense() {
         loading: false
       });
     } else {
-      // New user gets 7-day trial
-      const trialExpiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
-      localStorage.setItem('offlineLicense', JSON.stringify({ expiry: trialExpiry, type: 'trial' }));
+      // No cached data at all — show as invalid, user needs to connect
       setLicenseStatus({
-        valid: true,
-        expiry: trialExpiry,
-        timeRemaining: 7 * 24 * 60 * 60,
+        valid: false,
+        expiry: null,
+        timeRemaining: 0,
         loading: false
       });
     }

@@ -36,6 +36,7 @@ function Products() {
     showDamaged, setShowDamaged,
     maxRestoreQuantity, setMaxRestoreQuantity,
     showRawMaterials, setShowRawMaterials,
+    showServices, setShowServices,
     categories,
     products,
     isLoading,
@@ -77,6 +78,8 @@ function Products() {
         setShowDamaged={setShowDamaged}
         showRawMaterials={showRawMaterials}
         setShowRawMaterials={setShowRawMaterials}
+        showServices={showServices}
+        setShowServices={setShowServices}
         categories={categories}
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
@@ -124,6 +127,7 @@ function Products() {
             {showLowStock && <span className="ml-2 text-orange-600 font-medium">(Filtered: Low Stock Only)</span>}
             {showDamaged && <span className="ml-2 text-red-600 font-medium">(Filtered: Damaged Only)</span>}
             {showRawMaterials && <span className="ml-2 text-blue-600 font-medium">(Filtered: {t('rawMaterials')} Only)</span>}
+            {showServices && <span className="ml-2 text-green-600 font-medium">(Filtered: Services Only)</span>}
           </div>
           
           <div className="flex justify-between items-center mt-4">

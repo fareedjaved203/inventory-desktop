@@ -15,20 +15,8 @@ class LicenseManager {
     const arch = os.arch();
     const cpus = os.cpus()[0]?.model || 'unknown';
     const totalMem = os.totalmem();
-    // Use MAC address of first non-internal network interface for stronger binding
-    const nets = os.networkInterfaces();
-    let mac = '';
-    for (const name of Object.keys(nets).sort()) {
-      for (const iface of nets[name]) {
-        if (!iface.internal && iface.mac && iface.mac !== '00:00:00:00:00:00') {
-          mac = iface.mac;
-          break;
-        }
-      }
-      if (mac) break;
-    }
-    
-    const raw = `${hostname}-${platform}-${arch}-${cpus}-${totalMem}-${mac}`;
+    // Use only stable hardware identifiers — no MAC address since it changes with network
+    const raw = `${hostname}-${platform}-${arch}-${cpus}-${totalMem}`;
     return crypto.createHash('sha256').update(raw).digest('hex').substring(0, 16);
   }
 

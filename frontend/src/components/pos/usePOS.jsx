@@ -289,7 +289,7 @@ export function usePOS() {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
       if (existingItem) {
-        if (!product.isManufactured && existingItem.quantity >= Number(product.quantity)) {
+        if (!product.isManufactured && !product.isService && existingItem.quantity >= Number(product.quantity)) {
           toast.error('Insufficient stock');
           return prevCart;
         }
@@ -329,7 +329,7 @@ export function usePOS() {
             : item
         );
       } else {
-        if (!product.isManufactured && Number(product.quantity) <= 0) {
+        if (!product.isManufactured && !product.isService && Number(product.quantity) <= 0) {
           toast.error('Product out of stock');
           return prevCart;
         }
@@ -338,9 +338,10 @@ export function usePOS() {
           name: product.name,
           price: Number(product.retailPrice || product.price),
           quantity: 1,
-          maxQuantity: product.isManufactured ? Infinity : Number(product.quantity),
+          maxQuantity: (product.isManufactured || product.isService) ? Infinity : Number(product.quantity),
           unit: product.unit,
           isManufactured: product.isManufactured,
+          isService: product.isService,
           recipe: product.recipe
         }];
       }

@@ -73,7 +73,7 @@ export function ProductsTable({
           const isParent = isParentProduct(product);
           const isExpanded = expandedProducts.has(product.id);
           const displayQuantity = isParent ? product.totalVariantQuantity : product.quantity;
-          const isLowStock = isParent ? false : product.quantity <= product.lowStockThreshold;
+          const isLowStock = isParent ? false : !product.isService && product.quantity <= product.lowStockThreshold;
 
           return (
             <ParentAndVariantRows key={product.id}>
@@ -102,10 +102,10 @@ export function ProductsTable({
                       className="w-12 h-12 rounded object-cover border border-gray-200 shadow-sm"
                     />
                     <div>
-                      <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="font-semibold text-gray-900 flex items-center gap-2 whitespace-nowrap">
                         {product.name}
                         {isParent && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 whitespace-nowrap">
                             {product.variantCount} {product.variantCount === 1 ? 'variant' : 'variants'}
                           </span>
                         )}
@@ -124,6 +124,9 @@ export function ProductsTable({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {product.isService ? (
+                    <span className="text-gray-400 text-sm">—</span>
+                  ) : (
                   <div className="flex items-center gap-2">
                     <div className={`text-sm font-medium ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
                       {displayQuantity}
@@ -134,8 +137,13 @@ export function ProductsTable({
                       </span>
                     )}
                   </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {product.isService ? (
+                    <span className="text-gray-400 text-sm">—</span>
+                  ) : (
+                  <>
                   <span className={`text-sm font-medium ${product.damagedQuantity > 0 ? 'text-red-600' : 'text-gray-500'}`}>
                     {product.damagedQuantity || 0}
                   </span>
@@ -144,15 +152,26 @@ export function ProductsTable({
                       {product.unit}
                     </span>
                   )}
+                  </>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {product.isRawMaterial ? (
-                    <div className="text-sm text-blue-600 font-medium">
-                      {product.perUnitPurchasePrice ? formatPakistaniCurrency(product.perUnitPurchasePrice) : '-'}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">-</span>
-                  )}
+                  {(() => {
+                    const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(product.unit);
+                    if (isBulkUnit) {
+                      const perUnit = product.perUnitPurchasePrice || (product.purchasePrice && product.quantity ? product.purchasePrice / product.quantity : 0);
+                      return (
+                        <div className="text-sm text-blue-600 font-medium">
+                          {perUnit ? <>{formatPakistaniCurrency(perUnit)}<span className="text-[10px] text-blue-400">/{product.unit}</span></> : '-'}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-sm text-gray-700 font-medium">
+                        {product.purchasePrice ? formatPakistaniCurrency(product.purchasePrice) : '-'}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {product.isRawMaterial ? (
@@ -182,7 +201,12 @@ export function ProductsTable({
                         {t('rawMaterials')}
                       </span>
                     )}
-                    {!isLowStock && !product.isRawMaterial && (
+                    {product.isService && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Service
+                      </span>
+                    )}
+                    {!isLowStock && !product.isRawMaterial && !product.isService && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         {t('inStock')}
                       </span>
@@ -273,13 +297,22 @@ export function ProductsTable({
                       </span>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
-                      {variant.isRawMaterial ? (
-                        <div className="text-sm text-blue-600 font-medium">
-                          {variant.perUnitPurchasePrice ? formatPakistaniCurrency(variant.perUnitPurchasePrice) : '-'}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
+                      {(() => {
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(product.unit);
+                        if (isBulkUnit) {
+                          const perUnit = variant.perUnitPurchasePrice || (variant.purchasePrice && variant.quantity ? variant.purchasePrice / variant.quantity : 0);
+                          return (
+                            <div className="text-sm text-blue-600 font-medium">
+                              {perUnit ? <>{formatPakistaniCurrency(perUnit)}<span className="text-[10px] text-blue-400">/{product.unit}</span></> : '-'}
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="text-sm text-gray-700 font-medium">
+                            {variant.purchasePrice ? formatPakistaniCurrency(variant.purchasePrice) : '-'}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
                       {variant.isRawMaterial ? (

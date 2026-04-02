@@ -24,6 +24,7 @@ model Product {
   unit                 String             @default("pcs")
   userId               String
   isRawMaterial        Boolean            @default(false)
+  isService            Boolean            @default(false)
   retailPrice          Float?
   wholesalePrice       Float?
   unitValue            Float?

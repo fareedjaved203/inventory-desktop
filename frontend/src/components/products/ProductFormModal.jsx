@@ -141,17 +141,31 @@ export function ProductFormModal({
               <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
                 <FaTag /> Product Classification
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200">
                   <input
                     type="checkbox"
                     id="isRawMaterial"
                     checked={formData.isRawMaterial}
-                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked })}
+                    onChange={(e) => setFormData({ ...formData, isRawMaterial: e.target.checked, isService: false })}
+                    disabled={formData.isService}
                     className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <label htmlFor="isRawMaterial" className="text-sm font-medium text-blue-800">
                     {featuresConfig.manufacture ? 'Raw Material' : 'Bundle Item'} <span className="text-xs text-blue-600">({featuresConfig.manufacture ? 'For Manufacturing' : 'For Bundles'})</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
+                  <input
+                    type="checkbox"
+                    id="isService"
+                    checked={formData.isService}
+                    onChange={(e) => setFormData({ ...formData, isService: e.target.checked, isRawMaterial: false })}
+                    disabled={formData.isRawMaterial}
+                    className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <label htmlFor="isService" className="text-sm font-medium text-green-800">
+                    Service <span className="text-xs text-green-600">(No stock tracking)</span>
                   </label>
                 </div>
                 <div>
@@ -283,7 +297,8 @@ export function ProductFormModal({
               </div>
             </div>
 
-            {/* Section 4: Cost & Inventory */}
+            {/* Section 4: Cost & Inventory — hidden for services */}
+            {!formData.isService && (
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
               <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
                 <FaWarehouse /> Cost & Inventory
@@ -420,9 +435,10 @@ export function ProductFormModal({
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Section 5: Variants — hidden when editing a child variant */}
-            {!isChildVariant && (
+            {/* Section 5: Variants — hidden when editing a child variant or service */}
+            {!isChildVariant && !formData.isService && (
               <div className="bg-gradient-to-r from-indigo-50 to-violet-50 p-4 rounded-lg border border-indigo-200">
                 <button
                   type="button"

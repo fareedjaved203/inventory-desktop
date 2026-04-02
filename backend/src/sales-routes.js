@@ -132,9 +132,12 @@ export function setupSalesRoutes(app, prisma) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            console.log(`[CREATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}`);
+            console.log(`[CREATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${product.isService}`);
 
-            if (product.quantity >= item.quantity) {
+            // Services skip stock deduction entirely
+            if (product.isService) {
+              console.log(`[CREATE] Service — no stock deduction`);
+            } else if (product.quantity >= item.quantity) {
               console.log(`[CREATE] Direct deduction: ${item.quantity}`);
               await prisma.product.update({
                 where: { id: item.productId },
@@ -810,9 +813,12 @@ export function setupSalesRoutes(app, prisma) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            console.log(`[UPDATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}`);
+            console.log(`[UPDATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${product.isService}`);
 
-            if (product.quantity >= item.quantity) {
+            // Services skip stock deduction entirely
+            if (product.isService) {
+              console.log(`[UPDATE] Service — no stock deduction`);
+            } else if (product.quantity >= item.quantity) {
               console.log(`[UPDATE] Direct deduction: ${item.quantity}`);
               await prisma.product.update({
                 where: { id: item.productId },

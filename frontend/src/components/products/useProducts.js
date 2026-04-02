@@ -14,12 +14,13 @@ const productSchema = z.object({
   wholesalePrice: z.string().min(1, 'Wholesale price is required'),
   purchasePrice: z.string().min(1, 'Purchase price is required'),
   perUnitPurchasePrice: z.string().optional().nullable(),
-  quantity: z.string().min(1, 'Quantity is required'),
+  quantity: z.string().optional(),
   unit: z.string(),
-  lowStockThreshold: z.string().min(1, 'Low stock threshold is required'),
+  lowStockThreshold: z.string().optional(),
   description: z.string().optional(),
   image: z.string().nullable().optional(),
-  isRawMaterial: z.boolean().default(false)
+  isRawMaterial: z.boolean().default(false),
+  isService: z.boolean().default(false)
 });
 
 const initialFormState = {
@@ -36,6 +37,7 @@ const initialFormState = {
   description: '',
   image: null,
   isRawMaterial: false,
+  isService: false,
   sizes: [],
   colors: [],
   excludedVariants: [],
@@ -96,6 +98,7 @@ export function useProducts() {
   const [showDamaged, setShowDamaged] = useState(false);
   const [maxRestoreQuantity, setMaxRestoreQuantity] = useState(0);
   const [showRawMaterials, setShowRawMaterials] = useState(false);
+  const [showServices, setShowServices] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -119,7 +122,7 @@ export function useProducts() {
   );
 
   const { data: products, isLoading } = useQuery(
-    ['products', currentPage, debouncedSearchTerm, showLowStock, selectedCategory, showDamaged, showRawMaterials],
+    ['products', currentPage, debouncedSearchTerm, showLowStock, selectedCategory, showDamaged, showRawMaterials, showServices],
     async () => {
       let endpoint = showDamaged ? '/products/damaged' : '/products';
       if (showRawMaterials) endpoint = '/products/raw-materials';
@@ -131,7 +134,8 @@ export function useProducts() {
           search: debouncedSearchTerm,
           lowStock: showLowStock,
           categoryId: selectedCategory || undefined,
-          parentOnly: true
+          parentOnly: true,
+          isService: showServices || undefined
         }
       });
       return response.data;
@@ -150,8 +154,8 @@ export function useProducts() {
         wholesalePrice: parseFloat(newProduct.wholesalePrice),
         purchasePrice: parseFloat(newProduct.purchasePrice),
         perUnitPurchasePrice: newProduct.perUnitPurchasePrice ? parseFloat(newProduct.perUnitPurchasePrice) : 0,
-        quantity: parseFloat(newProduct.quantity),
-        lowStockThreshold: parseFloat(newProduct.lowStockThreshold)
+        quantity: newProduct.quantity ? parseFloat(newProduct.quantity) : 0,
+        lowStockThreshold: newProduct.lowStockThreshold ? parseFloat(newProduct.lowStockThreshold) : 0
       };
       
       if (!formattedData.categoryId) {
@@ -184,8 +188,8 @@ export function useProducts() {
         wholesalePrice: parseFloat(data.wholesalePrice),
         purchasePrice: parseFloat(data.purchasePrice),
         perUnitPurchasePrice: data.perUnitPurchasePrice ? parseFloat(data.perUnitPurchasePrice) : 0,
-        quantity: parseFloat(data.quantity),
-        lowStockThreshold: parseFloat(data.lowStockThreshold)
+        quantity: data.quantity ? parseFloat(data.quantity) : 0,
+        lowStockThreshold: data.lowStockThreshold ? parseFloat(data.lowStockThreshold) : 0
       };
 
       if (!formattedData.categoryId) {
@@ -351,6 +355,7 @@ export function useProducts() {
       description: product.description || '',
       image: product.image,
       isRawMaterial: !!product.isRawMaterial,
+      isService: !!product.isService,
       sizes,
       colors,
       excludedVariants,
@@ -588,6 +593,7 @@ export function useProducts() {
     showDamaged, setShowDamaged,
     maxRestoreQuantity, setMaxRestoreQuantity,
     showRawMaterials, setShowRawMaterials,
+    showServices, setShowServices,
     categories,
     products,
     isLoading,

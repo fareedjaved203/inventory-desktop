@@ -112,6 +112,7 @@ async function ensureSchema(prismaClient) {
     `ALTER TABLE "License" ADD COLUMN "isTrial" BOOLEAN DEFAULT false`,
     `ALTER TABLE "Product" ADD COLUMN "parentProductId" TEXT`,
     `ALTER TABLE "Product" ADD COLUMN "variantLabel" TEXT`,
+    `ALTER TABLE "Product" ADD COLUMN "isService" BOOLEAN DEFAULT false`,
   ];
 
   // Create tables
@@ -392,7 +393,7 @@ app.get('/api/products/next-barcode', authenticateToken, async (req, res) => {
 // Get all products with search and pagination
 app.get('/api/products', authenticateToken, validateRequest({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', sku = '', lowStock = false, categoryId = '', isRawMaterial, parentOnly, excludeParents } = req.query;
+    const { page = 1, limit = 10, search = '', sku = '', lowStock = false, categoryId = '', isRawMaterial, isService, parentOnly, excludeParents } = req.query;
 
     let where = {
       userId: req.userId
@@ -436,6 +437,10 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
 
     if (isRawMaterial !== undefined) {
       where.isRawMaterial = isRawMaterial === 'true';
+    }
+
+    if (isService !== undefined) {
+      where.isService = isService === 'true';
     }
 
     // parentOnly=true: return only top-level products (parentProductId is null)
