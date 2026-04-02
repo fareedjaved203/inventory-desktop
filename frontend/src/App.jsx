@@ -276,7 +276,7 @@ function AppContent() {
             <div className="relative z-10">
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/pos" element={<POS />} />
+              <Route path="/pos" element={<div className="-m-4 md:-m-8"><POS /></div>} />
               <Route path="/employee-stats" element={<EmployeeStats />} />
               <Route path="/products" element={<Products />} />
               <Route path="/categories" element={<Categories />} />

@@ -65,8 +65,8 @@ export function POSProductGrid({
                     </div>
                     <h4 className="font-medium text-[10px] mb-1 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
                     <p className="text-primary-600 font-bold text-xs">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                    {!product.isManufactured && product.quantity !== null && (
-                      <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)}</p>
+                    {!product.isManufactured && product.quantity !== null && !product.isService && (
+                      <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit || ''}</p>
                     )}
                   </div>
                 ))}
@@ -133,8 +133,8 @@ export function POSProductGrid({
                     </div>
                     <h4 className="font-medium text-[10px] mb-1 text-gray-800 line-clamp-2 leading-tight">{product.name}</h4>
                     <p className="text-primary-600 font-bold text-xs">{formatPakistaniCurrency(product.retailPrice || product.price)}</p>
-                    {!product.isManufactured && product.quantity !== null && (
-                      <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)}</p>
+                    {!product.isManufactured && product.quantity !== null && !product.isService && (
+                      <p className="text-[9px] text-gray-500">Stock: {Number(product.quantity) % 1 === 0 ? product.quantity : Number(product.quantity).toFixed(1)} {product.unit || ''}</p>
                     )}
                   </div>
                 ))}

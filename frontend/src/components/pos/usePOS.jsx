@@ -211,9 +211,7 @@ export function usePOS() {
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountAmount = viewMode === 'compact' 
-    ? (discountType === 'percentage' ? (subtotal * discount) / 100 : discount)
-    : (subtotal * discount) / 100;
+  const discountAmount = discountType === 'percentage' ? (subtotal * discount) / 100 : Math.min(discount, subtotal);
   const total = subtotal - discountAmount;
   const change = paidAmount - total;
   
