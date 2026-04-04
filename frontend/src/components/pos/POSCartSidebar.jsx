@@ -156,15 +156,15 @@ export function POSCartSidebar({
                 <input
                   type="text"
                   value={customerSearchTerm || ''}
-                  onChange={handleCustomerSearchChange}
+                  onChange={(e) => handleCustomerSearchChange(e.target.value)}
                   onFocus={() => setShowCustomerDropdown(true)}
                   placeholder="Search customer..."
                   className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 {showCustomerDropdown && debouncedCustomerSearchTerm && (
                   <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-32 overflow-y-auto">
-                    {customers?.items?.length > 0 ? (
-                      customers.items.map(c => (
+                    {customers?.length > 0 ? (
+                      customers.map(c => (
                         <button
                           key={c.id}
                           onClick={() => {

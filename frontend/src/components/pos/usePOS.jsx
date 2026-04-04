@@ -215,6 +215,13 @@ export function usePOS() {
   const total = subtotal - discountAmount;
   const change = paidAmount - total;
   
+  // Auto-set paid amount to total when cart/discount changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      setPaidAmount(total);
+    }
+  }, [total, cart.length]);
+
   // Auto-calculate balance when cash received changes and auto-fill paid amount
   useEffect(() => {
     if (cashReceived > 0) {

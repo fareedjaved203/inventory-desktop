@@ -34,6 +34,7 @@ export function useSalesForm(language) {
   const [productSelected, isProductSelected] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState('flat'); // 'flat' or 'percentage'
   const [paidAmount, setPaidAmount] = useState(0);
   const [selectedContact, setSelectedContact] = useState(null);
   const [saleDate, setSaleDate] = useState("");
@@ -85,6 +86,7 @@ export function useSalesForm(language) {
     setTempStockUpdates({});
     setTotalAmount(0);
     setDiscount(0);
+    setDiscountType('flat');
     setPaidAmount("");
     setIsEditMode(false);
     setEditingSale(null);
@@ -123,9 +125,11 @@ export function useSalesForm(language) {
 
   useEffect(() => {
     const subtotal = calculateTotal();
-    const discountAmount = (subtotal * (parseFloat(discount) || 0)) / 100;
+    const discountAmount = discountType === 'percentage'
+      ? (subtotal * (parseFloat(discount) || 0)) / 100
+      : Math.min(parseFloat(discount) || 0, subtotal);
     setTotalAmount(Math.round(subtotal - discountAmount));
-  }, [saleItems, discount]);
+  }, [saleItems, discount, discountType]);
 
   const handleAddItem = () => {
     if (!selectedProduct || !quantity) {
@@ -189,7 +193,8 @@ export function useSalesForm(language) {
     setSaleItems(sale.items?.map((item) => ({ productId: item.product.id, productName: item.product.name, quantity: item.quantity, price: item.price, priceType: item.priceType || "retail", subtotal: item.price * item.quantity })));
     setTotalAmount(sale.totalAmount);
     const subtotal = sale.items?.reduce((sum, item) => sum + item.price * item.quantity, 0) || 0;
-    setDiscount(subtotal > 0 ? (((sale.discount || 0) / subtotal) * 100).toFixed(1) : 0);
+    setDiscount(sale.discount || 0);
+    setDiscountType('flat');
     setPaidAmount(sale.paidAmount || 0);
     setSelectedContact(sale.contact || null);
     setSelectedOrderBooker(sale.orderBooker || null);
@@ -256,7 +261,9 @@ export function useSalesForm(language) {
       return;
     }
 
-    const discountAmount = (calculateTotal() * (parseFloat(discount) || 0)) / 100;
+    const discountAmount = discountType === 'percentage'
+      ? (calculateTotal() * (parseFloat(discount) || 0)) / 100
+      : Math.min(parseFloat(discount) || 0, calculateTotal());
     const saleData = {
       items: saleItems.map((item) => ({ productId: item.productId, quantity: Number(item.quantity), price: Number(item.price), priceType: item.priceType || "retail" })),
       totalAmount: Number(Math.round(totalAmount)),
@@ -303,6 +310,7 @@ export function useSalesForm(language) {
     productSelected, isProductSelected,
     totalAmount, setTotalAmount,
     discount, setDiscount,
+    discountType, setDiscountType,
     paidAmount, setPaidAmount,
     selectedContact, setSelectedContact,
     saleDate, setSaleDate,

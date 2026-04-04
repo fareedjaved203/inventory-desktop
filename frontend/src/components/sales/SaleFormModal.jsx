@@ -586,19 +586,28 @@ export default function SaleFormModal({ language, form }) {
                           d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                         />
                       </svg>
-                      {t("discount")} (%)
+                      {t("discount")}
                     </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={form.discount}
-                      onChange={(e) => form.setDiscount(e.target.value)}
-                      onWheel={(e) => e.target.blur()}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                      placeholder="0"
-                    />
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={form.discount}
+                        onChange={(e) => form.setDiscount(e.target.value)}
+                        onWheel={(e) => e.target.blur()}
+                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        placeholder="0"
+                      />
+                      <select
+                        value={form.discountType}
+                        onChange={(e) => form.setDiscountType(e.target.value)}
+                        className="px-3 py-2.5 border border-gray-300 rounded-r-lg bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="flat">Rs</option>
+                        <option value="percentage">%</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
