@@ -14,24 +14,78 @@ export function BulkPurchasingTable({
   setDetailsModalOpen,
   handleDelete
 }) {
+  const allColumns = [
+    { key: 'invoice', label: t('invoiceNumber'), default: true },
+    { key: 'date', label: t('date'), default: true },
+    { key: 'contact', label: t('contact'), default: true },
+    { key: 'items', label: 'Items', default: true },
+    { key: 'totalAmount', label: t('totalAmount'), default: true },
+    { key: 'paidAmount', label: t('paidAmount'), default: true },
+    { key: 'actions', label: t('actions'), default: true },
+  ];
+
+  const [visibleColumns, setVisibleColumns] = React.useState(() => {
+    const saved = localStorage.getItem('purchasesVisibleColumns');
+    if (saved) return JSON.parse(saved);
+    return allColumns.filter(c => c.default).map(c => c.key);
+  });
+  const [showColumnPicker, setShowColumnPicker] = React.useState(false);
+
+  const toggleColumn = (key) => {
+    const updated = visibleColumns.includes(key)
+      ? visibleColumns.filter(k => k !== key)
+      : [...visibleColumns, key];
+    setVisibleColumns(updated);
+    localStorage.setItem('purchasesVisibleColumns', JSON.stringify(updated));
+  };
+
+  const isVisible = (key) => visibleColumns.includes(key);
+
   return (
+    <>
+    <div className="flex justify-end mb-2 relative">
+      <button
+        onClick={() => setShowColumnPicker(!showColumnPicker)}
+        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+        </svg>
+        Columns
+      </button>
+      {showColumnPicker && (
+        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[160px]">
+          {allColumns.map(col => (
+            <label key={col.key} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
+              <input
+                type="checkbox"
+                checked={visibleColumns.includes(col.key)}
+                onChange={() => toggleColumn(col.key)}
+                className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-xs text-gray-700">{col.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
     <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gradient-to-r from-primary-50 to-secondary-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('invoiceNumber')}</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('date')}</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('contact')}</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Items</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('totalAmount')}</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('paidAmount')}</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>
+            {isVisible('invoice') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('invoiceNumber')}</th>}
+            {isVisible('date') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('date')}</th>}
+            {isVisible('contact') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('contact')}</th>}
+            {isVisible('items') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Items</th>}
+            {isVisible('totalAmount') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('totalAmount')}</th>}
+            {isVisible('paidAmount') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('paidAmount')}</th>}
+            {isVisible('actions') && <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{t('actions')}</th>}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {isFetching && (debouncedSearchTerm || showPendingPayments) ? (
             <tr>
-              <td colSpan="7" className="px-6 py-8 text-center">
+              <td colSpan={visibleColumns.length} className="px-6 py-8 text-center">
                 <div className="flex justify-center items-center">
                   <LoadingSpinner size="w-6 h-6" />
                   <span className="ml-2 text-gray-500">Searching...</span>
@@ -41,16 +95,16 @@ export function BulkPurchasingTable({
           ) : (
             purchases?.items?.map((purchase) => (
             <tr key={purchase.id} className={`hover:bg-primary-50 transition-colors ${purchase.totalAmount > purchase.paidAmount ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''} ${auditTrails?.[purchase.id]?.length > 0 ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}>
-              <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
+              {isVisible('invoice') && <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">
                 {purchase.invoiceNumber || `#${purchase.id.slice(-6)}`}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+              </td>}
+              {isVisible('date') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                 {new Date(purchase.purchaseDate).toLocaleDateString('en-GB')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+              </td>}
+              {isVisible('contact') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                 {purchase.contact.name}
-              </td>
-              <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
+              </td>}
+              {isVisible('items') && <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
                 <div className="space-y-1">
                   {purchase.items && purchase.items.length > 0 ? (
                     purchase.items.map((item, index) => (
@@ -86,11 +140,11 @@ export function BulkPurchasingTable({
                     </div>
                   )}
                 </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
+              </td>}
+              {isVisible('totalAmount') && <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">
                 {formatPakistaniCurrency(purchase.totalAmount)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              </td>}
+              {isVisible('paidAmount') && <td className="px-6 py-4 whitespace-nowrap">
                 <div>
                   {purchase.totalAmount > purchase.paidAmount ? (
                     <div className="flex items-center">
@@ -113,8 +167,8 @@ export function BulkPurchasingTable({
                     </div>
                   )}
                 </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              </td>}
+              {isVisible('actions') && <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex space-x-2">
                   <button
                     onClick={() => {
@@ -148,12 +202,13 @@ export function BulkPurchasingTable({
                     {t('delete')}
                   </button>
                 </div>
-              </td>
+              </td>}
             </tr>
           ))
           )}
         </tbody>
       </table>
     </div>
+    </>
   );
 }

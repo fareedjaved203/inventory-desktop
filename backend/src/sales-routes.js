@@ -77,7 +77,7 @@ export function setupSalesRoutes(app, prisma) {
             req.body.items.map(item => 
               prisma.product.findUnique({
                 where: { id: item.productId },
-                select: { id: true, purchasePrice: true, name: true, quantity: true }
+                select: { id: true, purchasePrice: true, perUnitPurchasePrice: true, unit: true, name: true, quantity: true, isService: true }
               })
             )
           );
@@ -91,10 +91,15 @@ export function setupSalesRoutes(app, prisma) {
           
           // Create sale items
           for (const [index, item] of req.body.items.entries()) {
+            const product = productDetails[index];
+            const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+            const perUnitCost = bulkUnits.includes(product?.unit?.toLowerCase())
+              ? (product?.perUnitPurchasePrice || 0)
+              : (product?.purchasePrice || 0);
             const itemId = crypto.randomUUID();
             await prisma.$executeRaw`
               INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${saleId}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
+              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${perUnitCost}, ${saleId}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           
@@ -744,7 +749,7 @@ export function setupSalesRoutes(app, prisma) {
             req.body.items.map(item => 
               prisma.product.findUnique({
                 where: { id: item.productId },
-                select: { id: true, purchasePrice: true, name: true, quantity: true }
+                select: { id: true, purchasePrice: true, perUnitPurchasePrice: true, unit: true, name: true, quantity: true, isService: true }
               })
             )
           );
@@ -772,10 +777,15 @@ export function setupSalesRoutes(app, prisma) {
           
           // Create new sale items
           for (const [index, item] of req.body.items.entries()) {
+            const product = productDetails[index];
+            const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+            const perUnitCost = bulkUnits.includes(product?.unit?.toLowerCase())
+              ? (product?.perUnitPurchasePrice || 0)
+              : (product?.purchasePrice || 0);
             const itemId = crypto.randomUUID();
             await prisma.$executeRaw`
               INSERT INTO "SaleItem" (id, quantity, price, "priceType", "purchasePrice", "saleId", "productId", "createdAt", "updatedAt")
-              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${productDetails[index]?.purchasePrice || 0}, ${req.params.id}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
+              VALUES (${itemId}, ${item.quantity}, ${item.price}, ${item.priceType || "retail"}, ${perUnitCost}, ${req.params.id}, ${item.productId}, ${new Date().getTime()}, ${new Date().getTime()})
             `;
           }
           

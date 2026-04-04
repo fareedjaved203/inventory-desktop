@@ -924,6 +924,14 @@ app.post(
         }
       }
 
+      // Auto-calculate perUnitPurchasePrice for bulk units if not set
+      const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+      if (bulkUnits.includes(productData.unit) && productData.purchasePrice && productData.quantity) {
+        if (!productData.perUnitPurchasePrice || productData.perUnitPurchasePrice === 0) {
+          productData.perUnitPurchasePrice = productData.purchasePrice / productData.quantity;
+        }
+      }
+
       // If no sizes/colors, create a standalone product (original behavior)
       if (!hasSizes && !hasColors) {
         const product = await prisma.product.create({
@@ -1130,6 +1138,16 @@ app.put(
       // Prevent a product that has child variants from being set as another product's child
       if (updateData.parentProductId && originalProduct.variants.length > 0) {
         return res.status(400).json({ error: 'Cannot make a parent product with existing variants into a child variant.' });
+      }
+
+      // Auto-calculate perUnitPurchasePrice for bulk units if not set
+      const bulkUnitsUpdate = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+      if (bulkUnitsUpdate.includes(updateData.unit || originalProduct.unit)) {
+        const pp = updateData.purchasePrice ?? originalProduct.purchasePrice;
+        const qty = updateData.quantity ?? originalProduct.quantity;
+        if (pp && qty && (!updateData.perUnitPurchasePrice || updateData.perUnitPurchasePrice === 0)) {
+          updateData.perUnitPurchasePrice = pp / qty;
+        }
       }
 
       // If no sizes/colors provided, do a simple update (original behavior)

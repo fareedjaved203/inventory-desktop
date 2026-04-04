@@ -98,6 +98,7 @@ function Dashboard() {
             color="indigo"
             isLoading={isLoading}
             error={error}
+            subtitle={data?.totalStockValue !== undefined ? `Stock Value: ${formatPakistaniCurrency(data.totalStockValue || 0)}` : null}
           />
           <DashboardCard
             title={t('lowStock')}

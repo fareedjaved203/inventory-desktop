@@ -7,7 +7,7 @@ export function setupDashboardRoutes(app, prisma) {
   // Get basic dashboard data
   app.get('/api/dashboard', authenticateToken, async (req, res) => {
     try {
-      const [totalProducts, totalInventory, lowStock, totalSales, recentSales, pendingPayments, damagedItems, totalExpenses, totalRawMaterialExpenses] = await Promise.all([
+      const [totalProducts, totalInventory, lowStock, totalSales, recentSales, pendingPayments, damagedItems, totalExpenses, totalRawMaterialExpenses, totalStockProducts] = await Promise.all([
         prisma.product.count({ where: { userId: req.userId } }),
         prisma.product.aggregate({
           where: { userId: req.userId },
@@ -55,14 +55,31 @@ export function setupDashboardRoutes(app, prisma) {
           _sum: { amount: true }
         }),
         // Raw materials are now counted in purchases, not expenses
-        Promise.resolve([{ total: 0 }])
+        Promise.resolve([{ total: 0 }]),
+        // Calculate total stock value
+        prisma.product.findMany({
+          where: { userId: req.userId },
+          select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true, isService: true }
+        }).catch(() => [])
       ]);
 
       const rawMaterialExpensesAmount = Number(totalRawMaterialExpenses[0]?.total || 0);
 
+      // Calculate stock value: for bulk units use perUnitPurchasePrice × qty, for piece units use purchasePrice × qty
+      const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+      const totalStockValue = totalStockProducts.filter(p => !p.isService).reduce((sum, p) => {
+        const qty = Number(p.quantity || 0);
+        if (bulkUnits.includes(p.unit?.toLowerCase())) {
+          const perUnit = Number(p.perUnitPurchasePrice || p.purchasePrice || 0);
+          return sum + (perUnit * qty);
+        }
+        return sum + (Number(p.purchasePrice || 0) * qty);
+      }, 0);
+
       res.json({
         totalProducts,
         totalInventory: Number(totalInventory._sum.quantity || 0),
+        totalStockValue: Math.round(totalStockValue),
         lowStock,
         totalSales: Number(totalSales._sum.totalAmount || 0),
         recentSales,
@@ -433,6 +450,8 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       let totalProfit = 0;
       
       for (const sale of sales) {
+        let saleProfit = 0;
+        
         for (const item of sale.items) {
           const quantity = Number(item.quantity);
           const salePrice = Number(item.price);
@@ -441,19 +460,23 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
           // Determine purchase cost per unit
           let purchaseCostPerUnit = 0;
           
-          // For weighted items (kg, ltr, ml, gram, dozen, ton), use perUnitPurchasePrice
-          const weightedUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton'];
-          if (weightedUnits.includes(product.unit?.toLowerCase())) {
-            purchaseCostPerUnit = Number(product.perUnitPurchasePrice || 0);
+          // For bulk/weighted items, use perUnitPurchasePrice
+          const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+          if (bulkUnits.includes(product?.unit?.toLowerCase())) {
+            purchaseCostPerUnit = Number(product.perUnitPurchasePrice || product.purchasePrice || item.purchasePrice || 0);
           } else {
-            // For regular items, use the purchase price from the sale item or product
-            purchaseCostPerUnit = Number(item.purchasePrice || product.price || 0);
+            purchaseCostPerUnit = Number(product?.purchasePrice || item.purchasePrice || 0);
           }
           
-          // Calculate profit for this item
           const itemProfit = (salePrice - purchaseCostPerUnit) * quantity;
-          totalProfit += itemProfit;
+          saleProfit += itemProfit;
         }
+        
+        // Subtract the sale-level discount from profit
+        const saleDiscount = Number(sale.discount || 0);
+        saleProfit -= saleDiscount;
+        
+        totalProfit += saleProfit;
         
         // Subtract profit lost from non-container returns
         for (const ret of (sale.returns || [])) {
@@ -466,11 +489,11 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
               const salePrice = Number(retItem.price || matchingSaleItem.price);
               const product = matchingSaleItem.product;
               let purchaseCostPerUnit = 0;
-              const weightedUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton'];
-              if (weightedUnits.includes(product.unit?.toLowerCase())) {
-                purchaseCostPerUnit = Number(product.perUnitPurchasePrice || 0);
+              const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+              if (bulkUnits.includes(product.unit?.toLowerCase())) {
+                purchaseCostPerUnit = Number(product.perUnitPurchasePrice || product.purchasePrice || matchingSaleItem.purchasePrice || 0);
               } else {
-                purchaseCostPerUnit = Number(matchingSaleItem.purchasePrice || product.price || 0);
+                purchaseCostPerUnit = Number(product.purchasePrice || matchingSaleItem.purchasePrice || 0);
               }
               const lostProfit = (salePrice - purchaseCostPerUnit) * retQty;
               totalProfit -= lostProfit;
@@ -645,7 +668,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     const rawMaterialExpensesLast365DaysAmount = calculateRawMaterialExpenses(rawMaterialExpensesLast365Days);
 
     // Get basic inventory stats
-    const [totalProducts, totalInventory, lowStock, totalSales] = await Promise.all([
+    const [totalProducts, totalInventory, lowStock, totalSales, allProductsForStockValue] = await Promise.all([
       prisma.product.count({ where: { userId: req.userId } }),
       prisma.product.aggregate({
         where: { userId: req.userId },
@@ -659,8 +682,23 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       prisma.sale.aggregate({
         where: { userId: req.userId },
         _sum: { totalAmount: true }
-      })
+      }),
+      prisma.product.findMany({
+        where: { userId: req.userId },
+        select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true }
+      }).catch(() => [])
     ]);
+
+    // Calculate total stock value
+    const bulkUnitsStats = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+    const totalStockValue = allProductsForStockValue.reduce((sum, p) => {
+      const qty = Number(p.quantity || 0);
+      if (bulkUnitsStats.includes(p.unit?.toLowerCase())) {
+        const perUnit = Number(p.perUnitPurchasePrice || p.purchasePrice || 0);
+        return sum + (perUnit * qty);
+      }
+      return sum + (Number(p.purchasePrice || 0) * qty);
+    }, 0);
 
     // Calculate Sales Due per contact, then subtract ledger credits
     const salesDueByContact = {};
@@ -703,6 +741,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       // Basic inventory stats
       totalProducts,
       totalInventory: Number(totalInventory._sum.quantity || 0),
+      totalStockValue: Math.round(totalStockValue),
       lowStock,
       totalSales: Number(totalSales._sum.totalAmount || 0),
       // Time-based sales stats (net of returns)
@@ -955,6 +994,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       
       // Process sales
       sales.forEach(sale => {
+        const saleDiscount = Number(sale.discount || 0);
+        // Calculate sale subtotal for proportional discount distribution
+        const saleSubtotal = sale.items.reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
+        
         sale.items
           .filter(item => {
             if (productId && item.productId !== productId) return false;
@@ -962,10 +1005,21 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             return true;
           })
           .forEach(item => {
-          const purchasePrice = Number(item.purchasePrice || 0);
-          const salePrice = Number(item.price);
           const quantity = Number(item.quantity);
-          const profit = purchasePrice > 0 ? (salePrice - purchasePrice) * quantity : 0;
+          
+          // Use bulk-unit-aware purchase cost
+          const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
+          let purchasePrice = 0;
+          if (bulkUnits.includes(item.product.unit?.toLowerCase())) {
+            purchasePrice = Number(item.product.perUnitPurchasePrice || item.product.purchasePrice || item.purchasePrice || 0);
+          } else {
+            purchasePrice = Number(item.product.purchasePrice || item.purchasePrice || 0);
+          }
+          const salePrice = Number(item.price);
+          const itemTotal = salePrice * quantity;
+          // Proportionally distribute sale discount to this item
+          const itemDiscount = saleSubtotal > 0 ? (itemTotal / saleSubtotal) * saleDiscount : 0;
+          const profit = purchasePrice > 0 ? (salePrice - purchasePrice) * quantity - itemDiscount : -itemDiscount;
           
           const originalPaidAmount = saleAuditMap.get(sale.id);
           const displayPaidAmount = originalPaidAmount !== null ? originalPaidAmount : Number(sale.paidAmount || 0);
@@ -992,7 +1046,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             orderBookerName: sale.orderBooker?.name || '',
             saleQuantity: quantity,
             saleUnitPrice: salePrice,
-            totalSalePrice: salePrice * quantity,
+            totalSalePrice: salePrice * quantity - itemDiscount,
             profitLoss: profit,
             saleDescription: sale.description || ''
           });

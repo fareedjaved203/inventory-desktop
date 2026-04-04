@@ -109,7 +109,7 @@ export function ProductsHeader({
           </button>
           
           <button
-            onClick={() => handlePrint(products?.items || [])}
+            onClick={() => handlePrint()}
             className="p-2 h-10 w-10 text-gray-600 hover:text-primary-600 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center"
             title="Print Product Report"
           >

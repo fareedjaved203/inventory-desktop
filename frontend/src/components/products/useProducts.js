@@ -413,8 +413,32 @@ export function useProducts() {
     }
   };
 
-  const handlePrint = (items) => {
-    const printWindow = window.open('', '_blank');
+  const handlePrint = async () => {
+    try {
+      // Fetch ALL products (not just current page)
+      const response = await API.get('/products', {
+        params: {
+          limit: 10000,
+          parentOnly: true,
+          lowStock: showLowStock || undefined,
+          categoryId: selectedCategory || undefined,
+          isService: false
+        }
+      });
+      const allItems = response.data?.items || [];
+      
+      // Also include child variants for parent products
+      const items = [];
+      for (const product of allItems) {
+        items.push(product);
+        if (product.variants && product.variants.length > 0) {
+          for (const variant of product.variants) {
+            items.push({ ...variant, _isVariant: true, unit: product.unit, category: product.category });
+          }
+        }
+      }
+
+      const printWindow = window.open('', '_blank');
     const htmlContent = `
       <html>
         <head>
@@ -440,6 +464,19 @@ export function useProducts() {
             <p>Generated on: ${new Date().toLocaleString()}</p>
             ${showLowStock ? '<p><strong>Filter: Low Stock Items Only</strong></p>' : ''}
             ${selectedCategory ? `<p><strong>Category: ${categories?.items?.find(c => c.id === selectedCategory)?.name || 'All'}</strong></p>` : ''}
+            <p style="font-size: 16px; margin-top: 10px;"><strong>Total Stock Value: Rs ${(() => {
+              const bulkUnits = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'];
+              const total = items.reduce((sum, p) => {
+                if (p.isService || p._isVariant) return sum;
+                const qty = Number(p.quantity || 0);
+                const isBulk = bulkUnits.includes(p.unit);
+                if (isBulk) {
+                  return sum + (Number(p.perUnitPurchasePrice || p.purchasePrice || 0) * qty);
+                }
+                return sum + (Number(p.purchasePrice || 0) * qty);
+              }, 0);
+              return total.toLocaleString();
+            })()}</strong></p>
           </div>
           <table>
             <thead>
@@ -451,20 +488,26 @@ export function useProducts() {
                 <th>Retail Price</th>
                 <th>Wholesale Price</th>
                 <th>Purchase Price</th>
+                <th>Stock Value</th>
               </tr>
             </thead>
             <tbody>
-              ${items.map(p => `
-                <tr className="${p.quantity <= p.lowStockThreshold ? 'low-stock' : ''}">
+              ${items.map(p => {
+                const bulkUnits = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'];
+                const isBulk = bulkUnits.includes(p.unit);
+                const stockValue = p.isService ? '-' : (isBulk ? `Rs ${p.purchasePrice || 0}` : `Rs ${(p.purchasePrice || 0) * (p.quantity || 0)}`);
+                return `
+                <tr class="${p.quantity <= p.lowStockThreshold ? 'low-stock' : ''}">
                   <td>${p.name}</td>
-                  <td>${p.sku}</td>
+                  <td>${p.sku || ''}</td>
                   <td>${p.category?.name || 'Uncategorized'}</td>
-                  <td class="${p.quantity <= p.lowStockThreshold ? 'low-stock' : ''}">${p.quantity}</td>
-                  <td>Rs ${p.retailPrice}</td>
-                  <td>Rs ${p.wholesalePrice}</td>
-                  <td>Rs ${p.purchasePrice}</td>
+                  <td class="${p.quantity <= p.lowStockThreshold ? 'low-stock' : ''}">${p.isService ? 'Service' : p.quantity} ${!p.isService && p.unit ? p.unit : ''}</td>
+                  <td>Rs ${p.retailPrice || 0}</td>
+                  <td>Rs ${p.wholesalePrice || 0}</td>
+                  <td>Rs ${isBulk ? (p.perUnitPurchasePrice || 0) + '/' + p.unit : (p.purchasePrice || 0)}</td>
+                  <td>${stockValue}</td>
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
           <script>
@@ -478,6 +521,10 @@ export function useProducts() {
     `;
     printWindow.document.write(htmlContent);
     printWindow.document.close();
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      toast.error('Failed to generate report');
+    }
   };
 
   const handlePrintLabel = (product) => {

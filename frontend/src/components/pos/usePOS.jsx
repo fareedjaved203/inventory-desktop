@@ -12,7 +12,7 @@ export function usePOS() {
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState('fixed'); // 'percentage' or 'fixed'
+  const [discountType, setDiscountType] = useState('flat'); // 'percentage' or 'flat'
   const [paidAmount, setPaidAmount] = useState(0);
   const [cashReceived, setCashReceived] = useState(0);
   const [balance, setBalance] = useState(0);
@@ -229,7 +229,7 @@ export function usePOS() {
   useEffect(() => {
     if (cart.length === 0) {
       setDiscount(0);
-      setDiscountType('fixed');
+      setDiscountType('flat');
       setPaidAmount(0);
       setCashReceived(0);
       setBalance(0);
@@ -408,7 +408,7 @@ export function usePOS() {
   const clearCart = () => {
     setCart([]);
     setDiscount(0);
-    setDiscountType('fixed');
+    setDiscountType('flat');
     setPaidAmount(0);
     setCashReceived(0);
     setBalance(0);

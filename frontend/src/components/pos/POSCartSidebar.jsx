@@ -98,7 +98,7 @@ export function POSCartSidebar({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1">
                     <button
-                      onClick={() => updateCartQuantity(item.id, Math.max(0, item.quantity - (item.unit && ['kg', 'gram', 'ltr', 'ml', 'ton'].includes(item.unit) ? 0.5 : 1)))}
+                      onClick={() => updateCartQuantity(item.id, Math.max(0, item.quantity - (item.unit && ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(item.unit) ? 0.5 : 1)))}
                       className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
                     >
                       <FaMinus size={8} />
@@ -116,7 +116,7 @@ export function POSCartSidebar({
                       className="w-12 text-center font-medium text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <button
-                      onClick={() => updateCartQuantity(item.id, item.quantity + (item.unit && ['kg', 'gram', 'ltr', 'ml', 'ton'].includes(item.unit) ? 0.5 : 1))}
+                      onClick={() => updateCartQuantity(item.id, item.quantity + (item.unit && ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(item.unit) ? 0.5 : 1))}
                       className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:bg-gray-400"
                     >
                       <FaPlus size={8} />

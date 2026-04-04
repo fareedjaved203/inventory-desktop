@@ -82,7 +82,7 @@ function POS() {
   } = usePOS();
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 relative">
+    <div className="flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 relative" style={{ height: '100vh' }}>
       <POSHeader
         showSearchInputs={showSearchInputs}
         setShowSearchInputs={setShowSearchInputs}
@@ -90,10 +90,10 @@ function POS() {
         setViewMode={setViewMode}
       />
 
-      <div className={`flex-1 flex ${viewMode === 'default' ? 'flex-col lg:flex-row' : 'flex-col'} relative`}>
-        {/* Cart Toggle Button - Show in default view */}
+      <div className={`flex-1 flex ${viewMode === 'default' ? 'flex-col lg:flex-row' : 'flex-col'} relative overflow-hidden min-h-0`}>
+        {/* Cart Toggle Button - Only show on mobile in default view */}
         {viewMode === 'default' && (
-          <div className="fixed bottom-4 right-4 z-30">
+          <div className="fixed bottom-4 right-4 z-30 lg:hidden">
             <button
               onClick={() => setShowCart(!showCart)}
               className="bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
@@ -108,7 +108,7 @@ function POS() {
           </div>
         )}
 
-        {/* Mobile Cart Overlay - Only show in default view */}
+        {/* Mobile Cart Overlay - Only show in default view on mobile */}
         {isMobile && showCart && viewMode === 'default' && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -252,6 +252,8 @@ function POS() {
             subtotal={subtotal}
             discount={discount}
             setDiscount={setDiscount}
+            discountType={discountType}
+            setDiscountType={setDiscountType}
             discountAmount={discountAmount}
             total={total}
             paidAmount={paidAmount}
@@ -263,6 +265,19 @@ function POS() {
             previewReceipt={previewReceipt}
             createSaleLoading={createSale.isLoading}
             creatingContact={creatingContact}
+            customerSearchTerm={customerSearchTerm}
+            handleCustomerSearchChange={handleCustomerSearchChange}
+            setShowCustomerDropdown={setShowCustomerDropdown}
+            showCustomerDropdown={showCustomerDropdown}
+            debouncedCustomerSearchTerm={debouncedCustomerSearchTerm}
+            customers={customers}
+            selectedContact={selectedContact}
+            setSelectedContact={setSelectedContact}
+            setCustomerSearchTerm={setCustomerSearchTerm}
+            createNewContact={createNewContact}
+            setCreateNewContact={setCreateNewContact}
+            newContactData={newContactData}
+            setNewContactData={setNewContactData}
           />
         )}
       </div>

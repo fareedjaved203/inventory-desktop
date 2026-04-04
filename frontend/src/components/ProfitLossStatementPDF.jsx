@@ -152,7 +152,7 @@ function ProfitLossStatementPDF({ reportData, dateRange, shopSettings }) {
   const totalSales = Number(salesStats?.totalSales || 0);
   const totalPurchases = Number(salesStats?.totalPurchases || 0);
   const totalExpenses = Number(salesStats?.totalExpenses || 0);
-  const grossProfit = totalSales - totalPurchases;
+  const grossProfit = Number(salesStats?.totalProfit || (totalSales - totalPurchases));
   const netProfit = grossProfit - totalExpenses;
 
   const profitLossEntries = [

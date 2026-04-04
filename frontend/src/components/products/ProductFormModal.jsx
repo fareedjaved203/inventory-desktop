@@ -307,7 +307,7 @@ export function ProductFormModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit)
+                      {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(formData.unit)
                         ? 'Total Purchase Cost'
                         : 'Purchase Price'}
                     </label>
@@ -317,11 +317,11 @@ export function ProductFormModal({
                       min="0"
                       value={formData.purchasePrice}
                       onChange={(e) => {
-                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit);
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(formData.unit);
                         if (isBulkUnit) {
                           const value = parseFloat(e.target.value);
                           const quantity = parseFloat(formData.quantity);
-                          if (value && quantity && quantity > 0) {
+                          if (!isNaN(value) && !isNaN(quantity) && quantity > 0) {
                             const perUnitCost = value / quantity;
                             setFormData({ ...formData, purchasePrice: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
                           } else {
@@ -333,10 +333,10 @@ export function ProductFormModal({
                       }}
                       onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                      placeholder={['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) ? `Total cost for all ${formData.unit}` : 'Cost per item'}
+                      placeholder={['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(formData.unit) ? `Total cost for all ${formData.unit}` : 'Cost per item'}
                     />
                   </div>
-                  {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit) && (
+                  {['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(formData.unit) && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Per {formData.unit === 'kg' ? 'Kg' : formData.unit === 'gram' ? 'Gram' : formData.unit === 'ltr' ? 'Ltr' : formData.unit === 'ml' ? 'ml' : formData.unit === 'ton' ? 'Ton' : 'Unit'} Cost
@@ -347,7 +347,15 @@ export function ProductFormModal({
                           step="0.01"
                           min="0"
                           value={formData.perUnitPurchasePrice || ''}
-                          onChange={(e) => setFormData({ ...formData, perUnitPurchasePrice: e.target.value })}
+                          onChange={(e) => {
+                            const perUnit = parseFloat(e.target.value);
+                            const quantity = parseFloat(formData.quantity);
+                            if (!isNaN(perUnit) && !isNaN(quantity) && quantity > 0) {
+                              setFormData({ ...formData, perUnitPurchasePrice: e.target.value, purchasePrice: (perUnit * quantity).toFixed(2) });
+                            } else {
+                              setFormData({ ...formData, perUnitPurchasePrice: e.target.value });
+                            }
+                          }}
                           onWheel={(e) => e.target.blur()}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-50"
                           placeholder="Auto: total ÷ qty"
@@ -370,11 +378,11 @@ export function ProductFormModal({
                       step="0.01"
                       value={formData.quantity}
                       onChange={(e) => {
-                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(formData.unit);
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(formData.unit);
                         if (isBulkUnit) {
                           const value = parseFloat(e.target.value);
                           const purchasePrice = parseFloat(formData.purchasePrice);
-                          if (purchasePrice && value && value > 0) {
+                          if (!isNaN(purchasePrice) && !isNaN(value) && value > 0) {
                             const perUnitCost = purchasePrice / value;
                             setFormData({ ...formData, quantity: e.target.value, perUnitPurchasePrice: perUnitCost.toFixed(2) });
                           } else {

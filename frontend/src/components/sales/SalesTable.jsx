@@ -1,3 +1,4 @@
+import { useState } from "react";
 import LoadingSpinner from "../LoadingSpinner";
 import { formatPakistaniCurrency } from "../../utils/formatCurrency";
 import { useTranslation } from "../../utils/translations";
@@ -91,21 +92,78 @@ function PaidAmountCell({ sale, auditTrails, t }) {
 function SalesTable({ sales, auditTrails, isFetching, debouncedSearchTerm, selectedDate, showPendingPayments, showCreditBalance, currentPage, itemsPerPage, setCurrentPage, language, onView, onEdit, onDelete }) {
   const t = useTranslation(language);
 
+  const allColumns = [
+    { key: 'billNumber', label: 'Bill Number', default: true },
+    { key: 'date', label: 'Date', default: true },
+    { key: 'contact', label: 'Contact', default: true },
+    { key: 'orderBooker', label: 'Order Booker', default: false },
+    { key: 'carNumber', label: 'Car Number', default: false },
+    { key: 'items', label: 'Items', default: true },
+    { key: 'totalAmount', label: 'Total Amount', default: true },
+    { key: 'paidAmount', label: 'Paid Amount', default: true },
+    { key: 'actions', label: 'Actions', default: true },
+  ];
+
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('salesVisibleColumns');
+    if (saved) return JSON.parse(saved);
+    return allColumns.filter(c => c.default).map(c => c.key);
+  });
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+
+  const toggleColumn = (key) => {
+    const updated = visibleColumns.includes(key)
+      ? visibleColumns.filter(k => k !== key)
+      : [...visibleColumns, key];
+    setVisibleColumns(updated);
+    localStorage.setItem('salesVisibleColumns', JSON.stringify(updated));
+  };
+
+  const isVisible = (key) => visibleColumns.includes(key);
+
   return (
     <>
+      {/* Column Picker */}
+      <div className="flex justify-end mb-2 relative">
+        <button
+          onClick={() => setShowColumnPicker(!showColumnPicker)}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+          </svg>
+          Columns
+        </button>
+        {showColumnPicker && (
+          <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[160px]">
+            {allColumns.map(col => (
+              <label key={col.key} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleColumns.includes(col.key)}
+                  onChange={() => toggleColumn(col.key)}
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-xs text-gray-700">{col.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="bg-white shadow-md rounded-lg overflow-x-auto border border-gray-100">
-        <table className="w-full divide-y divide-gray-200" style={{ minWidth: "800px" }}>
+        <table className="w-full divide-y divide-gray-200" style={{ minWidth: "600px" }}>
           <thead className="bg-gradient-to-r from-primary-50 to-primary-100">
             <tr>
-              {["Bill Number", "Date", "Contact", "Order Booker", "Car Number", "Items", "Total Amount", "Paid Amount", "Actions"].map((h) => (
-                <th key={h} className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{h}</th>
+              {allColumns.filter(c => isVisible(c.key)).map((c) => (
+                <th key={c.key} className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">{c.label}</th>
               ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {isFetching && (debouncedSearchTerm || selectedDate || showPendingPayments || showCreditBalance) ? (
               <tr>
-                <td colSpan="9" className="px-6 py-8 text-center">
+                <td colSpan={visibleColumns.length} className="px-6 py-8 text-center">
                   <div className="flex justify-center items-center">
                     <LoadingSpinner size="w-6 h-6" />
                     <span className="ml-2 text-gray-500">Searching...</span>
@@ -115,20 +173,20 @@ function SalesTable({ sales, auditTrails, isFetching, debouncedSearchTerm, selec
             ) : (
               sales?.items?.map((sale) => (
                 <tr key={sale.id} className={`hover:bg-primary-50 transition-colors ${auditTrails?.[sale.id]?.length > 0 ? "bg-blue-50 border-l-4 border-blue-400" : ""}`}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">#{sale.billNumber}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {isVisible('billNumber') && <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-700">#{sale.billNumber}</td>}
+                  {isVisible('date') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                     {new Date(sale.saleDate).toLocaleDateString("en-GB", { timeZone: "UTC" })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  </td>}
+                  {isVisible('contact') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                     {sale.contact ? <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{sale.contact.name}</span> : <span className="text-gray-400 text-sm">-</span>}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  </td>}
+                  {isVisible('orderBooker') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                     {sale.orderBooker ? <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{sale.orderBooker.name}</span> : <span className="text-gray-400 text-sm">-</span>}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  </td>}
+                  {isVisible('carNumber') && <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                     {sale.carNumber ? <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">{sale.carNumber}</span> : <span className="text-gray-400 text-sm">-</span>}
-                  </td>
-                  <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
+                  </td>}
+                  {isVisible('items') && <td className="px-6 py-4 text-gray-700" style={{ minWidth: "300px" }}>
                     <div className="space-y-1">
                       <SaleItemsCell sale={sale} />
                       {auditTrails?.[sale.id]?.length > 0 && (
@@ -146,12 +204,12 @@ function SalesTable({ sales, auditTrails, isFetching, debouncedSearchTerm, selec
                         </div>
                       )}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">{formatPakistaniCurrency(sale.totalAmount)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </td>}
+                  {isVisible('totalAmount') && <td className="px-6 py-4 whitespace-nowrap font-medium text-primary-800">{formatPakistaniCurrency(sale.totalAmount)}</td>}
+                  {isVisible('paidAmount') && <td className="px-6 py-4 whitespace-nowrap">
                     <PaidAmountCell sale={sale} auditTrails={auditTrails} t={t} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </td>}
+                  {isVisible('actions') && <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
                       <button onClick={() => onView(sale)} className="text-primary-600 hover:text-primary-900 inline-flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -173,7 +231,7 @@ function SalesTable({ sales, auditTrails, isFetching, debouncedSearchTerm, selec
                         {t("delete")}
                       </button>
                     </div>
-                  </td>
+                  </td>}
                 </tr>
               ))
             )}

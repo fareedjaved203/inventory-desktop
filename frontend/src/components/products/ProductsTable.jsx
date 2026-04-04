@@ -54,18 +54,73 @@ export function ProductsTable({
 
   const isParentProduct = (product) => product.variantCount > 0;
 
+  const allColumns = [
+    { key: 'product', label: t('product'), default: true },
+    { key: 'category', label: t('allCategories'), default: true },
+    { key: 'available', label: t('available'), default: true },
+    { key: 'damaged', label: t('damaged'), default: false },
+    { key: 'purchasePrice', label: t('unitPriceAndPurchase'), default: true },
+    { key: 'sellingPrice', label: t('sellingPrice'), default: true },
+    { key: 'status', label: t('status'), default: true },
+    { key: 'actions', label: t('actions'), default: true },
+  ];
+
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('productsVisibleColumns');
+    if (saved) return JSON.parse(saved);
+    return allColumns.filter(c => c.default).map(c => c.key);
+  });
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+
+  const toggleColumn = (key) => {
+    const updated = visibleColumns.includes(key)
+      ? visibleColumns.filter(k => k !== key)
+      : [...visibleColumns, key];
+    setVisibleColumns(updated);
+    localStorage.setItem('productsVisibleColumns', JSON.stringify(updated));
+  };
+
+  const isVisible = (key) => visibleColumns.includes(key);
+
   return (
+    <>
+    <div className="flex justify-end mb-2 relative">
+      <button
+        onClick={() => setShowColumnPicker(!showColumnPicker)}
+        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+        </svg>
+        Columns
+      </button>
+      {showColumnPicker && (
+        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[160px]">
+          {allColumns.map(col => (
+            <label key={col.key} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
+              <input
+                type="checkbox"
+                checked={visibleColumns.includes(col.key)}
+                onChange={() => toggleColumn(col.key)}
+                className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-xs text-gray-700">{col.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
     <table className="min-w-full">
       <thead className="bg-primary-50">
         <tr className="text-primary-800">
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('product')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('allCategories')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('available')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('damaged')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('unitPriceAndPurchase')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('sellingPrice')}</th>
-          <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('status')}</th>
-          <th className="px-6 py-4 text-right text-sm font-semibold whitespace-nowrap">{t('actions')}</th>
+          {isVisible('product') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('product')}</th>}
+          {isVisible('category') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('allCategories')}</th>}
+          {isVisible('available') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('available')}</th>}
+          {isVisible('damaged') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('damaged')}</th>}
+          {isVisible('purchasePrice') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('unitPriceAndPurchase')}</th>}
+          {isVisible('sellingPrice') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('sellingPrice')}</th>}
+          {isVisible('status') && <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">{t('status')}</th>}
+          {isVisible('actions') && <th className="px-6 py-4 text-right text-sm font-semibold whitespace-nowrap">{t('actions')}</th>}
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
@@ -79,7 +134,7 @@ export function ProductsTable({
             <ParentAndVariantRows key={product.id}>
               {/* Parent / Standalone row */}
               <tr className={`hover:bg-primary-50/50 transition-colors ${isLowStock ? 'bg-red-50/30' : ''}`}>
-                <td className="px-6 py-4">
+                {isVisible('product') && <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     {isParent ? (
                       <button
@@ -116,14 +171,14 @@ export function ProductsTable({
                       </div>
                     </div>
                   </div>
-                </td>
-                <td className="px-6 py-4">
+                </td>}
+                {isVisible('category') && <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{product.category?.icon}</span>
                     <span className="text-sm text-gray-700">{product.category?.name || 'Uncategorized'}</span>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td>}
+                {isVisible('available') && <td className="px-6 py-4 whitespace-nowrap">
                   {product.isService ? (
                     <span className="text-gray-400 text-sm">—</span>
                   ) : (
@@ -138,8 +193,8 @@ export function ProductsTable({
                     )}
                   </div>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td>}
+                {isVisible('damaged') && <td className="px-6 py-4 whitespace-nowrap">
                   {product.isService ? (
                     <span className="text-gray-400 text-sm">—</span>
                   ) : (
@@ -154,10 +209,10 @@ export function ProductsTable({
                   )}
                   </>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td>}
+                {isVisible('purchasePrice') && <td className="px-6 py-4 whitespace-nowrap">
                   {(() => {
-                    const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(product.unit);
+                    const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(product.unit);
                     if (isBulkUnit) {
                       const perUnit = product.perUnitPurchasePrice || (product.purchasePrice && product.quantity ? product.purchasePrice / product.quantity : 0);
                       return (
@@ -172,8 +227,8 @@ export function ProductsTable({
                       </div>
                     );
                   })()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td>}
+                {isVisible('sellingPrice') && <td className="px-6 py-4 whitespace-nowrap">
                   {product.isRawMaterial ? (
                     <span className="text-gray-400 text-sm">-</span>
                   ) : (
@@ -186,8 +241,8 @@ export function ProductsTable({
                       </span>
                     </div>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td>}
+                {isVisible('status') && <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
                     {isLowStock && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -212,8 +267,8 @@ export function ProductsTable({
                       </span>
                     )}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                </td>}
+                {isVisible('actions') && <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => handleEditProduct(product)}
@@ -256,7 +311,7 @@ export function ProductsTable({
                       <FaTrash className="w-4 h-4" />
                     </button>
                   </div>
-                </td>
+                </td>}
               </tr>
 
               {/* Child variant rows (shown when parent is expanded) */}
@@ -264,7 +319,7 @@ export function ProductsTable({
                 const variantLowStock = variant.quantity <= variant.lowStockThreshold;
                 return (
                   <tr key={variant.id} className={`bg-gray-50/70 hover:bg-gray-100/70 transition-colors ${variantLowStock ? 'bg-red-50/30' : ''}`}>
-                    <td className="px-6 py-3">
+                    {isVisible('product') && <td className="px-6 py-3">
                       <div className="flex items-center gap-3" style={{ paddingLeft: '2.25rem' }}>
                         <div className="w-1 h-8 bg-purple-200 rounded-full" />
                         <div>
@@ -275,11 +330,11 @@ export function ProductsTable({
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-3">
+                    </td>}
+                    {isVisible('category') && <td className="px-6 py-3">
                       <span className="text-xs text-gray-400">—</span>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap">
+                    </td>}
+                    {isVisible('available') && <td className="px-6 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <div className={`text-sm font-medium ${variantLowStock ? 'text-red-600' : 'text-gray-700'}`}>
                           {variant.quantity}
@@ -290,15 +345,15 @@ export function ProductsTable({
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap">
+                    </td>}
+                    {isVisible('damaged') && <td className="px-6 py-3 whitespace-nowrap">
                       <span className={`text-sm font-medium ${variant.damagedQuantity > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {variant.damagedQuantity || 0}
                       </span>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap">
+                    </td>}
+                    {isVisible('purchasePrice') && <td className="px-6 py-3 whitespace-nowrap">
                       {(() => {
-                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm'].includes(product.unit);
+                        const isBulkUnit = ['kg', 'gram', 'ltr', 'ml', 'ton', 'ohm', 'metre', 'ft', 'sqft'].includes(product.unit);
                         if (isBulkUnit) {
                           const perUnit = variant.perUnitPurchasePrice || (variant.purchasePrice && variant.quantity ? variant.purchasePrice / variant.quantity : 0);
                           return (
@@ -313,8 +368,8 @@ export function ProductsTable({
                           </div>
                         );
                       })()}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap">
+                    </td>}
+                    {isVisible('sellingPrice') && <td className="px-6 py-3 whitespace-nowrap">
                       {variant.isRawMaterial ? (
                         <span className="text-gray-400 text-sm">-</span>
                       ) : (
@@ -327,8 +382,8 @@ export function ProductsTable({
                           </span>
                         </div>
                       )}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap">
+                    </td>}
+                    {isVisible('status') && <td className="px-6 py-3 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         {variantLowStock && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -342,8 +397,8 @@ export function ProductsTable({
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    </td>}
+                    {isVisible('actions') && <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => handleEditProduct(variant)}
@@ -360,7 +415,7 @@ export function ProductsTable({
                           <FaTrash className="w-4 h-4" />
                         </button>
                       </div>
-                    </td>
+                    </td>}
                   </tr>
                 );
               })}
@@ -369,6 +424,7 @@ export function ProductsTable({
         })}
       </tbody>
     </table>
+    </>
   );
 }
 
