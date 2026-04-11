@@ -76,12 +76,12 @@ export function ContactFormModal({
                 {...register('phoneNumber', { 
                   required: 'Phone number is required',
                   maxLength: {
-                    value: 11,
-                    message: 'Phone number must not exceed 11 characters'
+                    value: 20,
+                    message: 'Phone number must not exceed 20 characters'
                   },
                   pattern: {
-                    value: /^[0-9]+$/,
-                    message: 'Phone number must contain only numbers'
+                    value: /^[+]?[0-9\s\-()]+$/,
+                    message: 'Invalid phone number format'
                   }
                 })}
                 className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"

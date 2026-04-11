@@ -1,6 +1,8 @@
-import { FaShoppingCart, FaTimes, FaTrash, FaMinus, FaPlus, FaPrint, FaEye } from 'react-icons/fa';
+import { useState } from 'react';
+import { FaShoppingCart, FaTimes, FaTrash, FaMinus, FaPlus, FaPrint, FaEye, FaCog } from 'react-icons/fa';
 import LoadingSpinner from '../LoadingSpinner';
 import { formatPakistaniCurrency } from '../../utils/formatCurrency';
+import PrintSettingsModal, { THERMAL_FIELDS } from '../PrintSettingsModal';
 
 export function POSCartSidebar({
   isMobile,
@@ -41,6 +43,7 @@ export function POSCartSidebar({
   newContactData,
   setNewContactData
 }) {
+  const [showPrintSettings, setShowPrintSettings] = useState(false);
   const containerClass = isMobile
     ? `fixed right-0 top-0 h-full w-full max-w-sm transform transition-transform duration-300 z-50 bg-white shadow-xl flex flex-col border-l ${showCart ? 'translate-x-0' : 'translate-x-full'}`
     : 'w-96 h-full flex-shrink-0 bg-white shadow-xl flex flex-col border-l';
@@ -270,7 +273,7 @@ export function POSCartSidebar({
           </div>
           {/* Process Sale and Preview Buttons — always visible at bottom */}
           <div className="p-3 border-t border-gray-200 flex-shrink-0">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={processSale}
                 disabled={createSaleLoading || creatingContact}
@@ -293,10 +296,24 @@ export function POSCartSidebar({
               >
                 <FaEye size={16} />
               </button>
+              <button
+                onClick={() => setShowPrintSettings(true)}
+                className="bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 flex items-center justify-center"
+                title="Print Settings"
+              >
+                <FaCog size={16} />
+              </button>
             </div>
           </div>
         </div>
       )}
+      <PrintSettingsModal
+        isOpen={showPrintSettings}
+        onClose={() => setShowPrintSettings(false)}
+        storageKey="posThermalPrintFields"
+        fieldList={THERMAL_FIELDS}
+        title="Thermal Print Settings"
+      />
     </div>
   );
 }

@@ -431,6 +431,15 @@ export function usePOS() {
   const generateReceiptHtml = (saleData) => {
     const now = new Date();
     
+    // Get visible fields from localStorage
+    const savedFields = localStorage.getItem('posThermalPrintFields');
+    const visibleFields = savedFields ? JSON.parse(savedFields) : [
+      'logo','shopName','shopDescription','contactNumber','cashierName','date',
+      'billNumber','time','customerName','itemNumber','itemDescription','quantity',
+      'rate','amount','total','discount','subTotal','paidAmount','change','thankYou'
+    ];
+    const show = (key) => visibleFields.includes(key);
+    
     return `
       <!DOCTYPE html>
       <html>
@@ -536,84 +545,90 @@ export function usePOS() {
       </head>
       <body>
         <div class="header">
-          ${shopSettings?.logo ? `
+          ${show('logo') && shopSettings?.logo ? `
             <div style="text-align: center; margin-bottom: 5px;">
               <img src="${shopSettings.logo}" alt="Logo" style="max-width: 50mm; max-height: 18mm; filter: grayscale(100%) contrast(200%) brightness(100%);" onerror="this.style.display='none'" />
             </div>
           ` : ''}
-          <div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>
-          ${shopSettings?.shopDescription2 ? `<div class="shop-info">${shopSettings.shopDescription2}</div>` : ''}
-          ${shopSettings?.userPhone1 ? `<div class="shop-info">Contact# ${shopSettings.userPhone1}</div>` : ''}
+          ${show('shopName') ? `<div class="shop-name">${shopSettings?.shopName || 'HISAB GHAR'}</div>` : ''}
+          ${show('shopDescription') && shopSettings?.shopDescription2 ? `<div class="shop-info">${shopSettings.shopDescription2}</div>` : ''}
+          ${show('contactNumber') && shopSettings?.userPhone1 ? `<div class="shop-info">Contact# ${shopSettings.userPhone1}</div>` : ''}
         </div>
         
         <div class="divider"></div>
         
         <div class="receipt-info">
           <div class="info-row">
-            ${shopSettings?.userName1 ? `<span>Cashier: ${shopSettings.userName1}</span>` : ''}
-            <span>${now.toLocaleDateString()}</span>
+            ${show('cashierName') && shopSettings?.userName1 ? `<span>Cashier: ${shopSettings.userName1}</span>` : '<span></span>'}
+            ${show('date') ? `<span>${now.toLocaleDateString()}</span>` : ''}
           </div>
           <div class="info-row">
-            <span>Number: ${saleData.billNumber}</span>
-            <span>${now.toLocaleTimeString()}</span>
+            ${show('billNumber') ? `<span>Number: ${saleData.billNumber}</span>` : '<span></span>'}
+            ${show('time') ? `<span>${now.toLocaleTimeString()}</span>` : ''}
           </div>
-          ${customerName && `<div class="info-row"><span>Customer:</span><span>${customerName}</span></div>` }
+          ${show('customerName') && customerName ? `<div class="info-row"><span>Customer:</span><span>${customerName}</span></div>` : ''}
         </div>
         
         <table>
           <thead>
             <tr>
-              <th style="width: 8%;">0</th>
-              <th style="width: 42%;">Descriptions</th>
-              <th class="center" style="width: 15%;">Qty</th>
-              <th class="right" style="width: 17%;">Rate</th>
-              <th class="right" style="width: 18%;">Amnt</th>
+              ${show('itemNumber') ? '<th style="width: 8%;">0</th>' : ''}
+              ${show('itemDescription') ? '<th style="width: 42%;">Descriptions</th>' : ''}
+              ${show('quantity') ? '<th class="center" style="width: 15%;">Qty</th>' : ''}
+              ${show('rate') ? '<th class="right" style="width: 17%;">Rate</th>' : ''}
+              ${show('amount') ? '<th class="right" style="width: 18%;">Amnt</th>' : ''}
             </tr>
           </thead>
           <tbody>
             ${cart.map((item, index) => `
               <tr>
-                <td>${index + 1}</td>
-                <td style="word-wrap: break-word;">${item.name}</td>
-                <td class="center">${Number(item.quantity).toFixed(1)}</td>
-                <td class="right">${Number(item.price).toFixed(1)}</td>
-                <td class="right">${Number(item.price * item.quantity).toFixed(1)}</td>
+                ${show('itemNumber') ? `<td>${index + 1}</td>` : ''}
+                ${show('itemDescription') ? `<td style="word-wrap: break-word;">${item.name}</td>` : ''}
+                ${show('quantity') ? `<td class="center">${Number(item.quantity).toFixed(1)}</td>` : ''}
+                ${show('rate') ? `<td class="right">${Number(item.price).toFixed(1)}</td>` : ''}
+                ${show('amount') ? `<td class="right">${Number(item.price * item.quantity).toFixed(1)}</td>` : ''}
               </tr>
             `).join('')}
           </tbody>
         </table>
         
         <div class="totals">
+          ${show('total') ? `
           <div class="total-line">
             <span>Total Rs :</span>
             <span>${Number(subtotal).toFixed(1)}</span>
           </div>
-          ${discountAmount > 0 ? `
+          ` : ''}
+          ${show('discount') && discountAmount > 0 ? `
             <div class="total-line">
               <span>Total Disc: Rs :</span>
               <span>${Number(discountAmount).toFixed(1)}</span>
             </div>
           ` : ''}
+          ${show('subTotal') ? `
           <div class="total-line">
             <span>Sub Total Rs :</span>
             <span>${Number(total).toFixed(1)}</span>
           </div>
+          ` : ''}
+          ${show('paidAmount') ? `
           <div class="total-line grand">
             <span>Paid Rs :</span>
             <span>${Number(cashReceived || paidAmount || total).toFixed(1)}</span>
           </div>
-          ${cashReceived > 0 && balance !== 0 ? `
+          ` : ''}
+          ${show('change') ? (cashReceived > 0 && balance !== 0 ? `
             <div class="total-line">
               <span>Change Rs :</span>
               <span>${Number(balance).toFixed(1)}</span>
             </div>
-          ` : '<div class="total-line"><span>Change Rs :</span><span>0.0</span></div>'}
+          ` : '<div class="total-line"><span>Change Rs :</span><span>0.0</span></div>') : ''}
         </div>
         
         <div class="footer">
-          <div style="margin-bottom: 6px; font-weight: bold;">Thank You for Visiting Us!</div>
+          ${show('thankYou') ? '<div style="margin-bottom: 6px; font-weight: bold;">Thank You for Visiting Us!</div>' : ''}
           <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #000; font-size: 10px;">
-            Powered By Hisab Ghar 03142740270
+            Powered By Hisab Ghar [phone_number]
           </div>
         </div>
       </body>
