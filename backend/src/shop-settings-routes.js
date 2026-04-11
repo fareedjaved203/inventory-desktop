@@ -19,6 +19,8 @@ const shopSettingsSchema = z.object({
   brand3: z.string().optional(),
   brand3Registered: z.boolean().optional(),
   logo: z.string().optional(),
+  backupEmail: z.string().optional(),
+  autoBackupEnabled: z.boolean().optional(),
 });
 
 export function setupShopSettingsRoutes(app, prisma) {

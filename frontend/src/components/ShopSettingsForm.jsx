@@ -3,12 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import API from '../utils/api';
 import LoadingSpinner from './LoadingSpinner';
+import { FaEnvelope } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from '../utils/translations';
 
 function ShopSettingsForm() {
   const queryClient = useQueryClient();
   const [showToast, setShowToast] = useState(false);
+  const [sendingBackup, setSendingBackup] = useState(false);
   const { language } = useLanguage();
   const t = useTranslation(language);
   const [formData, setFormData] = useState({
@@ -29,6 +31,8 @@ function ShopSettingsForm() {
     brand3: '',
     brand3Registered: false,
     logo: '',
+    backupEmail: '',
+    autoBackupEnabled: false,
   });
 
   const { data: settings, isLoading } = useQuery(['shop-settings'], async () => {
@@ -62,6 +66,8 @@ function ShopSettingsForm() {
         brand3: settings.brand3 || '',
         brand3Registered: settings.brand3Registered || false,
         logo: settings.logo || '',
+        backupEmail: settings.backupEmail || '',
+        autoBackupEnabled: settings.autoBackupEnabled || false,
       });
     }
   }, [settings]);
@@ -91,7 +97,7 @@ function ShopSettingsForm() {
       const dataToSave = { ...formData };
       
       // Convert null/undefined values to empty strings for optional fields
-      const optionalStringFields = ['shopDescription', 'shopDescription2', 'userName2', 'userPhone2', 'userName3', 'userPhone3', 'brand1', 'brand2', 'brand3'];
+      const optionalStringFields = ['shopDescription', 'shopDescription2', 'userName2', 'userPhone2', 'userName3', 'userPhone3', 'brand1', 'brand2', 'brand3', 'backupEmail'];
       optionalStringFields.forEach(field => {
         if (dataToSave[field] === null || dataToSave[field] === undefined) {
           dataToSave[field] = '';
@@ -399,6 +405,74 @@ function ShopSettingsForm() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Auto Email Backup */}
+        <div className="border-t pt-4 mt-4">
+          <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <FaEnvelope className="text-primary-600" />
+            {language === 'ur' ? 'ای میل بیک اپ' : 'Email Backup'}
+          </h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {language === 'ur' ? 'بیک اپ ای میل' : 'Backup Email'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  name="backupEmail"
+                  value={formData.backupEmail}
+                  onChange={handleChange}
+                  className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="your@email.com"
+                />
+                <button
+                  type="button"
+                  disabled={!formData.backupEmail || sendingBackup}
+                  onClick={async () => {
+                    setSendingBackup(true);
+                    try {
+                      const token = localStorage.getItem('authToken');
+                      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/backup/email`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ email: formData.backupEmail })
+                      });
+                      if (!res.ok) throw new Error('Failed');
+                      toast.success(language === 'ur' ? 'بیک اپ بھیج دیا گیا' : 'Backup sent!');
+                    } catch (err) {
+                      toast.error(language === 'ur' ? 'بیک اپ بھیجنے میں ناکامی' : 'Failed to send backup');
+                    } finally {
+                      setSendingBackup(false);
+                    }
+                  }}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm whitespace-nowrap flex items-center gap-1"
+                >
+                  {sendingBackup ? <LoadingSpinner size="w-4 h-4" /> : <FaEnvelope className="w-3 h-3" />}
+                  {sendingBackup ? 'Sending...' : 'Send Now'}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="autoBackupEnabled"
+                name="autoBackupEnabled"
+                checked={formData.autoBackupEnabled}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="autoBackupEnabled" className="text-sm text-gray-700">
+                {language === 'ur' ? 'روزانہ خودکار بیک اپ بھیجیں' : 'Send daily automatic backup'}
+              </label>
+            </div>
+            {formData.autoBackupEnabled && (
+              <p className="text-xs text-green-600">
+                {language === 'ur' ? '✅ روزانہ بیک اپ فعال ہے — سیٹنگز محفوظ کریں' : '✅ Daily backup enabled — save settings to apply'}
+              </p>
+            )}
+          </div>
         </div>
 
         <button

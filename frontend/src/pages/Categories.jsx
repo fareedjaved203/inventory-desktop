@@ -49,11 +49,9 @@ function SortableRow({ category, onEdit, onDelete }) {
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center gap-3">
           <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+            className="w-3 h-8 rounded-full"
             style={{ backgroundColor: category.color }}
-          >
-            {category.icon}
-          </div>
+          />
           <div>
             <div className="font-medium text-primary-700">{category.name}</div>
           </div>
@@ -387,11 +385,9 @@ function Categories() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+                        className="w-3 h-8 rounded-full"
                         style={{ backgroundColor: category.color }}
-                      >
-                        {category.icon}
-                      </div>
+                      />
                       <div>
                         <div className="font-medium text-primary-700">{category.name}</div>
                       </div>
@@ -524,25 +520,6 @@ function Categories() {
                         }`}
                         style={{ backgroundColor: color }}
                       />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Icon
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORY_ICONS.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, icon })}
-                        className={`w-8 h-8 rounded border text-lg ${
-                          formData.icon === icon ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-                        }`}
-                      >
-                        {icon}
-                      </button>
                     ))}
                   </div>
                 </div>

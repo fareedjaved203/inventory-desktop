@@ -57,7 +57,7 @@ export function POSProductGrid({
                           <FaShoppingCart className="text-gray-400 text-lg" />
                         </div>
                       )}
-                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
+                      {!product.isManufactured && !product.isService && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
                           Low
                         </span>
@@ -84,12 +84,6 @@ export function POSProductGrid({
                 >
                   <FaTimes className="text-gray-500 text-xs" />
                 </button>
-                <div 
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs"
-                  style={{ backgroundColor: selectedCategory.color }}
-                >
-                  {selectedCategory.icon}
-                </div>
                 <h3 className="text-sm font-bold text-gray-800">{selectedCategory.name}</h3>
               </div>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -125,7 +119,7 @@ export function POSProductGrid({
                           <FaShoppingCart className="text-gray-400 text-lg" />
                         </div>
                       )}
-                      {!product.isManufactured && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
+                      {!product.isManufactured && !product.isService && product.quantity !== null && Number(product.quantity) <= Number(product.lowStockThreshold || 10) && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full">
                           Low
                         </span>
@@ -172,14 +166,6 @@ export function POSProductGrid({
                   style={{ width: 'calc(10% - 6px)', minWidth: '70px' }}
                 >
                   <div className="text-center">
-                    <div 
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mx-auto mb-0.5 ${
-                        selectedCategory?.id === category.id ? 'bg-white bg-opacity-20' : ''
-                      }`}
-                      style={{ backgroundColor: selectedCategory?.id === category.id ? 'rgba(255,255,255,0.2)' : category.color }}
-                    >
-                      {category.icon}
-                    </div>
                     <h4 className={`font-medium text-[11px] line-clamp-2 leading-tight ${
                       selectedCategory?.id === category.id ? 'text-white' : 'text-gray-800'
                     }`}>

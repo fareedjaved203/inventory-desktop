@@ -29,7 +29,7 @@ import { setupSeedRoutes } from './seed-routes.js';
 import { validateRequest, authenticateToken } from './middleware.js';
 import licenseRoutes from './license-routes.js';
 import createExpenseRoutes from './expense-routes.js';
-import backupRoutes from './backup-routes.js';
+import backupRoutes, { startAutoBackupScheduler } from './backup-routes.js';
 import { safeQuery, createConnectionConfig } from './db-utils.js';
 import { connectionCleanup, requestTimeout } from './connection-middleware.js';
 import { runMigrations } from './migrations.js';
@@ -113,6 +113,8 @@ async function ensureSchema(prismaClient) {
     `ALTER TABLE "Product" ADD COLUMN "parentProductId" TEXT`,
     `ALTER TABLE "Product" ADD COLUMN "variantLabel" TEXT`,
     `ALTER TABLE "Product" ADD COLUMN "isService" BOOLEAN DEFAULT false`,
+    `ALTER TABLE "ShopSettings" ADD COLUMN "backupEmail" TEXT`,
+    `ALTER TABLE "ShopSettings" ADD COLUMN "autoBackupEnabled" BOOLEAN DEFAULT false`,
   ];
 
   // Create tables
@@ -242,6 +244,9 @@ initializeApp().then(() => {
   app.use('/api/license', licenseRoutes);
   app.use('/api/expenses', createExpenseRoutes(prisma));
   app.use('/api/backup', backupRoutes);
+
+  // Start auto-backup scheduler
+  startAutoBackupScheduler(prisma);
 
   // Catch-all handler for Electron SPA routing (must be LAST, after all API routes)
   if (process.env.ELECTRON_APP) {
@@ -489,6 +494,11 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
       include.variants = true;
     }
 
+    // When excludeParents, include parentProduct to inherit isService
+    if (excludeParents === 'true' || excludeParents === true) {
+      include.parentProduct = { select: { isService: true } };
+    }
+
     if (lowStock === 'true' || lowStock === true) {
       // For low stock, we need to fetch all and filter in JS because of dynamic threshold
       const allItems = await prisma.product.findMany({
@@ -556,6 +566,7 @@ app.get('/api/products', authenticateToken, validateRequest({ query: querySchema
           perUnitPurchasePrice: item.perUnitPurchasePrice ? Number(item.perUnitPurchasePrice) : null,
           unitValue: item.unitValue ? Number(item.unitValue) : null,
           quantity: Number(item.quantity),
+          isService: item.isService || item.parentProduct?.isService || false,
           isManufactured,
           recipe: item.recipe || undefined
         };
@@ -1017,6 +1028,7 @@ app.post(
           description: productData.description,
           unit: productData.unit,
           isRawMaterial: productData.isRawMaterial,
+          isService: productData.isService,
           categoryId: productData.categoryId,
           image: productData.image,
           price: productData.price,
@@ -1317,6 +1329,7 @@ app.put(
           description: parent.description,
           unit: parent.unit,
           isRawMaterial: parent.isRawMaterial,
+          isService: parent.isService,
           categoryId: parent.categoryId,
           image: parent.image,
           price: parent.price,

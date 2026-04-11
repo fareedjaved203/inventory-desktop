@@ -173,10 +173,7 @@ export function ProductsTable({
                   </div>
                 </td>}
                 {isVisible('category') && <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{product.category?.icon}</span>
-                    <span className="text-sm text-gray-700">{product.category?.name || 'Uncategorized'}</span>
-                  </div>
+                  <span className="text-sm text-gray-700">{product.category?.name || 'Uncategorized'}</span>
                 </td>}
                 {isVisible('available') && <td className="px-6 py-4 whitespace-nowrap">
                   {product.isService ? (
@@ -316,7 +313,7 @@ export function ProductsTable({
 
               {/* Child variant rows (shown when parent is expanded) */}
               {isParent && isExpanded && product.variants?.map((variant) => {
-                const variantLowStock = variant.quantity <= variant.lowStockThreshold;
+                const variantLowStock = !product.isService && variant.quantity <= variant.lowStockThreshold;
                 return (
                   <tr key={variant.id} className={`bg-gray-50/70 hover:bg-gray-100/70 transition-colors ${variantLowStock ? 'bg-red-50/30' : ''}`}>
                     {isVisible('product') && <td className="px-6 py-3">
@@ -335,6 +332,9 @@ export function ProductsTable({
                       <span className="text-xs text-gray-400">—</span>
                     </td>}
                     {isVisible('available') && <td className="px-6 py-3 whitespace-nowrap">
+                      {product.isService ? (
+                        <span className="text-gray-400 text-sm">—</span>
+                      ) : (
                       <div className="flex items-center gap-2">
                         <div className={`text-sm font-medium ${variantLowStock ? 'text-red-600' : 'text-gray-700'}`}>
                           {variant.quantity}
@@ -345,11 +345,16 @@ export function ProductsTable({
                           </span>
                         )}
                       </div>
+                      )}
                     </td>}
                     {isVisible('damaged') && <td className="px-6 py-3 whitespace-nowrap">
+                      {product.isService ? (
+                        <span className="text-gray-400 text-sm">—</span>
+                      ) : (
                       <span className={`text-sm font-medium ${variant.damagedQuantity > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {variant.damagedQuantity || 0}
                       </span>
+                      )}
                     </td>}
                     {isVisible('purchasePrice') && <td className="px-6 py-3 whitespace-nowrap">
                       {(() => {
@@ -385,13 +390,16 @@ export function ProductsTable({
                     </td>}
                     {isVisible('status') && <td className="px-6 py-3 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
-                        {variantLowStock && (
+                        {product.isService ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Service
+                          </span>
+                        ) : variantLowStock ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             <FaExclamationTriangle className="w-3 h-3" />
                             {t('lowStock')}
                           </span>
-                        )}
-                        {!variantLowStock && (
+                        ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             {t('inStock')}
                           </span>

@@ -13,17 +13,29 @@ const __dirname = dirname(__filename);
  */
 class EmailService {
   constructor() {
-    // Path to the SQLite database file - extract from DATABASE_URL
+    this.transporter = null;
+  }
+
+  getDbPath() {
+    // Resolve DB path lazily so runtime DATABASE_URL overrides are picked up
     let dbPath = process.env.DB_PATH || './inventory.db';
-    
-    // If DATABASE_URL is set, extract the path from it
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('file:')) {
       dbPath = process.env.DATABASE_URL.replace('file:', '');
     }
+    const resolved = path.resolve(dbPath);
     
-    // Make it relative to the backend directory
-    this.dbPath = path.resolve(dbPath);
-    this.transporter = null;
+    // If resolved path doesn't exist, check common alternative locations
+    if (!fs.existsSync(resolved)) {
+      const alternatives = [
+        path.resolve('prisma/prisma/inventory.db'),
+        path.resolve('prisma/inventory.db'),
+        path.resolve('inventory.db'),
+      ];
+      for (const alt of alternatives) {
+        if (fs.existsSync(alt)) return alt;
+      }
+    }
+    return resolved;
   }
 
   /**
@@ -101,11 +113,11 @@ class EmailService {
     }
 
     // Check if database file exists
-    if (!fs.existsSync(this.dbPath)) {
-      throw new Error(`Database file not found at ${this.dbPath}`);
+    if (!fs.existsSync(this.getDbPath())) {
+      throw new Error(`Database file not found at ${this.getDbPath()}`);
     }
 
-    console.log(`Sending compressed database backup from: ${this.dbPath}`);
+    console.log(`Sending compressed database backup from: ${this.getDbPath()}`);
 
     // Initialize transporter if needed
     await this.initTransporter();
@@ -116,14 +128,14 @@ class EmailService {
     
     // Get current date for the filename
     const date = new Date().toISOString().split('T')[0];
-    const zipPath = path.join(path.dirname(this.dbPath), `inventory_backup_${date}.zip`);
+    const zipPath = path.join(path.dirname(this.getDbPath()), `inventory_backup_${date}.zip`);
     
     // Create ZIP file
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } }); // Maximum compression
     
     archive.pipe(output);
-    archive.file(this.dbPath, { name: 'inventory.db' });
+    archive.file(this.getDbPath(), { name: 'inventory.db' });
     await archive.finalize();
     
     // Wait for ZIP creation to complete

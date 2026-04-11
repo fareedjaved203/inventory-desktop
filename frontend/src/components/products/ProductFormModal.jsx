@@ -445,8 +445,8 @@ export function ProductFormModal({
             </div>
             )}
 
-            {/* Section 5: Variants — hidden when editing a child variant or service */}
-            {!isChildVariant && !formData.isService && (
+            {/* Section 5: Variants — hidden when editing a child variant */}
+            {!isChildVariant && (
               <div className="bg-gradient-to-r from-indigo-50 to-violet-50 p-4 rounded-lg border border-indigo-200">
                 <button
                   type="button"

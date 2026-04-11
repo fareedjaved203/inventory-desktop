@@ -261,6 +261,8 @@ model ShopSettings {
   brand3           String?
   brand3Registered Boolean  @default(false)
   logo             String?
+  backupEmail      String?
+  autoBackupEnabled Boolean @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   userId           String

@@ -88,4 +88,59 @@ router.post('/restore', authenticateToken, upload.single('backupFile'), async (r
   }
 });
 
+router.post('/email', authenticateToken, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const { default: emailService } = await import('./email-service.js');
+    await emailService.sendDatabaseBackup(email);
+    res.json({ success: true, message: 'Backup sent to ' + email });
+  } catch (error) {
+    console.error('Email backup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send backup email' });
+  }
+});
+
 export default router;
+
+// Auto-backup scheduler — runs once daily for users with autoBackupEnabled
+let backupInterval = null;
+
+export function startAutoBackupScheduler(prisma) {
+  // Check every hour, send backup once per day
+  const HOUR = 60 * 60 * 1000;
+  const lastBackupSent = new Map(); // userId -> timestamp
+
+  backupInterval = setInterval(async () => {
+    try {
+      const settings = await prisma.shopSettings.findMany({
+        where: { autoBackupEnabled: true },
+        select: { userId: true, backupEmail: true }
+      }).catch(() => []);
+
+      for (const setting of settings) {
+        if (!setting.backupEmail) continue;
+
+        const lastSent = lastBackupSent.get(setting.userId) || 0;
+        const now = Date.now();
+        const oneDayMs = 24 * HOUR;
+
+        if (now - lastSent < oneDayMs) continue;
+
+        try {
+          const { default: emailService } = await import('./email-service.js');
+          await emailService.sendDatabaseBackup(setting.backupEmail);
+          lastBackupSent.set(setting.userId, now);
+          console.log(`Auto-backup sent to ${setting.backupEmail} for user ${setting.userId}`);
+        } catch (err) {
+          console.error(`Auto-backup failed for user ${setting.userId}:`, err.message);
+        }
+      }
+    } catch (err) {
+      console.error('Auto-backup scheduler error:', err.message);
+    }
+  }, HOUR);
+
+  console.log('Auto-backup scheduler started (checks hourly)');
+}

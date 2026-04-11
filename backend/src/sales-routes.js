@@ -121,6 +121,7 @@ export function setupSalesRoutes(app, prisma) {
             const product = await prisma.product.findUnique({
               where: { id: item.productId },
               include: {
+                parentProduct: { select: { isService: true } },
                 recipe: {
                   include: {
                     ingredients: {
@@ -137,10 +138,11 @@ export function setupSalesRoutes(app, prisma) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            console.log(`[CREATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${product.isService}`);
+            const isServiceProduct = product.isService || product.parentProduct?.isService || false;
+            console.log(`[CREATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${isServiceProduct}`);
 
             // Services skip stock deduction entirely
-            if (product.isService) {
+            if (isServiceProduct) {
               console.log(`[CREATE] Service — no stock deduction`);
             } else if (product.quantity >= item.quantity) {
               console.log(`[CREATE] Direct deduction: ${item.quantity}`);
@@ -807,6 +809,7 @@ export function setupSalesRoutes(app, prisma) {
             const product = await prisma.product.findUnique({
               where: { id: item.productId },
               include: {
+                parentProduct: { select: { isService: true } },
                 recipe: {
                   include: {
                     ingredients: {
@@ -823,10 +826,11 @@ export function setupSalesRoutes(app, prisma) {
               throw new Error(`Product with ID ${item.productId} not found`);
             }
 
-            console.log(`[UPDATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${product.isService}`);
+            const isServiceProduct = product.isService || product.parentProduct?.isService || false;
+            console.log(`[UPDATE] ${product.name}: SaleQty=${item.quantity}, Stock=${product.quantity}, isService=${isServiceProduct}`);
 
             // Services skip stock deduction entirely
-            if (product.isService) {
+            if (isServiceProduct) {
               console.log(`[UPDATE] Service — no stock deduction`);
             } else if (product.quantity >= item.quantity) {
               console.log(`[UPDATE] Direct deduction: ${item.quantity}`);
