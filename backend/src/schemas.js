@@ -23,6 +23,7 @@ export const productSchema = z.object({
   colors: z.array(z.string().min(1)).optional(),
   excludedVariants: z.array(z.string().min(1)).optional(),
   variantOverrides: z.record(z.string(), z.object({
+    sku: z.string().optional(),
     quantity: z.string().optional(),
     retailPrice: z.string().optional(),
     wholesalePrice: z.string().optional(),

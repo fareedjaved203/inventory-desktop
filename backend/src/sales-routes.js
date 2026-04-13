@@ -52,22 +52,19 @@ export function setupSalesRoutes(app, prisma) {
     async (req, res) => {
       try {
         const sale = await withTransaction(prisma, async (prisma) => {
-          let billNumber;
-          let isUnique = false;
+          // Generate sequential bill number starting from 1
+          const lastSale = await prisma.sale.findFirst({
+            where: { userId: req.userId },
+            orderBy: { createdAt: 'desc' },
+            select: { billNumber: true }
+          });
           
-          while (!isUnique) {
-            billNumber = Math.floor(1000000 + Math.random() * 9000000).toString();
-            
-            const existingSale = await prisma.sale.findFirst({
-              where: { 
-                billNumber,
-                userId: req.userId
-              }
-            });
-            
-            if (!existingSale) {
-              isUnique = true;
-            }
+          let nextNum = 1;
+          if (lastSale?.billNumber) {
+            const parsed = parseInt(lastSale.billNumber);
+            if (!isNaN(parsed)) nextNum = parsed + 1;
+          }
+          const billNumber = nextNum.toString();
           }
 
           // Use custom sale date if provided, otherwise use current Pakistan time

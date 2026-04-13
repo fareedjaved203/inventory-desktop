@@ -272,7 +272,7 @@ export function ProductFormModal({
                   <label className="block text-xs font-medium text-gray-700 mb-1">Retail Price (MRP)</label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.01"
                     min="0"
                     value={formData.retailPrice}
                     onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
@@ -285,7 +285,7 @@ export function ProductFormModal({
                   <label className="block text-xs font-medium text-gray-700 mb-1">Wholesale Price</label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.01"
                     min="0"
                     value={formData.wholesalePrice}
                     onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
@@ -535,7 +535,17 @@ export function ProductFormModal({
                                   </span>
                                 </div>
                                 {!isExcluded && (
-                                  <div className="grid grid-cols-4 gap-1.5 px-2 pb-2">
+                                  <div className="grid grid-cols-5 gap-1.5 px-2 pb-2">
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">SKU</label>
+                                      <input
+                                        type="text"
+                                        value={overrides.sku ?? ''}
+                                        onChange={(e) => updateOverride('sku', e.target.value)}
+                                        className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                        placeholder="Auto"
+                                      />
+                                    </div>
                                     <div>
                                       <label className="block text-[10px] text-gray-500 mb-0.5">Qty</label>
                                       <input
@@ -549,7 +559,7 @@ export function ProductFormModal({
                                     <div>
                                       <label className="block text-[10px] text-gray-500 mb-0.5">Retail</label>
                                       <input
-                                        type="number" min="0" step="1"
+                                        type="number" min="0" step="0.01"
                                         value={overrides.retailPrice ?? formData.retailPrice}
                                         onChange={(e) => updateOverride('retailPrice', e.target.value)}
                                         onWheel={(e) => e.target.blur()}
@@ -559,7 +569,7 @@ export function ProductFormModal({
                                     <div>
                                       <label className="block text-[10px] text-gray-500 mb-0.5">Wholesale</label>
                                       <input
-                                        type="number" min="0" step="1"
+                                        type="number" min="0" step="0.01"
                                         value={overrides.wholesalePrice ?? formData.wholesalePrice}
                                         onChange={(e) => updateOverride('wholesalePrice', e.target.value)}
                                         onWheel={(e) => e.target.blur()}
@@ -569,7 +579,7 @@ export function ProductFormModal({
                                     <div>
                                       <label className="block text-[10px] text-gray-500 mb-0.5">Purchase</label>
                                       <input
-                                        type="number" min="0" step="1"
+                                        type="number" min="0" step="0.01"
                                         value={overrides.purchasePrice ?? formData.purchasePrice}
                                         onChange={(e) => updateOverride('purchasePrice', e.target.value)}
                                         onWheel={(e) => e.target.blur()}

@@ -1048,7 +1048,7 @@ app.post(
           // Apply per-variant overrides if provided
           const vo = overrides[variant.variantLabel] || {};
           const parentSku = productData.sku || parent.id.substring(0, 8);
-          const childSku = `${parentSku}-${skuIndex}`;
+          const childSku = vo.sku || `${parentSku}-${skuIndex}`;
           const child = await tx.product.create({
             data: {
               ...inheritedFields,
@@ -1351,7 +1351,7 @@ app.put(
 
         for (const variant of toCreate) {
           const vo = overridesUpdate[variant.variantLabel] || {};
-          const childSku = `${parent.sku || parent.id.substring(0, 8)}-${skuIndex}`;
+          const childSku = vo.sku || `${parent.sku || parent.id.substring(0, 8)}-${skuIndex}`;
           await tx.product.create({
             data: {
               ...inheritedFields,

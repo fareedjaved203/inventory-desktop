@@ -723,6 +723,12 @@ export function usePOS() {
       }
     }
 
+    // If paid amount is less than total (credit sale), require a customer
+    if (paidAmount < total && !contactId) {
+      toast.error('Please select a customer for credit sales');
+      return;
+    }
+
     const saleData = {
       items: cart.map(item => ({
         productId: item.id,

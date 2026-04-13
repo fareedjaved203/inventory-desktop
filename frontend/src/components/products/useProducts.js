@@ -332,6 +332,7 @@ export function useProducts() {
       for (const v of product.variants) {
         if (v.variantLabel) {
           variantOverrides[v.variantLabel] = {
+            sku: v.sku || '',
             quantity: (v.quantity ?? '0').toString(),
             retailPrice: (v.retailPrice ?? '0').toString(),
             wholesalePrice: (v.wholesalePrice ?? '0').toString(),
