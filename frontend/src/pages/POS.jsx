@@ -56,6 +56,7 @@ function POS() {
     setDiscount,
     setDiscountType,
     setPaidAmount,
+    setPaidAmountManuallySet,
     setCashReceived,
     setCustomerSearchTerm,
     setSelectedContact,
@@ -258,6 +259,7 @@ function POS() {
             total={total}
             paidAmount={paidAmount}
             setPaidAmount={setPaidAmount}
+            setPaidAmountManuallySet={setPaidAmountManuallySet}
             cashReceived={cashReceived}
             setCashReceived={setCashReceived}
             balance={balance}

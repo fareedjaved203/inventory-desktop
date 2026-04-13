@@ -128,7 +128,7 @@ export function useSalesForm(language) {
     const discountAmount = discountType === 'percentage'
       ? (subtotal * (parseFloat(discount) || 0)) / 100
       : Math.min(parseFloat(discount) || 0, subtotal);
-    setTotalAmount(Math.round(subtotal - discountAmount));
+    setTotalAmount(Math.round((subtotal - discountAmount) * 100) / 100);
   }, [saleItems, discount, discountType]);
 
   const handleAddItem = () => {
@@ -264,10 +264,20 @@ export function useSalesForm(language) {
     const discountAmount = discountType === 'percentage'
       ? (calculateTotal() * (parseFloat(discount) || 0)) / 100
       : Math.min(parseFloat(discount) || 0, calculateTotal());
+
+    // If paid amount is less than total (credit sale), require a customer
+    const finalPaidAmount = Number(parseFloat(paidAmount) || 0);
+    const finalTotal = Math.round(totalAmount * 100) / 100;
+    if (finalPaidAmount < finalTotal && !contactId) {
+      setValidationErrors({ contact: 'Please select a customer for credit sales' });
+      toast.error('Please select a customer for credit sales');
+      return;
+    }
+
     const saleData = {
       items: saleItems.map((item) => ({ productId: item.productId, quantity: Number(item.quantity), price: Number(item.price), priceType: item.priceType || "retail" })),
-      totalAmount: Number(Math.round(totalAmount)),
-      originalTotalAmount: Number(Math.round(calculateTotal())),
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      originalTotalAmount: Math.round(calculateTotal() * 100) / 100,
       discount: Number(discountAmount),
       paidAmount: Number(parseFloat(paidAmount) || 0),
       ...(contactId && { contactId }),
