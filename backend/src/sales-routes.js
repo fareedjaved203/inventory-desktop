@@ -65,7 +65,6 @@ export function setupSalesRoutes(app, prisma) {
             if (!isNaN(parsed)) nextNum = parsed + 1;
           }
           const billNumber = nextNum.toString();
-          }
 
           // Use custom sale date if provided, otherwise use current Pakistan time
           const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : createDateWithCurrentTime();

@@ -21,6 +21,7 @@ export function POSCartSidebar({
   total,
   paidAmount,
   setPaidAmount,
+  setPaidAmountManuallySet,
   cashReceived,
   setCashReceived,
   balance,
@@ -239,7 +240,8 @@ export function POSCartSidebar({
               min="0"
               step="0.01"
               value={paidAmount}
-              onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+              onChange={(e) => { setPaidAmount(e.target.value === '' ? 0 : parseFloat(e.target.value)); setPaidAmountManuallySet(true); }}
+              onWheel={(e) => e.target.blur()}
               className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>

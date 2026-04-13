@@ -215,10 +215,14 @@ export function usePOS() {
   const total = subtotal - discountAmount;
   const change = paidAmount - total;
   
-  // Auto-set paid amount to total when cart/discount changes
+  // Auto-set paid amount to total only when items are first added to cart
+  const [paidAmountManuallySet, setPaidAmountManuallySet] = useState(false);
   useEffect(() => {
-    if (cart.length > 0) {
+    if (cart.length > 0 && !paidAmountManuallySet) {
       setPaidAmount(total);
+    }
+    if (cart.length === 0) {
+      setPaidAmountManuallySet(false);
     }
   }, [total, cart.length]);
 
@@ -752,7 +756,7 @@ export function usePOS() {
     barcodeInput, setBarcodeInput,
     discount, setDiscount,
     discountType, setDiscountType,
-    paidAmount, setPaidAmount,
+    paidAmount, setPaidAmount, setPaidAmountManuallySet,
     cashReceived, setCashReceived,
     balance, setBalance,
     customerName, setCustomerName,

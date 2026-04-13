@@ -645,7 +645,7 @@ export default function SaleFormModal({ language, form }) {
                     </label>
                     <input
                       type="number"
-                      step="1"
+                      step="0.01"
                       min="0"
                       value={form.paidAmount}
                       onChange={(e) => {
