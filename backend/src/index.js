@@ -745,6 +745,105 @@ app.get('/api/products/damaged', authenticateToken, validateRequest({ query: que
   }
 });
 
+// CSV Template download
+app.get('/api/products/csv-template', authenticateToken, (req, res) => {
+  const headers = 'Name*,SKU,Description,Unit,Quantity,Retail Price,Wholesale Price,Purchase Price,Low Stock Threshold,Category,Is Raw Material,Is Service,Pieces Per Unit,Retail Price Per Piece';
+  const example = 'Pen Packet,H00001,Blue ink pens,packet,10,500,450,300,2,Stationery,false,false,10,50';
+  const csv = headers + '\n' + example;
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=product_import_template.csv');
+  res.send(csv);
+});
+
+// CSV Export — all products
+app.get('/api/products/csv-export', authenticateToken, async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: { userId: req.userId, parentProductId: null },
+      include: { category: true }
+    });
+    const headers = 'Name,SKU,Description,Unit,Quantity,Retail Price,Wholesale Price,Purchase Price,Per Unit Purchase Price,Low Stock Threshold,Category,Is Raw Material,Is Service,Pieces Per Unit,Retail Price Per Piece';
+    const rows = products.map(p =>
+      [p.name, p.sku || '', (p.description || '').replace(/,/g, ';'), p.unit, p.quantity, p.retailPrice || 0, p.wholesalePrice || 0, p.purchasePrice || 0, p.perUnitPurchasePrice || 0, p.lowStockThreshold || 0, p.category?.name || '', p.isRawMaterial, p.isService, p.piecesPerUnit || '', p.retailPricePerPiece || ''].join(',')
+    );
+    const csv = headers + '\n' + rows.join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=products_export.csv');
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CSV Import
+const csvUpload = multer({ dest: 'uploads/csv/', limits: { fileSize: 10 * 1024 * 1024 } });
+app.post('/api/products/csv-import', authenticateToken, csvUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const content = fs.readFileSync(req.file.path, 'utf-8');
+    fs.unlinkSync(req.file.path);
+
+    const lines = content.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return res.status(400).json({ error: 'CSV must have a header row and at least one data row' });
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const nameIdx = headers.findIndex(h => h.includes('name'));
+    if (nameIdx === -1) return res.status(400).json({ error: 'CSV must have a Name column' });
+
+    const categories = await prisma.category.findMany({ where: { userId: req.userId } });
+    const categoryMap = {};
+    categories.forEach(c => { categoryMap[c.name.toLowerCase()] = c.id; });
+
+    const results = { created: 0, skipped: 0, errors: [] };
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const name = values[nameIdx];
+      if (!name) { results.skipped++; continue; }
+
+      const get = (key) => {
+        const idx = headers.findIndex(h => h.includes(key));
+        return idx >= 0 ? values[idx] : '';
+      };
+
+      try {
+        const categoryName = get('category');
+        const categoryId = categoryName ? categoryMap[categoryName.toLowerCase()] || null : null;
+
+        await prisma.product.create({
+          data: {
+            name,
+            sku: get('sku') || undefined,
+            description: get('description') || '',
+            unit: get('unit') || 'pcs',
+            quantity: parseFloat(get('quantity')) || 0,
+            retailPrice: parseFloat(get('retail')) || 0,
+            wholesalePrice: parseFloat(get('wholesale')) || 0,
+            purchasePrice: parseFloat(get('purchase price') || get('purchase')) || 0,
+            perUnitPurchasePrice: parseFloat(get('per unit')) || 0,
+            lowStockThreshold: parseFloat(get('low stock') || get('threshold')) || 10,
+            isRawMaterial: get('raw material') === 'true',
+            isService: get('service') === 'true',
+            piecesPerUnit: parseFloat(get('pieces per')) || null,
+            retailPricePerPiece: parseFloat(get('price per piece')) || null,
+            categoryId,
+            userId: req.userId
+          }
+        });
+        results.created++;
+      } catch (err) {
+        results.errors.push(`Row ${i + 1} (${name}): ${err.message}`);
+        results.skipped++;
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Mark product as damaged
 app.post('/api/products/:id/damage', authenticateToken, async (req, res) => {
   try {

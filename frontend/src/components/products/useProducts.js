@@ -20,7 +20,9 @@ const productSchema = z.object({
   description: z.string().optional(),
   image: z.string().nullable().optional(),
   isRawMaterial: z.boolean().default(false),
-  isService: z.boolean().default(false)
+  isService: z.boolean().default(false),
+  piecesPerUnit: z.string().optional().nullable(),
+  retailPricePerPiece: z.string().optional().nullable()
 });
 
 const initialFormState = {
@@ -38,6 +40,8 @@ const initialFormState = {
   image: null,
   isRawMaterial: false,
   isService: false,
+  piecesPerUnit: '',
+  retailPricePerPiece: '',
   sizes: [],
   colors: [],
   excludedVariants: [],
@@ -155,7 +159,9 @@ export function useProducts() {
         purchasePrice: parseFloat(newProduct.purchasePrice),
         perUnitPurchasePrice: newProduct.perUnitPurchasePrice ? parseFloat(newProduct.perUnitPurchasePrice) : 0,
         quantity: newProduct.quantity ? parseFloat(newProduct.quantity) : 0,
-        lowStockThreshold: newProduct.lowStockThreshold ? parseFloat(newProduct.lowStockThreshold) : 0
+        lowStockThreshold: newProduct.lowStockThreshold ? parseFloat(newProduct.lowStockThreshold) : 0,
+        piecesPerUnit: newProduct.piecesPerUnit ? parseFloat(newProduct.piecesPerUnit) : null,
+        retailPricePerPiece: newProduct.retailPricePerPiece ? parseFloat(newProduct.retailPricePerPiece) : null
       };
       
       if (!formattedData.categoryId) {
@@ -189,7 +195,9 @@ export function useProducts() {
         purchasePrice: parseFloat(data.purchasePrice),
         perUnitPurchasePrice: data.perUnitPurchasePrice ? parseFloat(data.perUnitPurchasePrice) : 0,
         quantity: data.quantity ? parseFloat(data.quantity) : 0,
-        lowStockThreshold: data.lowStockThreshold ? parseFloat(data.lowStockThreshold) : 0
+        lowStockThreshold: data.lowStockThreshold ? parseFloat(data.lowStockThreshold) : 0,
+        piecesPerUnit: data.piecesPerUnit ? parseFloat(data.piecesPerUnit) : null,
+        retailPricePerPiece: data.retailPricePerPiece ? parseFloat(data.retailPricePerPiece) : null
       };
 
       if (!formattedData.categoryId) {
@@ -357,6 +365,8 @@ export function useProducts() {
       image: product.image,
       isRawMaterial: !!product.isRawMaterial,
       isService: !!product.isService,
+      piecesPerUnit: (product.piecesPerUnit ?? '').toString(),
+      retailPricePerPiece: (product.retailPricePerPiece ?? '').toString(),
       sizes,
       colors,
       excludedVariants,

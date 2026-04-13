@@ -1,4 +1,8 @@
-import { FaSearch, FaPlus, FaPrint, FaExclamationTriangle, FaFilter } from 'react-icons/fa';
+import { useRef, useState } from 'react';
+import { FaSearch, FaPlus, FaPrint, FaExclamationTriangle, FaFilter, FaFileDownload, FaFileUpload } from 'react-icons/fa';
+import toast from 'react-hot-toast';
+import API from '../../utils/api';
+import CSVImportModal from './CSVImportModal';
 
 export function ProductsHeader({
   language,
@@ -20,6 +24,8 @@ export function ProductsHeader({
   handlePrint,
   products
 }) {
+  const csvInputRef = useRef(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -115,8 +121,39 @@ export function ProductsHeader({
           >
             <FaPrint className="w-5 h-5" />
           </button>
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem('authToken');
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products/csv-export`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'products_export.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                toast.error('Failed to export');
+              }
+            }}
+            className="p-2 h-10 w-10 text-green-600 hover:text-green-800 transition-colors bg-white border border-green-200 rounded-lg shadow-sm flex items-center justify-center"
+            title="Export CSV"
+          >
+            <FaFileDownload className="w-5 h-5" />
+          </button>
+          <button
+              onClick={() => setShowImportModal(true)}
+              className="p-2 h-10 w-10 text-blue-600 hover:text-blue-800 transition-colors bg-white border border-blue-200 rounded-lg shadow-sm flex items-center justify-center"
+              title="Import CSV"
+            >
+              <FaFileUpload className="w-5 h-5" />
+            </button>
         </div>
       </div>
+      <CSVImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
     </>
   );
 }
