@@ -140,18 +140,24 @@ export function setupSalesRoutes(app, prisma) {
             // Services skip stock deduction entirely
             if (isServiceProduct) {
               console.log(`[CREATE] Service — no stock deduction`);
-            } else if (product.quantity >= item.quantity) {
-              console.log(`[CREATE] Direct deduction: ${item.quantity}`);
+            } else {
+              // Convert piece quantity to primary unit quantity if selling by piece
+              const stockDeduction = item.sellingByPiece && item.piecesPerUnit
+                ? item.quantity / item.piecesPerUnit
+                : item.quantity;
+              
+              if (product.quantity >= stockDeduction) {
+              console.log(`[CREATE] Direct deduction: ${stockDeduction}${item.sellingByPiece ? ` (${item.quantity} pcs)` : ''}`);
               await prisma.product.update({
                 where: { id: item.productId },
                 data: {
                   quantity: {
-                    decrement: item.quantity
+                    decrement: stockDeduction
                   }
                 }
               });
             } else if (product.recipe) {
-              const quantityNeeded = item.quantity - product.quantity;
+              const quantityNeeded = stockDeduction - product.quantity;
               console.log(`[CREATE] Auto-mfg: Need=${quantityNeeded}`);
               
               // Calculate max quantity we can make with available materials
@@ -189,6 +195,7 @@ export function setupSalesRoutes(app, prisma) {
               }
             } else {
               throw new Error(`Insufficient stock for product ${product.name}`);
+            }
             }
           }
 

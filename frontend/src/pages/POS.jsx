@@ -76,6 +76,7 @@ function POS() {
     addToCart,
     updateCartQuantity,
     removeFromCart,
+    toggleSellingByPiece,
     clearCart,
     processSale,
     previewReceipt,
@@ -249,6 +250,7 @@ function POS() {
             cart={cart}
             clearCart={clearCart}
             removeFromCart={removeFromCart}
+            toggleSellingByPiece={toggleSellingByPiece}
             updateCartQuantity={updateCartQuantity}
             subtotal={subtotal}
             discount={discount}

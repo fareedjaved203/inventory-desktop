@@ -115,6 +115,8 @@ async function ensureSchema(prismaClient) {
     `ALTER TABLE "Product" ADD COLUMN "isService" BOOLEAN DEFAULT false`,
     `ALTER TABLE "ShopSettings" ADD COLUMN "backupEmail" TEXT`,
     `ALTER TABLE "ShopSettings" ADD COLUMN "autoBackupEnabled" BOOLEAN DEFAULT false`,
+    `ALTER TABLE "Product" ADD COLUMN "piecesPerUnit" REAL`,
+    `ALTER TABLE "Product" ADD COLUMN "retailPricePerPiece" REAL`,
   ];
 
   // Create tables
@@ -1029,6 +1031,8 @@ app.post(
           unit: productData.unit,
           isRawMaterial: productData.isRawMaterial,
           isService: productData.isService,
+          piecesPerUnit: productData.piecesPerUnit,
+          retailPricePerPiece: productData.retailPricePerPiece,
           categoryId: productData.categoryId,
           image: productData.image,
           price: productData.price,
@@ -1330,6 +1334,8 @@ app.put(
           unit: parent.unit,
           isRawMaterial: parent.isRawMaterial,
           isService: parent.isService,
+          piecesPerUnit: parent.piecesPerUnit,
+          retailPricePerPiece: parent.retailPricePerPiece,
           categoryId: parent.categoryId,
           image: parent.image,
           price: parent.price,

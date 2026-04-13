@@ -11,6 +11,7 @@ export function POSCartSidebar({
   cart,
   clearCart,
   removeFromCart,
+  toggleSellingByPiece,
   updateCartQuantity,
   subtotal,
   discount,
@@ -99,6 +100,22 @@ export function POSCartSidebar({
                     <FaTimes size={10} />
                   </button>
                 </div>
+                {item.piecesPerUnit && (
+                  <div className="flex mb-1">
+                    <button
+                      onClick={() => item.sellingByPiece && toggleSellingByPiece(item.id)}
+                      className={`px-2 py-0.5 text-[10px] rounded-l border ${!item.sellingByPiece ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+                    >
+                      {item.unit}
+                    </button>
+                    <button
+                      onClick={() => !item.sellingByPiece && toggleSellingByPiece(item.id)}
+                      className={`px-2 py-0.5 text-[10px] rounded-r border-t border-r border-b ${item.sellingByPiece ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+                    >
+                      pcs
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1">
                     <button

@@ -188,6 +188,9 @@ export function ProductsTable({
                         {product.unit}
                       </span>
                     )}
+                    {product.piecesPerUnit && !isParent && (
+                      <span className="text-[10px] text-amber-600">({Math.round(displayQuantity * product.piecesPerUnit)} pcs)</span>
+                    )}
                   </div>
                   )}
                 </td>}

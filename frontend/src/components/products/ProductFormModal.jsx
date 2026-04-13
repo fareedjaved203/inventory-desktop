@@ -441,6 +441,49 @@ export function ProductFormModal({
                     placeholder="Alert when stock reaches this level"
                   />
                 </div>
+                {['packet', 'carton', 'dozen', 'box', 'bag', 'set', 'roll', 'pair', 'bottle', 'drum', 'sheet'].includes(formData.unit) && (
+                  <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                    <label className="block text-xs font-bold text-amber-800 mb-2">Multi-Unit Selling</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-600 mb-0.5">Pieces per {formData.unit}</label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={formData.piecesPerUnit}
+                          onChange={(e) => {
+                            const ppu = parseFloat(e.target.value) || 0;
+                            const retailPrice = parseFloat(formData.retailPrice) || 0;
+                            const perPiece = ppu > 0 ? (retailPrice / ppu).toFixed(2) : '';
+                            setFormData({ ...formData, piecesPerUnit: e.target.value, retailPricePerPiece: perPiece });
+                          }}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                          placeholder={`e.g. 12 pcs per ${formData.unit}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-600 mb-0.5">Retail price per piece</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.retailPricePerPiece}
+                          onChange={(e) => setFormData({ ...formData, retailPricePerPiece: e.target.value })}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                          placeholder="Price per single piece"
+                        />
+                      </div>
+                    </div>
+                    {formData.piecesPerUnit && formData.quantity && (
+                      <p className="text-[10px] text-amber-700 mt-1">
+                        Total pieces: {Math.round(parseFloat(formData.piecesPerUnit) * parseFloat(formData.quantity))} pcs
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             )}

@@ -15,6 +15,8 @@ export const productSchema = z.object({
   lowStockThreshold: z.number().min(0, "Low stock threshold must be non-negative").optional(),
   isRawMaterial: z.boolean().optional(),
   isService: z.boolean().optional(),
+  piecesPerUnit: z.number().positive().nullable().optional(),
+  retailPricePerPiece: z.number().min(0).nullable().optional(),
   categoryId: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
   parentProductId: z.string().nullable().optional(),
@@ -36,8 +38,10 @@ export const productUpdateSchema = productSchema.partial();
 export const saleItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().positive("Quantity must be positive"),
-  price: z.number().positive("Price must be positive").max(100000000, "Price cannot exceed Rs.10 Crores"),
+  price: z.number().min(0, "Price cannot be negative").max(100000000, "Price cannot exceed Rs.10 Crores"),
   priceType: z.enum(["retail", "wholesale"]).optional().default("retail"),
+  sellingByPiece: z.boolean().optional(),
+  piecesPerUnit: z.number().positive().optional(),
 });
 
 export const saleSchema = z.object({

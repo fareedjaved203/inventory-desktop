@@ -351,6 +351,9 @@ export function usePOS() {
           unit: product.unit,
           isManufactured: product.isManufactured,
           isService: product.isService,
+          piecesPerUnit: product.piecesPerUnit || null,
+          retailPricePerPiece: product.retailPricePerPiece || null,
+          sellingByPiece: false,
           recipe: product.recipe
         }];
       }
@@ -413,6 +416,23 @@ export function usePOS() {
   // Remove from cart
   const removeFromCart = (productId) => {
     setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  };
+
+  const toggleSellingByPiece = (productId) => {
+    setCart(prevCart => prevCart.map(item => {
+      if (item.id !== productId || !item.piecesPerUnit) return item;
+      const newByPiece = !item.sellingByPiece;
+      const originalMax = item.originalMaxQuantity || item.maxQuantity;
+      return {
+        ...item,
+        sellingByPiece: newByPiece,
+        price: newByPiece ? (item.retailPricePerPiece || item.price / item.piecesPerUnit) : (item.originalPrice || item.price * item.piecesPerUnit),
+        quantity: 1,
+        maxQuantity: newByPiece ? originalMax * item.piecesPerUnit : originalMax,
+        originalMaxQuantity: originalMax,
+        originalPrice: item.originalPrice || item.price
+      };
+    }));
   };
 
   // Clear cart
@@ -737,7 +757,8 @@ export function usePOS() {
       items: cart.map(item => ({
         productId: item.id,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        ...(item.sellingByPiece && item.piecesPerUnit && { sellingByPiece: true, piecesPerUnit: item.piecesPerUnit })
       })),
       totalAmount: total,
       paidAmount: paidAmount,
@@ -786,7 +807,7 @@ export function usePOS() {
     subtotal, discountAmount, total, change,
     handleSearchChange, handleSearchKeyDown, handleProductSelect,
     handleCustomerSearchChange, handleBarcodeSubmit,
-    addToCart, updateCartQuantity, removeFromCart, clearCart,
+    addToCart, updateCartQuantity, removeFromCart, toggleSellingByPiece, clearCart,
     processSale, previewReceipt, createSale
   };
 }
