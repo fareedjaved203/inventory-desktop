@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   },
 });
 
-function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
+function SaleInvoicePDF({ sale, shopSettings, preferences = {}, pageSize = 'A4' }) {
   // Create brand array with registered trademark symbols
   const brands = [];
   
@@ -251,7 +251,7 @@ function SaleInvoicePDF({ sale, shopSettings, preferences = {} }) {
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size={pageSize} style={styles.page}>
         {/* Company Header */}
         <View style={styles.companyHeader}>
           <Text style={styles.companyName}>{shopSettings?.shopName || "COMPANY NAME"}</Text>

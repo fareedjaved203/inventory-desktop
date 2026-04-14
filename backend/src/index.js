@@ -646,12 +646,19 @@ app.get('/api/products/raw-materials', authenticateToken, validateRequest({ quer
       userId: req.userId,
       isRawMaterial: true,
       categoryId: categoryId || undefined,
+      // Exclude parent products that have variants — show children + standalone only
+      OR: [
+        { parentProductId: { not: null } },  // child variants
+        { variants: { none: {} }, parentProductId: null }  // standalone (no children)
+      ],
       ...(search ? {
-        OR: [
-          { name: { contains: search } },
-          { description: { contains: search } },
-          { sku: { contains: search } },
-        ],
+        AND: [{
+          OR: [
+            { name: { contains: search } },
+            { description: { contains: search } },
+            { sku: { contains: search } },
+          ]
+        }]
       } : {})
     };
 

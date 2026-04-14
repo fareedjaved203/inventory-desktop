@@ -254,10 +254,21 @@ export function useManufacturing() {
       ...data,
       ingredients: ingredients
         .filter(ing => ing.rawMaterialId && ing.quantity)
-        .map(ing => ({
-          ...ing,
-          quantity: parseFloat(ing.quantity)
-        }))
+        .map(ing => {
+          let qty = parseFloat(ing.quantity);
+          // Convert pieces to primary units if using piece mode
+          if (ing.useInPieces) {
+            const material = rawMaterialsData?.data?.items?.find(m => m.id === ing.rawMaterialId);
+            if (material?.piecesPerUnit) {
+              qty = qty / material.piecesPerUnit;
+            }
+          }
+          return {
+            rawMaterialId: ing.rawMaterialId,
+            quantity: qty,
+            unit: ing.unit
+          };
+        })
     };
 
     if (selectedItem) {

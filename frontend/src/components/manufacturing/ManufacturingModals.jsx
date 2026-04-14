@@ -97,9 +97,13 @@ export function ManufacturingModals({
                 </p>
                 {ingredients.map((ingredient, index) => {
                   const selectedMaterial = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
-                  const ingredientCost = selectedMaterial?.perUnitPurchasePrice && ingredient.quantity 
-                    ? parseFloat(selectedMaterial.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
-                    : 0;
+                  const hasPieces = selectedMaterial?.piecesPerUnit > 0;
+                  const isUsingPieces = ingredient.useInPieces || false;
+                  // Cost calculation: if using pieces, convert to primary unit cost
+                  const costPerPrimaryUnit = parseFloat(selectedMaterial?.perUnitPurchasePrice || selectedMaterial?.purchasePrice || 0);
+                  const costPerPiece = hasPieces ? costPerPrimaryUnit / selectedMaterial.piecesPerUnit : costPerPrimaryUnit;
+                  const displayCost = isUsingPieces ? costPerPiece : costPerPrimaryUnit;
+                  const ingredientCost = displayCost && ingredient.quantity ? displayCost * parseFloat(ingredient.quantity) : 0;
                   
                   return (
                     <div key={index} className="mb-3">
@@ -113,26 +117,46 @@ export function ManufacturingModals({
                           <option value="">{t('selectRawMaterial') || 'Select Raw Material'}</option>
                           {rawMaterialsData?.data?.items?.map((material) => (
                             <option key={material.id} value={material.id}>
-                              {material.name} {material.perUnitPurchasePrice ? `(${formatPakistaniCurrency(material.perUnitPurchasePrice)}/${material.unit})` : '(No cost set)'}
+                              {material.name} {(material.perUnitPurchasePrice || material.purchasePrice) ? `(${formatPakistaniCurrency(material.perUnitPurchasePrice || material.purchasePrice)}/${material.unit})` : '(No cost set)'}
                             </option>
                           ))}
                         </select>
                         <input
                           type="number"
                           step="0.01"
-                          placeholder={t('amountPerUnit')}
+                          placeholder={isUsingPieces ? 'Pieces' : t('amountPerUnit')}
                           value={ingredient.quantity}
                           onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className="w-32 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          title="Amount needed per 1 unit of final product"
+                          title={isUsingPieces ? 'Number of pieces needed' : 'Amount needed per 1 unit of final product'}
                         />
-                        <input
-                          type="text"
-                          value={ingredient.unit}
-                          readOnly
-                          className="w-20 px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                          title="Unit is auto-detected from selected raw material"
-                        />
+                        {hasPieces ? (
+                          <div className="flex">
+                            <button
+                              type="button"
+                              onClick={() => updateIngredient(index, 'useInPieces', false)}
+                              className={`px-2 py-2 text-xs rounded-l border ${!isUsingPieces ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+                            >
+                              {ingredient.unit}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateIngredient(index, 'useInPieces', true)}
+                              className={`px-2 py-2 text-xs rounded-r border-t border-r border-b ${isUsingPieces ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+                            >
+                              pcs
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={ingredient.unit}
+                            readOnly
+                            className="w-20 px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                            title="Unit is auto-detected from selected raw material"
+                          />
+                        )}
                         {ingredients.length > 1 && (
                           <button
                             type="button"
@@ -145,7 +169,7 @@ export function ManufacturingModals({
                       </div>
                       {selectedMaterial && ingredient.quantity && (
                         <div className="text-xs text-blue-600 ml-2">
-                          {selectedMaterial.perUnitPurchasePrice > 0 
+                          {(selectedMaterial.perUnitPurchasePrice || selectedMaterial.purchasePrice) > 0 
                             ? `Cost per unit: ${formatPakistaniCurrency(ingredientCost)}`
                             : 'Set per unit cost in Products section for cost calculation'
                           }
@@ -176,12 +200,13 @@ export function ManufacturingModals({
                         .filter(ing => ing.rawMaterialId && ing.quantity)
                         .map((ingredient, idx) => {
                           const material = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
-                          const cost = material?.perUnitPurchasePrice && ingredient.quantity 
-                            ? parseFloat(material.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
-                            : 0;
+                          const costPerPrimary = parseFloat(material?.perUnitPurchasePrice || material?.purchasePrice || 0);
+                          const isInPieces = ingredient.useInPieces && material?.piecesPerUnit;
+                          const effectiveCost = isInPieces ? costPerPrimary / material.piecesPerUnit : costPerPrimary;
+                          const cost = effectiveCost * parseFloat(ingredient.quantity || 0);
                           return (
                             <div key={idx} className="flex justify-between text-sm text-green-700">
-                              <span>{material?.name}: {ingredient.quantity} {ingredient.unit}</span>
+                              <span>{material?.name}: {ingredient.quantity} {isInPieces ? 'pcs' : ingredient.unit}</span>
                               <span>{cost > 0 ? formatPakistaniCurrency(cost) : 'No cost set'}</span>
                             </div>
                           );
@@ -195,10 +220,10 @@ export function ManufacturingModals({
                                 .filter(ing => ing.rawMaterialId && ing.quantity)
                                 .reduce((total, ingredient) => {
                                   const material = rawMaterialsData?.data?.items?.find(m => m.id === ingredient.rawMaterialId);
-                                  const cost = material?.perUnitPurchasePrice && ingredient.quantity 
-                                    ? parseFloat(material.perUnitPurchasePrice) * parseFloat(ingredient.quantity)
-                                    : 0;
-                                  return total + cost;
+                                  const costPerPrimary = parseFloat(material?.perUnitPurchasePrice || material?.purchasePrice || 0);
+                                  const isInPieces = ingredient.useInPieces && material?.piecesPerUnit;
+                                  const effectiveCost = isInPieces ? costPerPrimary / material.piecesPerUnit : costPerPrimary;
+                                  return total + effectiveCost * parseFloat(ingredient.quantity || 0);
                                 }, 0)
                             )}
                           </span>
@@ -341,7 +366,7 @@ export function ManufacturingModals({
                       const quantityToProduce = parseFloat(watch('quantityProduced')) || 1;
                       const needed = parseFloat(ingredient.quantity) * quantityToProduce;
                       const available = rawMaterial?.quantity || 0;
-                      const perUnitCost = rawMaterial?.perUnitPurchasePrice || 0;
+                      const perUnitCost = rawMaterial?.perUnitPurchasePrice || rawMaterial?.purchasePrice || 0;
                       const ingredientCost = needed * perUnitCost;
                       
                       // Convert to base units for comparison

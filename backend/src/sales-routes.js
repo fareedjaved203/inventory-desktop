@@ -52,19 +52,9 @@ export function setupSalesRoutes(app, prisma) {
     async (req, res) => {
       try {
         const sale = await withTransaction(prisma, async (prisma) => {
-          // Generate sequential bill number starting from 1
-          const lastSale = await prisma.sale.findFirst({
-            where: { userId: req.userId },
-            orderBy: { createdAt: 'desc' },
-            select: { billNumber: true }
-          });
-          
-          let nextNum = 1;
-          if (lastSale?.billNumber) {
-            const parsed = parseInt(lastSale.billNumber);
-            if (!isNaN(parsed)) nextNum = parsed + 1;
-          }
-          const billNumber = nextNum.toString();
+          // Generate bill number based on total sale count + 1
+          const saleCount = await prisma.sale.count({ where: { userId: req.userId } });
+          const billNumber = (saleCount + 1).toString();
 
           // Use custom sale date if provided, otherwise use current Pakistan time
           const saleDate = req.body.saleDate ? createDateWithCurrentTime(req.body.saleDate) : createDateWithCurrentTime();
