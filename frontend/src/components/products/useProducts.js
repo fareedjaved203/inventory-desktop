@@ -172,6 +172,7 @@ export function useProducts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['dashboard-stats']);
         setIsModalOpen(false);
         setFormData(initialFormState);
         toast.success('Product created successfully');
@@ -208,6 +209,7 @@ export function useProducts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['dashboard-stats']);
         setIsModalOpen(false);
         setFormData(initialFormState);
         toast.success('Product updated successfully');
@@ -227,6 +229,7 @@ export function useProducts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['dashboard-stats']);
         setDeleteModalOpen(false);
         setProductToDelete(null);
         setDeleteError(null);
@@ -245,6 +248,7 @@ export function useProducts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['dashboard-stats']);
         setDamagedModalOpen(false);
         setDamagedQuantity('');
         toast.success('Items marked as damaged');
@@ -258,6 +262,7 @@ export function useProducts() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['products']);
+        queryClient.invalidateQueries(['dashboard-stats']);
         setDamagedModalOpen(false);
         setDamagedQuantity('');
         toast.success('Items restored successfully');

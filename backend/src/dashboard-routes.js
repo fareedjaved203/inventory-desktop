@@ -59,15 +59,15 @@ export function setupDashboardRoutes(app, prisma) {
         // Calculate total stock value
         prisma.product.findMany({
           where: { userId: req.userId },
-          select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true, isService: true }
+          select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true, isService: true, parentProductId: true, _count: { select: { variants: true } } }
         }).catch(() => [])
       ]);
 
       const rawMaterialExpensesAmount = Number(totalRawMaterialExpenses[0]?.total || 0);
 
-      // Calculate stock value: for bulk units use perUnitPurchasePrice × qty, for piece units use purchasePrice × qty
+      // Calculate stock value — exclude parent products that have variants
       const bulkUnits = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
-      const totalStockValue = totalStockProducts.filter(p => !p.isService).reduce((sum, p) => {
+      const totalStockValue = totalStockProducts.filter(p => !p.isService && !(p._count?.variants > 0 && !p.parentProductId)).reduce((sum, p) => {
         const qty = Number(p.quantity || 0);
         if (bulkUnits.includes(p.unit?.toLowerCase())) {
           const perUnit = Number(p.perUnitPurchasePrice || p.purchasePrice || 0);
@@ -685,13 +685,17 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       }),
       prisma.product.findMany({
         where: { userId: req.userId },
-        select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true }
+        select: { purchasePrice: true, perUnitPurchasePrice: true, quantity: true, unit: true, isService: true, parentProductId: true, _count: { select: { variants: true } } }
       }).catch(() => [])
     ]);
 
-    // Calculate total stock value
+    // Calculate total stock value — exclude parent products that have variants (their value is in children)
     const bulkUnitsStats = ['kg', 'ltr', 'ml', 'gram', 'dozen', 'ton', 'metre', 'ft', 'sqft', 'ohm'];
     const totalStockValue = allProductsForStockValue.reduce((sum, p) => {
+      // Skip services
+      if (p.isService) return sum;
+      // Skip parent products that have variants (value counted in children)
+      if (!p.parentProductId && p._count?.variants > 0) return sum;
       const qty = Number(p.quantity || 0);
       if (bulkUnitsStats.includes(p.unit?.toLowerCase())) {
         const perUnit = Number(p.perUnitPurchasePrice || p.purchasePrice || 0);
