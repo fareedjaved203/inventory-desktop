@@ -782,8 +782,12 @@ app.get('/api/products/csv-export', authenticateToken, async (req, res) => {
   }
 });
 
-// CSV Import
-const csvUpload = multer({ dest: 'uploads/csv/', limits: { fileSize: 10 * 1024 * 1024 } });
+// CSV Import — use AppData for temp uploads in Electron, fallback to local dir
+const csvUploadDir = process.env.ELECTRON_USER_DATA 
+  ? path.join(process.env.ELECTRON_USER_DATA, 'csv-uploads')
+  : 'uploads/csv/';
+try { fs.mkdirSync(csvUploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+const csvUpload = multer({ dest: csvUploadDir, limits: { fileSize: 10 * 1024 * 1024 } });
 app.post('/api/products/csv-import', authenticateToken, csvUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
